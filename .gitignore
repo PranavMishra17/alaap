@@ -1,0 +1,61 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+envs/
+.python-version
+
+# ── ML artefacts (never commit weights or audio) ──
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.onnx
+checkpoints/
+models/
+weights/
+
+# ── Data & caches (the cache-embeddings-once layer lives here) ──
+data/
+corpora/
+cache/
+embeddings/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.opus
+*.npy
+*.npz
+*.h5
+*.arrow
+
+# ── Experiment outputs ──
+experiments/**/out/
+experiments/**/renders/
+runs/
+wandb/
+mlruns/
+outputs/
+
+# ── Secrets ──
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── Keep ──
+!RESEARCH/**
+!docs/**
