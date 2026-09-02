@@ -9,7 +9,7 @@
 
 ## 0. Bottom line
 
-- **⭐ PromptTTS++ is the reference implementation VoiceForge should read before writing a line of mapper code.** It is the *only* system surveyed that gives a permissively-licensed, downloadable, description→speaker-embedding generator with a directly addressable vector space: **256-d, L2-normalized, Apache-2.0, weights real and downloadable**. [HIGH]
+- **⭐ PromptTTS++ is the reference implementation Alaap should read before writing a line of mapper code.** It is the *only* system surveyed that gives a permissively-licensed, downloadable, description→speaker-embedding generator with a directly addressable vector space: **256-d, L2-normalized, Apache-2.0, weights real and downloadable**. [HIGH]
 - **Its head is an MDN (mixture density network), not diffusion.** A **per-dimension 10-component Gaussian mixture** over the 256-d vector. The scope document's §17-A3 framing (flow vs diffusion vs normalizing flow) **omits the family that the one working open system actually uses**, and MDN is by far the cheapest of the four. [HIGH]
 - **Generating a usable speaker embedding from a non-audio modality is a settled result** — faces since 2022, text descriptions since 2023. **The gap is not feasibility; it is openness.** [HIGH]
 - **HiStyle supplies the taxonomy of the whole design family**, ranked, which is exactly the comparison scope §17-A3 asked for — and it finds **hierarchical two-stage diffusion** best. But it has no code, an internal dataset, and an internal backbone. [HIGH]
@@ -29,7 +29,7 @@
 | 13-3 | §3 timeline omits **InstructTTS** (2301.13662, 2023-01-31) | **Missing the earliest entry** | InstructTTS predates every system in the table by 8 months. Worth citing for the style-encoder + InfoNCE + CLUB MI-minimisation design, even though its speaker path is a closed-set LUT. | [arXiv:2301.13662](https://arxiv.org/abs/2301.13662) | HIGH |
 | 13-4 | §17-A3 lists VoiceDesigner as "diffusion transformer" among mapper candidates | **Category error** (compounding [`01`](01-ttv-landscape.md)'s finding) | Several systems in the A3 list generate a **style** vector, not a **speaker** vector. PromptVC, InstructTTS and ControlSpeech's SMSD are all style predictors; the speaker channel is separate and audio-only. Comparing them as speaker-embedding generators is comparing different things. | per-paper, §3 below | HIGH |
 | 13-5 | §6 benchmark row implies open models are near commercial quality | **~30-point gap on the only public benchmark** | InstructTTSEval EN average: best open (VoxInstruct) **50.4** vs gemini-flash **88.7**, hume **71.1**, gpt-4o-mini-tts **68.5**. Parler-TTS-mini **46.9**. The open field is not close. | [InstructTTSEval](https://arxiv.org/abs/2506.16381) | HIGH |
-| 13-6 | §10 proposes InstructTTSEval as an adherence metric without caveat | **Ceiling caveat missing** | **Real human reference audio scores 84.3 avg and only 67.2 on Role-Play** — the task closest to VoiceForge's use case. Scoring is **binary true/false** per item judged by `gemini-2.5-pro`, macro-averaged. Treat >85 as noise. Judge cost ≈ **$12.8/session EN**. | ibid. | HIGH |
+| 13-6 | §10 proposes InstructTTSEval as an adherence metric without caveat | **Ceiling caveat missing** | **Real human reference audio scores 84.3 avg and only 67.2 on Role-Play** — the task closest to Alaap's use case. Scoring is **binary true/false** per item judged by `gemini-2.5-pro`, macro-averaged. Treat >85 as noise. Judge cost ≈ **$12.8/session EN**. | ibid. | HIGH |
 | 13-7 | §8.2 / [`05`](05-datasets-and-annotation.md) noted "VccmDataset does not exist" | **Partial reconciliation** | `VccmDataset/` **is** a directory in the ControlSpeech repo. It is not an independently published dataset with a card or licence — and the repo has **no LICENSE at all** — so it remains unusable, but the name is not fabricated. | [`jishengpeng/ControlSpeech`](https://github.com/jishengpeng/ControlSpeech) | HIGH |
 | 13-8 | §17-C4 / §5: non-human voices deferred because "no public dataset covers it" | **A third path exists the brief didn't consider** | **BatonVoice** ([2509.26514](https://arxiv.org/abs/2509.26514)) has an LLM emit an explicit **textual vocal-feature plan** — neither an embedding nor raw audio. That is a route to stylization that needs no paired corpus at all. Worth a look before committing to DSP augmentation. | [arXiv:2509.26514](https://arxiv.org/abs/2509.26514) | MEDIUM |
 
@@ -170,12 +170,12 @@ Reported controllability: gender **98.88%**, volume **95.56%**, pitch **92.87%**
 
 [arXiv:2603.28086](https://arxiv.org/abs/2603.28086), 2026-03-30, Fudan (same group as InstructTTSEval).
 
-Framed exactly as VoiceForge's problem — "voice design from natural language… generate speaker timbres directly from free-form textual descriptions" — but architecturally **Tier 2**: a **Qwen3**-initialised causal LM, delay-pattern, emitting **MOSS-Audio-Tokenizer RVQ tokens** (first 16 codebook layers) from `[description ‖ transcript]`, decoded to waveform. **No intermediate timbre vector.**
+Framed exactly as Alaap's problem — "voice design from natural language… generate speaker timbres directly from free-form textual descriptions" — but architecturally **Tier 2**: a **Qwen3**-initialised causal LM, delay-pattern, emitting **MOSS-Audio-Tokenizer RVQ tokens** (first 16 codebook layers) from `[description ‖ transcript]`, decoded to waveform. **No intermediate timbre vector.**
 
 - **Open weights, Apache-2.0**, `OpenMOSS-Team/MOSS-VoiceGenerator`, **~74k downloads**
 - **Trained on cinematic content specifically to escape studio-clean timbres** — directly relevant to scope §5's "human + heavy stylization" range, and to the character-voice coverage lost when the anime sources are dropped from VoicePersona (see [`05`](05-datasets-and-annotation.md))
 
-> **Recommended role: the Tier-2 English baseline for S0.** It is Apache-2.0, purpose-built for voice design, and trained on exactly the dramatic register VoiceForge targets. Compare against VoxCPM2 (whose "voice design" [`03`](03-tts-backends-english.md) found to be a text-prefix hack) — MOSS is the more honest implementation of the same idea.
+> **Recommended role: the Tier-2 English baseline for S0.** It is Apache-2.0, purpose-built for voice design, and trained on exactly the dramatic register Alaap targets. Compare against VoxCPM2 (whose "voice design" [`03`](03-tts-backends-english.md) found to be a text-prefix hack) — MOSS is the more honest implementation of the same idea.
 
 ---
 
@@ -185,7 +185,7 @@ Framed exactly as VoiceForge's problem — "voice design from natural language�
 
 - **APS** — Acoustic-Parameter Specification: explicit control of 12 low-level acoustic features
 - **DSD** — Descriptive-Style Directive: free-form descriptions with attributes randomly omitted
-- **RP** — **Role-Play**: abstract scenario, e.g. "elderly storyteller" — the model must infer the vocal style. **This is VoiceForge's actual use case.**
+- **RP** — **Role-Play**: abstract scenario, e.g. "elderly storyteller" — the model must infer the vocal style. **This is Alaap's actual use case.**
 
 **Scoring:** each item judged **binary true/false** by `gemini-2.5-pro` ("true" = primary style attributes align without conflict). Reported number = **macro-average % true** over 1,000 items.
 
@@ -203,7 +203,7 @@ Framed exactly as VoiceForge's problem — "voice design from natural language�
 
 > **Three things to take from this table:**
 > 1. **Real human audio scores 84.3, and only 67.2 on Role-Play.** Anything above ~85 is measuring judge noise, not quality. Two systems already exceed the human reference — that is a metric artefact, not superhuman TTS.
-> 2. **Role-Play is the hardest task for everyone**, and it is exactly VoiceForge's use case. Open systems score 28.6–39.3 there. This is where the real work is.
+> 2. **Role-Play is the hardest task for everyone**, and it is exactly Alaap's use case. Open systems score 28.6–39.3 there. This is where the real work is.
 > 3. **Parler-TTS scores 46.9** — and Indic Parler-TTS is the brief's Indic backbone. Calibrate expectations for the Indic track accordingly ([`04`](04-indic-track.md)).
 >
 > Judge cost ≈ **$12.8/session EN** — cheap enough to run per-checkpoint, expensive enough not to run per-commit. Feed to [`06-evaluation-harness.md`](06-evaluation-harness.md)'s budget.
@@ -223,7 +223,7 @@ Framed exactly as VoiceForge's problem — "voice design from natural language�
 
 > **Bottom line:** generating a usable speaker embedding from a non-audio modality is a settled result — faces 2022–2023, text descriptions 2023–2026. **The gap is not feasibility; it is openness.** Of everything surveyed, exactly one system gives a permissively-licensed, downloadable, description→speaker-embedding generator with an addressable vector space: **PromptTTS++**.
 >
-> **A speculative but cheap idea worth logging:** FleSpeech's visual prompt path suggests a future VoiceForge feature — *upload a character portrait, get a matching voice*. It fits the product (game developers have character art before they have voice direction), and it carries **no impersonation risk from a drawn character**, preserving the §15.1 safety property. Not phase 1; worth not designing out.
+> **A speculative but cheap idea worth logging:** FleSpeech's visual prompt path suggests a future Alaap feature — *upload a character portrait, get a matching voice*. It fits the product (game developers have character art before they have voice direction), and it carries **no impersonation risk from a drawn character**, preserving the §15.1 safety property. Not phase 1; worth not designing out.
 
 ---
 

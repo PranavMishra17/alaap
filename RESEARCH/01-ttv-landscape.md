@@ -8,11 +8,11 @@
 ## 0. Bottom line
 
 - **All seven arXiv IDs in the brief resolve to real papers with the claimed names.** The brief's own suspicion ("several look suspicious") was unfounded. 2608.13613 = VoiceDesigner, 2603.28086 = MOSS-VoiceGenerator, 2601.10629 = VoiceSculptor all exist and match. **[HIGH]**
-- **The single most important result in this whole field for VoiceForge is arXiv 2406.08812 (Chen et al., Interspeech 2024)** — the only published head-to-head of a *regression* mapper vs a *flow-matching* mapper on the identical two-tower setup. It shows the tradeoff is real and bidirectional: flow matching wins fidelity (FAD 3.559 vs 5.244) but **loses** attribute adherence (SRCC 0.60 vs 0.74) and speaker similarity (0.36 vs 0.41). The **hybrid** (discriminative + flow) got the best FAD (3.126). **[HIGH]**
+- **The single most important result in this whole field for Alaap is arXiv 2406.08812 (Chen et al., Interspeech 2024)** — the only published head-to-head of a *regression* mapper vs a *flow-matching* mapper on the identical two-tower setup. It shows the tradeoff is real and bidirectional: flow matching wins fidelity (FAD 3.559 vs 5.244) but **loses** attribute adherence (SRCC 0.60 vs 0.74) and speaker similarity (0.36 vs 0.41). The **hybrid** (discriminative + flow) got the best FAD (3.126). **[HIGH]**
 - **This is a correction to the project's framing.** The brief treats "MSE → conditional mean → mush" as settled, and it is directionally right, but the published evidence says a pure generative head *costs you adherence*. The answer is not "replace MSE with a flow"; it is "flow head + an adherence-preserving auxiliary term, with a sampling-temperature dial." **[HIGH]**
 - **VoiceSculptor's Apache-2.0 claim is almost certainly ineffective for the weights.** The repo LICENSE.txt really is Apache-2.0 and the README really does grant it over "codes and model weights" — but VoiceSculptor-VD is fine-tuned from `HKUSTAudio/Llasa-3B` (**CC-BY-NC-4.0**, whose card says it "prohibits free commercial use") and inference requires `HKUSTAudio/xcodec2` (**CC-BY-NC-4.0**). You cannot relicense a NC derivative as Apache-2.0. **This blocks VoiceSculptor for public hosting.** **[HIGH on facts, MEDIUM on legal conclusion]**
 - **VoiceSculptor is NOT current SOTA on InstructTTSEval-Zh.** It claimed *open-source* SOTA in Jan 2026, but **Qwen3-TTS-VoiceDesign** (Apache-2.0, open weights, released 2026-01-22) scores **84.3 / 82.9 / 77.4** (APS/DSD/RP) on the ZH split vs VoiceSculptor's **75.7 / 64.7 / 61.5**, per MOSS-VoiceGenerator's own comparison table. **[HIGH]**
-- **VoiceDesigner has no code and no weights**, is CC-BY-4.0 on the *paper only*, and is **not a two-tower design** — it is a 1.0B end-to-end MM-DiT with no exportable speaker vector. Its value to VoiceForge is its **DSP augmentation recipe**, which is directly reusable and independently validates the stylization strategy. **[HIGH]**
+- **VoiceDesigner has no code and no weights**, is CC-BY-4.0 on the *paper only*, and is **not a two-tower design** — it is a 1.0B end-to-end MM-DiT with no exportable speaker vector. Its value to Alaap is its **DSP augmentation recipe**, which is directly reusable and independently validates the stylization strategy. **[HIGH]**
 - **Two published param budgets for the mapper bracket the brief's 10–50M estimate and land at its low end:** HiStyle uses ~30M per stage (12 layers × 512 hidden), Deep Dubbing's Text-to-Timbre uses a 4-layer DiT (4 heads, 392 hidden — order 10M). The brief's budget is correct but should be read as **10–30M, not 50M**. **[HIGH]**
 - **Mode collapse IS measurable and one paper already publishes the right metric:** PromptSpeaker's **`gen2gen-near`** = nearest-neighbour cosine distance between speakers generated from the *same* prompt (they report 0.088). UniSpeaker publishes **SSD** (Speaker Similarity Diversity, lower = more diverse). Adopt both. **[HIGH]**
 - **The contrastive/retrieval-first plan has direct prior art** (Speaker-Text Retrieval arXiv 2312.06055; UniSpeaker's KV-Former + soft contrastive loss; HiStyle's contrastive alignment stage). UniSpeaker is the important one: it explicitly frames soft contrastive labels as the *mechanism for preserving one-to-many*, and it is the only system that reports a diversity metric alongside adherence. **[HIGH]**
@@ -60,7 +60,7 @@
 | System | ID / URL | Why it matters | Confidence |
 |---|---|---|---|
 | **Qwen3-TTS-VoiceDesign** | huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign | Apache-2.0, open weights, 1.7B, current open-source InstructTTSEval leader. The strongest *legally usable* baseline in the field. | HIGH |
-| **Deep Dubbing (Text-to-Timbre)** | arXiv 2509.15845 | A published two-tower description→**speaker-embedding** module using OT-CFM flow matching into Cam++ 192-d space. This is the closest published analogue to VoiceForge's intended mapper. | HIGH |
+| **Deep Dubbing (Text-to-Timbre)** | arXiv 2509.15845 | A published two-tower description→**speaker-embedding** module using OT-CFM flow matching into Cam++ 192-d space. This is the closest published analogue to Alaap's intended mapper. | HIGH |
 | **Speaker-Text Retrieval via Contrastive Learning** | arXiv 2312.06055 | Direct prior art for the planned S2 retrieval-first approach. Liu, Wang, Cooper, Miao, Yamagishi, 2023-12-11. EN + JA. | HIGH |
 | **Sub-Center Speaker Embeddings** | arXiv 2407.04291 | Argues recognition-trained speaker embeddings *destroy* intra-speaker variance — i.e. the target space B may itself be a diversity bottleneck. Publishes intra/inter-class variance ratio as the metric. | HIGH |
 
@@ -82,7 +82,7 @@
 - **Diversity metric — the valuable bit:** `gen2gen-near` = 0.088, the cosine distance between the two *closest* speakers generated from the **same prompt** (d-vectors from WeSpeaker). Also `gen2syn-near` 0.085 vs `syn2syn-near` 0.113 vs `syn2syn-same` 0.024, used to argue generated speakers are genuinely novel rather than training-set copies.
 - Results: gender accuracy 96% (vs 46% baseline), speaker-timbre MOS 3.23±0.20 (vs 1.87 baseline), naturalness MOS 3.53±0.09 (GT 4.25).
 
-**Verdict for VoiceForge:** the architecture is right and the evaluation methodology is the single most reusable artifact in this paper. But there is nothing to clone — it must be reimplemented. Confidence **HIGH**.
+**Verdict for Alaap:** the architecture is right and the evaluation methodology is the single most reusable artifact in this paper. But there is nothing to clone — it must be reimplemented. Confidence **HIGH**.
 
 ### 3.2 Listener Impressions (2406.08812) — THE decisive experiment
 
@@ -105,7 +105,7 @@ Per-attribute, discriminative dominates on the ones users actually name: pitch 0
 
 **Reading it honestly.** The generative head buys *distributional realism* (FAD nearly halved) and naturalness. It **costs** ~19% relative attribute adherence and ~12% relative speaker similarity. The authors' conclusion is explicitly hybrid: combining both lets the system "capture speaker-related information from prompts better and generate speech with higher fidelity."
 
-- Two-tower: **YES**, and explicitly motivated as such — the prompt module is decoupled so it can swap into different pre-trained multi-speaker TTS by replacing only the speaker encoder. This is independent validation of VoiceForge's core architecture from a Yamagishi-lab paper. **[HIGH]**
+- Two-tower: **YES**, and explicitly motivated as such — the prompt module is decoupled so it can swap into different pre-trained multi-speaker TTS by replacing only the speaker encoder. This is independent validation of Alaap's core architecture from a Yamagishi-lab paper. **[HIGH]**
 - Params: not published beyond RoBERTa-base + LoRA r=8 + 4-layer projection. **UNVERIFIED.**
 - Data: Corpus of Spontaneous Japanese, 2,672 training speakers / 30 eval. Prompts derived from CSJ's existing **26-question listener impression survey** rather than hand-written annotations — a cheap annotation trick worth stealing (see 05-datasets).
 - Weights/code: **not released.** **[HIGH]**
@@ -165,7 +165,7 @@ Not a two-tower system. 1.0B single-stream **MM-DiT**, flow-matching over DAC-VA
 - Data: ~25,000 h (ZH 18,025 h / EN 7,047 h). Phase 1 ≈ 5,000 h **cinematic** (film/TV/episodic); Phase 2 ≈ 10,000 h style-mined from internal TTS corpora + ~10,000 h crowdsourced dubbing. DNSMOS ≥ 3.0 filtering.
 - Weights: **YES — `OpenMOSS-Team/MOSS-VoiceGenerator`, Apache-2.0, ~2.4B params BF16.** Base is Qwen3 (Apache-2.0), so the licence chain is **clean**. **[HIGH]**
 - CFG: not mentioned.
-- **Diversity — the one useful scaling datum in the field:** they chose the 1.7B over the 8B because it "achieves comparable instruction-following quality to the 8B model, **while demonstrating better generation diversity**." Bigger was *less* diverse. Consistent with the mode-collapse thesis and an argument for keeping VoiceForge's mapper small. **[HIGH]** — though no quantitative diversity number backs the claim, only a qualitative sunburst over age/emotion/texture. **[MEDIUM]**
+- **Diversity — the one useful scaling datum in the field:** they chose the 1.7B over the 8B because it "achieves comparable instruction-following quality to the 8B model, **while demonstrating better generation diversity**." Bigger was *less* diverse. Consistent with the mode-collapse thesis and an argument for keeping Alaap's mapper small. **[HIGH]** — though no quantitative diversity number backs the claim, only a qualitative sunburst over age/emotion/texture. **[MEDIUM]**
 
 ### 3.7 VoiceSculptor (2601.10629) — see §4 for full B3 treatment
 
@@ -175,7 +175,7 @@ Discrete-token LLM (LLaSA-3B / XCodec2), **no flow or diffusion**, with Chain-of
 
 Lyth & King's contribution is the **data recipe**, not the head: automatic annotation of speaker characteristics and recording conditions across 45,000 h, so that description-conditioning becomes learnable at all. Conditioning is cross-attention on description embeddings inside an end-to-end model. **No separable speaker vector, no explicit distributional head** — description → audio directly, one-to-many left entirely to the AR sampler. Checkpoints: Mini v1 880M, Large v1 2.3B, **Apache-2.0**, repo actively maintained. **[HIGH]**
 
-Worth being blunt: Parler-TTS is the archetype of the thing VoiceForge is *not* building. It is useful as a licence-clean baseline and as an annotation-pipeline reference, not as an architecture.
+Worth being blunt: Parler-TTS is the archetype of the thing Alaap is *not* building. It is useful as a licence-clean baseline and as an annotation-pipeline reference, not as an architecture.
 
 ### 3.9 Summary matrix
 
@@ -192,7 +192,7 @@ Worth being blunt: Parler-TTS is the archetype of the thing VoiceForge is *not* 
 | Deep Dubbing TTT | **OT-CFM flow matching** | **YES** | 4-layer DiT, 392 hidden (~10M) | 4,000 h, 300K descriptions | No | — | No | None |
 | Parler-TTS | AR, cross-attention | NO | 880M / 2.3B | 45,000 h | **YES** | **Apache-2.0** ✅ | No | None |
 
-**The single most striking pattern: not one system in this field exposes classifier-free guidance as an adherence-vs-diversity dial.** CFG is not mentioned in any of the eight papers. If VoiceForge ships that dial, it is genuinely novel — and given §4's evidence that the tradeoff is real and steep, it is also the *right* product feature. **[HIGH — verified by absence across all 8 papers; MEDIUM that no unread appendix mentions it.]**
+**The single most striking pattern: not one system in this field exposes classifier-free guidance as an adherence-vs-diversity dial.** CFG is not mentioned in any of the eight papers. If Alaap ships that dial, it is genuinely novel — and given §4's evidence that the tradeoff is real and steep, it is also the *right* product feature. **[HIGH — verified by absence across all 8 papers; MEDIUM that no unread appendix mentions it.]**
 
 ---
 
@@ -206,7 +206,7 @@ Architecture: single-stream **MM-DiT**, 1.0B params, operating on **DAC-VAE** la
 
 Training data: 56,165 h pretraining (Emilia, Common Voice, LibriTTS-R, HiFiTTS-2-44.1k), then fine-tuning on ESD, RAVDESS, SAVEE, Expresso, EARS, CapSpeech-Agent, VCTK, DreamVoice, plus **an internal 16-hour character-voice set: 20 character identities performed by 12 professional voice actors.**
 
-**The DSP augmentation pipeline — the reusable part.** Pitch shifting, formant shifting, reverberation, EQ, band-pass filtering, dynamic range compression, and pitch-contour manipulation via **SiFi-GAN**, chained to turn ordinary speech into "dragons, demons, possessed entities, robots, astronauts, and miniature creatures." This is a cheap, licence-free, training-data-free recipe for the heavy-stylization half of VoiceForge's scope, and it can be applied at *inference* as post-processing even without VoiceDesigner's model. **[HIGH]**
+**The DSP augmentation pipeline — the reusable part.** Pitch shifting, formant shifting, reverberation, EQ, band-pass filtering, dynamic range compression, and pitch-contour manipulation via **SiFi-GAN**, chained to turn ordinary speech into "dragons, demons, possessed entities, robots, astronauts, and miniature creatures." This is a cheap, licence-free, training-data-free recipe for the heavy-stylization half of Alaap's scope, and it can be applied at *inference* as post-processing even without VoiceDesigner's model. **[HIGH]**
 
 Results: Style-ACC **0.66** (best; vs Qwen3-TTS-VoiceDesign 0.50), WER 1.22%, MOS-C 3.93±0.06 (vs ElevenLabs-TTV 4.00±0.06 — i.e. **it does not beat ElevenLabs on MOS**). Cloning SIM-o 0.757 (vs CosyVoice-3 0.718, F5-TTS 0.670). Editing MOS-E 4.129±0.054 vs Step-Audio-EditX 3.333±0.064. Benchmarks: TTV-Traits (75 samples / 15 emotions) and TTV-Character (150 samples / 50 characters).
 
@@ -231,7 +231,7 @@ Data ladder: SFT 1,000 h → 3,700 h → 4,000 h → CPT 9,000 h (adding VoxBox 
 | **Required: `HKUSTAudio/xcodec2`** | **CC-BY-NC-4.0** | ⚠️ **conflict** |
 | CosyVoice2 (cloning stage) | Apache-2.0 | ✅ clean |
 
-**Conclusion: the Apache-2.0 grant over VoiceSculptor-VD's weights is very likely ineffective.** A fine-tune of a CC-BY-NC-4.0 model is a derivative work and inherits the NonCommercial restriction; the downstream author cannot grant more than they received. Public hosting counts as commercial use under VoiceForge's own locked constraint, so **VoiceSculptor is disqualified for the public product.** It remains usable for local research and as a quality reference. **[HIGH on every licence fact; MEDIUM on the legal conclusion — this warrants a real lawyer, not a research agent.]**
+**Conclusion: the Apache-2.0 grant over VoiceSculptor-VD's weights is very likely ineffective.** A fine-tune of a CC-BY-NC-4.0 model is a derivative work and inherits the NonCommercial restriction; the downstream author cannot grant more than they received. Public hosting counts as commercial use under Alaap's own locked constraint, so **VoiceSculptor is disqualified for the public product.** It remains usable for local research and as a quality reference. **[HIGH on every licence fact; MEDIUM on the legal conclusion — this warrants a real lawyer, not a research agent.]**
 
 Note also a **param discrepancy**: the paper says the VD model is 3B (LLaSA-3B), the HF card says 4B. Probably vocabulary expansion for XCodec2 tokens, but unresolved. **[MEDIUM]**
 
@@ -253,11 +253,11 @@ Standings, as tabulated by MOSS-VoiceGenerator (2603.28086), the most recent sou
 
 **Answer to "who holds SOTA": Gemini-TTS-Pro overall; Qwen3-TTS-VoiceDesign among open-weights, on both splits.** VoiceSculptor's Jan-2026 open-source-SOTA-on-Zh claim was true when published (its own table showed it beating MiMo-Audio-7B 67.6 vs 64.5 AVG) but was superseded within days by Qwen3-TTS's 2026-01-22 release. **[HIGH]**
 
-Caveat worth carrying into 06-evaluation-harness: InstructTTSEval measures **instruction adherence only**. It has no diversity axis at all. A model that returns the same bland voice for every prompt in a category can score well. **Do not use it as VoiceForge's primary metric.** **[HIGH]**
+Caveat worth carrying into 06-evaluation-harness: InstructTTSEval measures **instruction adherence only**. It has no diversity axis at all. A model that returns the same bland voice for every prompt in a category can score well. **Do not use it as Alaap's primary metric.** **[HIGH]**
 
 ### 4.3 Diversity measurement in speaker space — the complete published toolkit
 
-| Metric | Source | Definition | Use for VoiceForge |
+| Metric | Source | Definition | Use for Alaap |
 |---|---|---|---|
 | **`gen2gen-near`** | PromptSpeaker 2310.05001 | Cosine distance between the two closest speaker vectors generated from the **same prompt** (WeSpeaker d-vectors). Reported 0.088. | **The mode-collapse detector.** Sample N=50 per prompt, measure; if it trends toward 0 the mapper has collapsed. Primary regression gate. |
 | `gen2syn-near` / `syn2syn-near` / `syn2syn-same` | PromptSpeaker | Distances from generated to training speakers, and among training speakers. 0.085 / 0.113 / 0.024. | **Novelty** check — proves the mapper isn't memorising the training set. |
@@ -280,7 +280,7 @@ Caveat worth carrying into 06-evaluation-harness: InstructTTSEval measures **ins
 
 ---
 
-## 5. Recommendation for VoiceForge's mapper
+## 5. Recommendation for Alaap's mapper
 
 **Build a conditional flow-matching head over a frozen speaker-embedding space, with a discriminative auxiliary loss and a CFG-style temperature dial. Ship retrieval first.**
 

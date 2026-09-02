@@ -14,7 +14,7 @@
 
 ## 1. Restate the safety claim honestly
 
-Scope §15.1 claims VoiceForge has **"no impersonation vector at all."** That does not survive scrutiny.
+Scope §15.1 claims Alaap has **"no impersonation vector at all."** That does not survive scrutiny.
 
 **The correct, defensible claim is: "no *cloning* vector — we never accept reference audio."**
 

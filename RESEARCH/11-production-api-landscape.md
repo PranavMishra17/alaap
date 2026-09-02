@@ -16,7 +16,7 @@
 - **`seed`-based reproducibility is the commercial norm** (ElevenLabs: *"Same seed with same inputs produces same voice"*), i.e. what the scope doc calls **Tier 3** — reproducing identity by replaying the generation recipe. Industry treats this as sufficient. [HIGH]
 - **Azure's `speakerProfileId` is a false positive for Tier 1.** Microsoft's docs say voice characteristics are *"encoded in"* it and the SSML element is literally `<mstts:ttsembedding>` — but the value is a **GUID**, an opaque server handle. Anyone grepping for "embedding" would be misled. [HIGH]
 - **Two vendors' documentation is offline**, which is itself a due-diligence finding: `docs.play.ai` serves an **expired TLS certificate in front of a deleted Vercel deployment** (`DEPLOYMENT_NOT_FOUND`); Lovo's docs are an unloadable JS shell. [HIGH on the failure; both vendors UNVERIFIED]
-- **Nobody exposes a diversity or adherence dial as a product surface** beyond `guidance_scale`. VoiceForge's planned CFG adherence↔diversity slider (scope §4.2 option 3) has no commercial precedent either. See [`01-ttv-landscape.md`](01-ttv-landscape.md), which found the same gap in the research literature. [MEDIUM-HIGH]
+- **Nobody exposes a diversity or adherence dial as a product surface** beyond `guidance_scale`. Alaap's planned CFG adherence↔diversity slider (scope §4.2 option 3) has no commercial precedent either. See [`01-ttv-landscape.md`](01-ttv-landscape.md), which found the same gap in the research literature. [MEDIUM-HIGH]
 
 ---
 
@@ -27,7 +27,7 @@
 | 11-1 | §4.3 treats Tier 1 (fixed embedding vector) as the target and Tier 2 as a "fallback tier" | **Inverted vs industry** | Tier 2 is what 100% of shipping voice-design products use. Tier 1 exists in zero current commercial products. Tier 2 should be the *default* design, Tier 1 the upside case. | Cartesia + ElevenLabs + Resemble + Hume API specs | HIGH |
 | 11-2 | §4.3 "Tier 2 is a genuinely acceptable engineering answer" | **Understated** | It is not merely acceptable — it is the industry standard, chosen by every vendor with a shipping product. | as above | HIGH |
 | 11-3 | §4.3 Tier 3 (description + RNG seed) rated "weak" | **Understated** | ElevenLabs ships seed-determinism as a documented product guarantee. It is weak *across model versions* — which remains true and important — but it is not weak in practice within a pinned version. | [ElevenLabs OpenAPI](https://api.elevenlabs.io/openapi.json) | HIGH |
-| 11-4 | §6 benchmark row: "ElevenLabs Voice Design (product ceiling)" — implied to be architecturally distinct/advanced | **Correct as a quality ceiling, wrong as an architecture ceiling** | ElevenLabs Voice Design is architecturally the *same* Tier-2 pattern VoiceForge plans as its fallback. There is no hidden sophistication to catch up to. | [ElevenLabs design endpoint](https://elevenlabs.io/docs/api-reference/text-to-voice/design) | HIGH |
+| 11-4 | §6 benchmark row: "ElevenLabs Voice Design (product ceiling)" — implied to be architecturally distinct/advanced | **Correct as a quality ceiling, wrong as an architecture ceiling** | ElevenLabs Voice Design is architecturally the *same* Tier-2 pattern Alaap plans as its fallback. There is no hidden sophistication to catch up to. | [ElevenLabs design endpoint](https://elevenlabs.io/docs/api-reference/text-to-voice/design) | HIGH |
 | 11-5 | §12.2 "make minting free and instant; meter only rendering", with Tier-2 minting flagged as a mere caveat | **The caveat is the main case** | If Tier 2 is the default (11-1), then *every* mint costs a GPU render, and the free-mint economic model needs rework. Multiple previews per description (scope §13.2 wants several candidates) multiplies this. | derived; see [`07-serving-and-cost.md`](07-serving-and-cost.md) | HIGH |
 
 ---
@@ -88,7 +88,7 @@ Official description, verbatim:
 
 There is **no** `/v1/text-to-voice/create` path. Body: `voice_name`, `voice_description`, `generated_voice_id` (required); optional `labels`, `played_not_selected_voice_ids` — *"List of voice ids that the user has played but not selected. **Used for RLHF.**"*
 
-> **Design note worth stealing:** ElevenLabs harvests the *rejected* previews as a preference signal. VoiceForge's Voice Studio (scope §13.2) shows several candidates per description; logging which candidate the user picks — and which they auditioned and rejected — is free training data for the mapper, at zero extra product cost. Cheap to build in at S8, expensive to retrofit.
+> **Design note worth stealing:** ElevenLabs harvests the *rejected* previews as a preference signal. Alaap's Voice Studio (scope §13.2) shows several candidates per description; logging which candidate the user picks — and which they auditioned and rejected — is free training data for the mapper, at zero extra product cost. Cheap to build in at S8, expensive to retrofit.
 
 ### 3.3 Is `generated_voice_id` a vector? No — three independent proofs
 
@@ -138,7 +138,7 @@ Embedding:
 - **`POST /voices/mix`** — genuine vector arithmetic. `voices` is an array of `MixVoiceSpecifier`, a `oneOf` over `IdSpecifier {id, weight}` and `EmbeddingSpecifier {embedding, weight}`; returns `EmbeddingResponse {embedding}`. `Weight`: *"If weights do not sum to 1, they will be normalized."*
 - **`POST /tts/bytes`** accepted `TTSRequestEmbeddingSpecifier`: `{mode: "embedding", embedding: [...192 floats], __experimental_controls}`.
 
-That is a **complete Tier-1 loop**: obtain vector → blend vectors arithmetically → synthesize directly from a vector → persist a vector as a voice. Exactly the architecture VoiceForge's §7 diagram proposes.
+That is a **complete Tier-1 loop**: obtain vector → blend vectors arithmetically → synthesize directly from a vector → persist a vector as a voice. Exactly the architecture Alaap's §7 diagram proposes.
 
 ### 4.2 What killed it
 
@@ -160,7 +160,7 @@ All six current `voices/*` reference pages fetched; `embedding` occurrences: **0
 
 `POST /voices/clone` is now `multipart/form-data`: `clip` (binary audio), `name`, `language` required. Cartesia has **no prompt-based voice-design endpoint** — full docs index (`llms.txt`, 33,883 bytes) searched, zero results [MEDIUM-HIGH, absence-of-evidence from a complete official index].
 
-### 4.4 Why this matters for VoiceForge
+### 4.4 Why this matters for Alaap
 
 A production vendor **shipped caller-manipulable voice vectors — including the interpolation/mixing capability scope §4.3 lists as Tier 1's key advantage — and then deliberately withdrew them, providing no replacement for mixing.**
 
@@ -169,7 +169,7 @@ Read carefully, this cuts both ways and neither reading is free:
 - **Against Tier 1:** the capability was built, exposed, and retired. Vendors do not usually remove features customers depend on unless the support, abuse, or quality cost exceeds the value. That is weak-but-real evidence that caller-facing voice vectors are more trouble than they are worth at product scale.
 - **For Tier 1:** its removal says nothing about whether the *space was navigable* — the very question A2 asks. A vendor consolidating onto voice IDs for abuse-control, billing, or catalogue-governance reasons is fully consistent with the manifold working fine. The `mix` endpoint's existence is in fact **positive evidence that weighted combinations of voice vectors produced usable voices in production**.
 
-**The honest conclusion:** Cartesia is *existence proof that Tier 1 is technically buildable* and *market evidence that it is not commercially necessary*. It should raise VoiceForge's confidence that vector interpolation works, and lower its confidence that Tier 1 is required for a good product. See [`02-identity-representation.md`](02-identity-representation.md) for the A1/A2 verdict this feeds.
+**The honest conclusion:** Cartesia is *existence proof that Tier 1 is technically buildable* and *market evidence that it is not commercially necessary*. It should raise Alaap's confidence that vector interpolation works, and lower its confidence that Tier 1 is required for a good product. See [`02-identity-representation.md`](02-identity-representation.md) for the A1/A2 verdict this feeds.
 
 ---
 
@@ -207,7 +207,7 @@ Hume's own architectural description, verbatim — an unusually candid statement
 
 > "Once you've created a generation that captures the voice you want, you can save it as a **custom voice**. This **stores both the speech and the prompt that shaped it**, so the model can reliably reproduce the same vocal identity in future requests."
 
-**Stored artefact = audio + prompt.** This is a useful precedent for VoiceForge's identity record: store the seed clip *and* the description *and* the generation parameters, not just one of the three.
+**Stored artefact = audio + prompt.** This is a useful precedent for Alaap's identity record: store the seed clip *and* the description *and* the generation parameters, not just one of the three.
 
 ---
 
@@ -263,7 +263,7 @@ Hume's own architectural description, verbatim — an unusually candid statement
 | 11-O2 | *Why* did Cartesia remove embeddings — abuse, support, quality, or manifold problems? | Ask Cartesia support/devrel directly; check their Discord changelog announcements | 1 email, ~1 week | Confidence weighting on A1; a "quality/manifold" answer would strongly favour Tier 2 |
 | 11-O3 | Is PlayAI a going concern? | Retry `docs.play.ai` monthly; check company status | free | Nothing — informational only |
 | 11-O4 | Does Resemble's live API match its overview page or its reference page? | One live call against a trial account | free tier | Only matters if Resemble is used as a benchmark |
-| 11-O5 | How many previews does ElevenLabs return per design call, and at what audio length? | One live call, inspect `previews[]` and `duration_secs` | ~$1 | Sizing the equivalent VoiceForge mint cost |
+| 11-O5 | How many previews does ElevenLabs return per design call, and at what audio length? | One live call, inspect `previews[]` and `duration_secs` | ~$1 | Sizing the equivalent Alaap mint cost |
 
 ---
 

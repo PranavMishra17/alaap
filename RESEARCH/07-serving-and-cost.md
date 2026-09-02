@@ -10,7 +10,7 @@
 ## 0. Bottom line
 
 - **The margin story holds by two to three orders of magnitude, and it is not close.** Marginal cost of a rendered minute on a self-hosted RTX 4090 is **$0.00005–0.00037/min** depending on which published throughput number you trust. The cheapest credible commercial API (OpenAI `tts-1`, Deepgram Aura-1) is **$0.01125/min**. Premium (ElevenLabs v2/v3) is **$0.075/min**. **[HIGH]**
-- **But marginal cost is the wrong number to plan with.** At VoiceForge's likely scale the bill is a *fixed* warm-GPU floor (~$248/mo for a 24/7 RTX 4090 on RunPod Community), not a per-render charge. The card can theoretically emit **1,984–6,756 minutes of audio per GPU-hour**; nobody will ask it to. **Plan against duty cycle, not throughput.** **[HIGH]**
+- **But marginal cost is the wrong number to plan with.** At Alaap's likely scale the bill is a *fixed* warm-GPU floor (~$248/mo for a 24/7 RTX 4090 on RunPod Community), not a per-render charge. The card can theoretically emit **1,984–6,756 minutes of audio per GPU-hour**; nobody will ask it to. **Plan against duty cycle, not throughput.** **[HIGH]**
 - **The brief's short-utterance worry is inverted.** On the only published 4090 concurrency benchmark, *short* prompts sustain **higher** aggregate throughput than long prompts at every concurrency ≥ 8 (112.6 vs 96.0 audio-s/s at c=32). The genuinely misleading number is the single-stream `RTF 0.13` in the VoxCPM2 README, which understates batched capacity by ~8×. **[HIGH]**
 - **VoxCPM2's headline RTF ~0.13 on RTX 4090 via Nano-vLLM is VERIFIED** — and the conditions are worse-documented than the README implies: it is a single-stream figure with no stated utterance length. A separate vLLM-Omni measurement on H20 works out to **~3.05 seconds of audio per request** — i.e. it *is* a short-utterance benchmark, and it is the single most workload-relevant number found. **[HIGH]**
 - **Cold start is the thing that actually breaks the product, not cost.** vLLM-Omni's own VoxCPM2 recipe states **~60 s** cold init. Modal explicitly warns that GPU memory snapshots **"will generally not improve your cold start times — and may even worsen them"** when initialization is weight-loading-bound, which is exactly our case. The realistic 2026 floor for a 2B TTS model from true zero is **~10–30 s**; sub-2 s only via warm-pool retention (RunPod FlashBoot), which requires consistent traffic. **[HIGH]**
@@ -109,7 +109,7 @@ vLLM-Omni also states directly that for VoxCPM2, after their VAE-decoder fix, **
 | Zonos-v0.1 | **UNVERIFIED** — README does not state batching support; Zyphra's hosted API advertises "no restrictions on concurrent generations" but publishes no throughput | UNVERIFIED | None found | — | — |
 | Indic Parler-TTS / Parler-TTS | Documented (SDPA, FA2, `torch.compile`, batching, streaming) but **no numbers published** | UNVERIFIED | None found | — | — |
 
-> **Architectural consequence of the LoRA rows.** If a VoiceForge identity is realised as a **per-voice LoRA**, the Nano-vLLM benchmark caps you at **32 resident LoRA slots**, and every batch mixing more than 32 distinct voices thrashes. If identity is a **conditioning vector** (the brief's Tier-1 design), batching across arbitrarily many distinct voices is free. **The Tier-1 vector design is worth roughly 30% throughput and removes a hard batch-diversity ceiling.** This is a strong independent argument for the mapper-to-vector architecture. **[MEDIUM — inferred from the published LoRA-vs-no-LoRA delta]**
+> **Architectural consequence of the LoRA rows.** If a Alaap identity is realised as a **per-voice LoRA**, the Nano-vLLM benchmark caps you at **32 resident LoRA slots**, and every batch mixing more than 32 distinct voices thrashes. If identity is a **conditioning vector** (the brief's Tier-1 design), batching across arbitrarily many distinct voices is free. **The Tier-1 vector design is worth roughly 30% throughput and removes a hard batch-diversity ceiling.** This is a strong independent argument for the mapper-to-vector architecture. **[MEDIUM — inferred from the published LoRA-vs-no-LoRA delta]**
 
 ### 2.2 The short-utterance problem
 
@@ -565,7 +565,7 @@ Neon's genuine edge is **branching** — a per-PR database branch is excellent f
 | **River** | ❌ **Go-only.** Confirmed: River workers are Go; Python can *insert* jobs but not work them. Wrong language for a FastAPI/PyTorch stack. |
 | SQS / managed cloud queue | ⚠️ Works, costs almost nothing, but reintroduces the dual-write problem and a second vendor for no benefit over pgmq. |
 
-**Caveat, stated honestly:** **pgmq publishes no throughput benchmark** — I looked, and the repository contains none. **UNVERIFIED.** At VoiceForge's scale (tens to low thousands of jobs/minute) Postgres will not be the bottleneck — the GPU will be, by three orders of magnitude. But do not repeat an unmeasured claim; §9 gives the experiment.
+**Caveat, stated honestly:** **pgmq publishes no throughput benchmark** — I looked, and the repository contains none. **UNVERIFIED.** At Alaap's scale (tens to low thousands of jobs/minute) Postgres will not be the bottleneck — the GPU will be, by three orders of magnitude. But do not repeat an unmeasured claim; §9 gives the experiment.
 
 **Shape:**
 ```
@@ -619,7 +619,7 @@ Do **not** add Redis in front. A Postgres primary-key lookup is sub-millisecond 
 | **S8 — public launch** | **1× RunPod Community RTX 4090 warm 12 h/day** = $122.40 (or 24/7 = $248.20). **Supabase Pro** $25. **R2** ~$1–5. FastAPI on a $5–10 CPU VPS or Supabase Edge Functions. Serverless burst overflow for out-of-hours. | **$155–290** |
 | **S9 — scale** | 2–4× RTX 4090 (Community $496–993) **or** migrate to **RunPod Secure L4** for SLA ($357.70 each). Supabase Pro + compute add-on. R2 $10–30. Second region if latency demands it. | **$500–1,200** |
 
-**The single most important budget line:** the step from S7 to S8 is where a fixed $122–248/mo GPU floor appears, and it appears **because of latency, not throughput**. If VoiceForge can live with batch-only rendering, S7 economics extend a long way — well past the point where the product has revenue.
+**The single most important budget line:** the step from S7 to S8 is where a fixed $122–248/mo GPU floor appears, and it appears **because of latency, not throughput**. If Alaap can live with batch-only rendering, S7 economics extend a long way — well past the point where the product has revenue.
 
 ---
 

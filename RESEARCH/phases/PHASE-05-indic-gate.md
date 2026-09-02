@@ -1,6 +1,6 @@
 # PHASE 05 — The Indic Gate
 
-> **Goal:** make an explicit, evidence-based decision about what VoiceForge ships in Indian languages — rather than assuming parity with English.
+> **Goal:** make an explicit, evidence-based decision about what Alaap ships in Indian languages — rather than assuming parity with English.
 > **GPU:** rented for option C · **Depends on:** S0 (baseline scorecard, Indic column), S1
 > **Evidence:** [`04`](../04-indic-track.md) · [`08`](../08-licensing-propagation.md) · [`10`](../10-performance-control.md) · [`09`](../09-safety-and-watermarking.md)
 
@@ -42,7 +42,11 @@ Scope §11 treats Indic as a parallel track reaching parity at S5. **After resea
 
 ## 3. The three options
 
-### Option A — Curated Indic catalog *(recommended for v1)*
+> **DECIDED 2026-09-02 — [`ADR-002`](../../DECISIONS.md): Option A ships in v1. Option C is deferred to this gate, not dropped.**
+>
+> **The deferral has one condition attached.** "Decide later" must not become "decide later, then wait three months." The long-lead item for option C is **captioning IndicVoices-R** — so that work starts during **S2/S4** as a background task, independent of this gate. When S5 arrives, the fine-tune must be a *choice*, not the start of a data project. See §8.
+
+### Option A — Curated Indic catalog ✅ **CHOSEN for v1**
 
 Ship the 68 named voices × the confirmed languages, with **Tier-2 seed-clip identity**, and **no custom Indic voice design**.
 
@@ -108,7 +112,32 @@ Benchmark full-band Indic quality against **ElevenLabs v3**, and use Bulbul only
 | **X5.3** | If A: the one-channel drift is quantified — sweep direction fields, measure identity movement |
 | **X5.4** | Counsel's answer on the India audio-disclosure rule is on file |
 | **X5.5** | The full-band quality gap to ElevenLabs v3 is **a number**, per language |
+| **X5.6** | **The IndicVoices-R caption set exists** (§8), so that option C is a decision rather than a project start |
 
 ---
 
-*Phase spec v2 · 2026-09-02 · prev: [`PHASE-04`](PHASE-04-dataset-v2.md) · next: [`PHASE-06`](PHASE-06-inference-service.md)*
+## 8. The long-lead item — start this during S2/S4, not at this gate
+
+**Captioning IndicVoices-R is the prerequisite for option C, and it takes far longer than the decision does.** Starting it here would make the gate meaningless: the "choice" would be between shipping nothing new for months, or not doing it.
+
+**So: begin during S2/S4, in parallel, regardless of which option this gate later picks.** The work is useful under every outcome — even under option A it produces a publishable Indic dataset, and it is the highest-leverage dataset action available to the project.
+
+### What it involves
+
+| Step | Detail |
+|---|---|
+| **Corpus** | IndicVoices-R — **1,704 h · 10,496 speakers · 22 languages · CC-BY-4.0**, licence chosen by AI4Bharat "allowing commercial usage." 93.25% extempore. **More speakers than any English corpus available to us** (LibriTTS-P has 2,443) |
+| **Recipe** | Reconstruct **RASMALAI**'s pipeline. The corpus itself was never released — zero HF results — but **the recipe is fully published and every input is CC-BY-4.0/MIT** (IndicVoices-R, Rasa, IndicTrans2) |
+| **Method** | The measure-first pipeline from [`PHASE-04`](PHASE-04-dataset-v2.md) — measure, bin, then have an LLM write prose *from the bins*. Grounded and **reversible**, so adherence stays objectively checkable |
+| **Extra work vs English** | Data-Speech's `g2p` speaking-rate step is English-oriented; Indic needs its own G2P or a script-aware character-rate proxy. Pitch binning is per-speaker-per-gender, so a gender classifier that works on Indic speech is needed — verify the chosen one transfers |
+| **Output** | A published Indic style-caption dataset. **Nothing like it exists** — no Indic corpus currently carries natural-language voice descriptions |
+
+### Why it is worth doing under option A too
+
+- It is the only thing standing between the project and a **genuinely novel contribution** — an Indic description→voice dataset that does not currently exist in any form.
+- It makes the S5 gate a real choice.
+- It is licence-clean end to end, which after five upstream traps is rare enough to be worth exploiting.
+
+---
+
+*Phase spec v2 · 2026-09-02 · **Option A locked 2026-09-02** ([`ADR-002`](../../DECISIONS.md)) · prev: [`PHASE-04`](PHASE-04-dataset-v2.md) · next: [`PHASE-06`](PHASE-06-inference-service.md)*

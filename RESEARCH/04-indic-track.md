@@ -82,7 +82,7 @@ The RASMALAI paper confirms this is by construction. Captions were LLM-generated
 2. Attribute-level accuracy (Table 6) is reported for c50, F0 std, F0 mean, SNR, speaking rate and PESQ — i.e. *acoustics*, not identity.
 3. The model card's own framing for unnamed descriptions is the section titled **"🎲 Random voice"** — an explicit admission that without a name, the voice is a draw, not a design.
 
-So the voice channel is best modelled as: **`voice = named_speaker (closed set of 69) × {gender, age, accent} adjectives × 6 acoustic axes × emotion`**. That is a rich *style* space wrapped around a *closed identity* space. For VoiceForge this means Indic Parler-TTS is a **voice designer for style, and a voice selector for identity**.
+So the voice channel is best modelled as: **`voice = named_speaker (closed set of 69) × {gender, age, accent} adjectives × 6 acoustic axes × emotion`**. That is a rich *style* space wrapped around a *closed identity* space. For Alaap this means Indic Parler-TTS is a **voice designer for style, and a voice selector for identity**.
 
 ### 3.2 Route to a stable identity (Tier 1/2/3?)
 
@@ -171,7 +171,7 @@ Note the trap: **Punjabi is "unofficial" yet has two recommended voices (Divjot,
 > **"General (full-band) evaluations: ElevenLabs v3 alpha leads on audio quality; Bulbul V3 outperforms Cartesia Sonic-3 and all other competitors."**
 > **"8 kHz (telephony) evaluations: Bulbul V3 is the clear top performer across all competitors."**
 
-So the true ranking at full-band is **ElevenLabs v3 alpha > Bulbul v3 > Cartesia Sonic-3 > rest**. Bulbul wins outright only at telephony bandwidth. **For VoiceForge — games and dramatic content, full-band — the ceiling is ElevenLabs v3, and Bulbul v3 is the best *Indian-language-specialist* second.** Set the target accordingly.
+So the true ranking at full-band is **ElevenLabs v3 alpha > Bulbul v3 > Cartesia Sonic-3 > rest**. Bulbul wins outright only at telephony bandwidth. **For Alaap — games and dramatic content, full-band — the ceiling is ElevenLabs v3, and Bulbul v3 is the best *Indian-language-specialist* second.** Set the target accordingly.
 
 > ⚠️ A secondary extraction of the blog's charts produced per-competitor win-rates (63.14% vs EL Flash v2.5; 36.87% vs Sonic-3; 28.11% vs EL v3 alpha at 48 kHz). Those figures **contradict the blog's own prose** ("outperforms Cartesia Sonic-3"). The numbers live in chart images I could not read directly. **Treat the percentages as UNVERIFIED; trust the prose.**
 
@@ -333,7 +333,7 @@ Every input is CC-BY-4.0 and every tool is permissive. **This is the single high
 | # | Question | Cheapest experiment | Est. cost/time | What it blocks |
 |---|---|---|---|---|
 | **E1** | **Does MioCodec's `global_embedding` survive Indic-Mio's generation path?** Can we `encode()` a reference, keep the vector, generate content tokens for *new* text, and `decode()` with the stored vector to get the same voice? | Accept HF terms; `encode` 20 Indic reference clips → store vectors; generate 5 new sentences each; `decode` with stored vs default embedding; measure speaker similarity with WavLM-base-plus-sv | **1 day, 1 GPU** | **The entire Tier-1 claim for Indic.** Highest-value experiment in this document. |
-| **E2** | Is the `global_embedding` **interpolatable**? Does a 50/50 blend of two voices sound like a coherent third voice, or like artefacts? | Take 10 vector pairs, interpolate at α ∈ {0, .25, .5, .75, 1}, render fixed text, human A/B for "is this one coherent voice" | 1 day + small listening test | Whether Indic identities can be *blended* (a headline VoiceForge feature) and whether a mapper can regress into this space |
+| **E2** | Is the `global_embedding` **interpolatable**? Does a 50/50 blend of two voices sound like a coherent third voice, or like artefacts? | Take 10 vector pairs, interpolate at α ∈ {0, .25, .5, .75, 1}, render fixed text, human A/B for "is this one coherent voice" | 1 day + small listening test | Whether Indic identities can be *blended* (a headline Alaap feature) and whether a mapper can regress into this space |
 | **E3** | How badly does the room/mic entanglement hurt? MioCodec's vector mixes speaker with recording environment | Render the same speaker vector extracted from clean vs noisy reference clips; measure timbre drift | 0.5 day | Whether seed waveforms need studio-clean minting, and whether Tier-2 seeds must be quality-gated |
 | **E4** | **Indic-Mio has zero published quality numbers.** Is it actually good? | Synthesise `sarvamai/tts-general-benchmark` high_quality track (1,265 prompts × 11 langs); ASR with `indic-conformer-600m-multilingual`; report per-language CER/WER | 2 days, mostly GPU time | Whether the recommended renderer is shippable at all — and the whole §7 table |
 | **E5** | Per-language WER — is the consolidated **24%** hiding disasters? | Same harness as E4, run on Indic Parler-TTS across all 11 target languages | Shares E4's harness | §7 verdicts, especially Tamil / Gujarati / **Punjabi** (which has no published number at all) |

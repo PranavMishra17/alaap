@@ -48,7 +48,7 @@ A character is **one identity per language**, linked by `character_id`. Make the
 
 Paste or upload a dialogue script → assign voices per speaker → set per-line `Direction` → batch render → download a **zip plus a manifest JSON** (`line_id → file → character → language → direction → backend_version`).
 
-**This is what makes VoiceForge usable in a game pipeline rather than a toy.** It is also where the batch economics work (cold start amortises to nothing over 200 lines).
+**This is what makes Alaap usable in a game pipeline rather than a toy.** It is also where the batch economics work (cold start amortises to nothing over 200 lines).
 
 ---
 
@@ -80,7 +80,7 @@ Required, not optional. EU Art. 50(2) has been live since 2026-08-02.
 
 ## 4. What not to build
 
-- **Do not accept user audio upload.** Invariant I6. It is the only structural safety property the product has, and it is what keeps VoiceForge outside the ELVIS Act core and *Arijit Singh* ¶18.
+- **Do not accept user audio upload.** Invariant I6. It is the only structural safety property the product has, and it is what keeps Alaap outside the ELVIS Act core and *Arijit Singh* ¶18.
 - **Do not benchmark the UX against ElevenLabs' architecture** — it is the same Tier-2 pattern we already have. Benchmark *quality*, not sophistication.
 - **Do not expose free numeric vector entry.** Voice design must be **constrained navigation within the fitted distribution**; arbitrary vectors outside the real-embedding hull produce artefacts.
 

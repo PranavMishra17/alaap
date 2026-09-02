@@ -9,7 +9,7 @@
 
 - **IndexTTS2's disentanglement is NOT transferable.** It is enforced at *training time* by a Gradient Reversal Layer plus a speaker classifier inside Stage 2 of a three-stage T2S training run, with the speaker perceiver conditioner frozen and the emotion perceiver conditioner trainable, on a curated 135-hour emotional subset. There is no inference-time artefact to lift out. Porting it means training an acoustic model, which is out of scope. **HIGH** — [arXiv 2506.21619v2 §Proposed Method](https://arxiv.org/html/2506.21619v2).
 - **But the goal it achieves is reachable on a frozen backend by a different route: activation steering.** Two 2025–2026 papers (EmoSteer-TTS, CoCoEmo) inject learned direction vectors into intermediate activations via forward hooks, no retraining. CoCoEmo on CosyVoice2 raises emotion similarity from 0.743 → 0.779 while speaker similarity moves 0.871 → 0.870 (WavLM cosine) — **essentially zero identity drift**, versus −0.018 for the model's own text-instruction channel. **HIGH** — [arXiv 2602.03420v2 Table 2](https://arxiv.org/html/2602.03420v2).
-- **The brief's licence citation is wrong in form, right in substance.** The "improve any AI model" clause is **§3.4(c)**, not §2(c). §2.2 is the 100M-MAU / RMB-1bn threshold. §3.4(c) forbids using IndexTTS2 *or its outputs* to improve any AI model except IndexTTS2 itself, its derivatives, or **non-commercial** models. VoiceForge's mapper is commercial. **Verdict: IndexTTS2 must never touch mapper training, data generation, distillation, or any feedback loop.** **HIGH** — LICENSE fetched from repo root.
+- **The brief's licence citation is wrong in form, right in substance.** The "improve any AI model" clause is **§3.4(c)**, not §2(c). §2.2 is the 100M-MAU / RMB-1bn threshold. §3.4(c) forbids using IndexTTS2 *or its outputs* to improve any AI model except IndexTTS2 itself, its derivatives, or **non-commercial** models. Alaap's mapper is commercial. **Verdict: IndexTTS2 must never touch mapper training, data generation, distillation, or any feedback loop.** **HIGH** — LICENSE fetched from repo root.
 - **Our primary backend has no Direction channel *in its API*.** `Qwen3TTSModel.generate_voice_clone()` takes no `instruct` parameter and never passes `instruct_ids` to the underlying model; only `generate_voice_design()` and `generate_custom_voice()` do. The speaker-embedding path and the instruction path live in **different checkpoints** — `speaker_encoder_config` is present only in the Base config and absent from VoiceDesign and CustomVoice. Qwen's own InstructTTSEval table has no Base row. **HIGH** — source read.
 - **But a training-free Direction channel exists *inside the x-vector itself*, and someone has already published it on our exact checkpoint.** arXiv 2606.05367 runs a four-operand elimination study on **Qwen3-TTS-12Hz-1.7B-Base** and localises emotion to the `(2048,)` ECAPA x-vector. Centroid arithmetic `x_new = x(target, neutral) + α·τ_emo` gives **ΔEECS +0.29** at **SECS_W 0.912** — provided τ is averaged over ≥4 source speakers (a single-speaker τ scores 0.810, leaking the source's timbre). **This is the answer to Qwen3-TTS Base's missing Direction channel, and it costs an afternoon of numpy.** **HIGH** — paper read in full.
 - **The brief's "emotion must NOT be baked into the identity vector" is the right *goal* but a false *description* of this backend.** On Qwen3-TTS Base emotion **is** in the x-vector and is its **dominant** carrier: swapping all codec tokens of an angry utterance onto a neutral x-vector yields speech "indistinguishable from the neutral baseline". The saving grace is geometric — `‖τ_emo‖` is 15% of the x-vector norm and its projection onto the identity axis is **<1% of ‖τ‖**. Emotion is separable by *subtraction*, not absent. **HIGH**.
@@ -105,7 +105,7 @@ Three independent reasons, each sufficient:
 
 **What we need instead — and it exists.** The *goal* (per-line emotion at fixed identity on a frozen backend) is achieved without retraining by **activation steering**, covered in §5. The headline: CoCoEmo gets stronger emotion control than IndexTTS2's own `emo_vector` at *better* speaker preservation, on a frozen backend, with forward hooks and ~4k utterances per emotion. That, not IndexTTS2's architecture, is the technique to build on.
 
-**One genuinely portable idea from the paper.** Not the disentanglement — the *emotion-embedding set* construction: pick N reference clips per emotion, embed them with whatever encoder the backend already has, average, and use the mean vectors as a fixed basis. If a backend has *any* style-vector input, this gives categorical emotion control for free. It also inverts usefully: EmoSteer-TTS's "emotion erasure" operator `x̂ = f_r(x − β(ŝ·x)ŝ)` — projecting the emotion component *out* of an activation — is exactly the operation VoiceForge wants at **identity-minting** time, to strip residual emotion out of a reference clip before extracting the timbre vector. See §8.
+**One genuinely portable idea from the paper.** Not the disentanglement — the *emotion-embedding set* construction: pick N reference clips per emotion, embed them with whatever encoder the backend already has, average, and use the mean vectors as a fixed basis. If a backend has *any* style-vector input, this gives categorical emotion control for free. It also inverts usefully: EmoSteer-TTS's "emotion erasure" operator `x̂ = f_r(x − β(ŝ·x)ŝ)` — projecting the emotion component *out* of an activation — is exactly the operation Alaap wants at **identity-minting** time, to strip residual emotion out of a reference clip before extracting the timbre vector. See §8.
 
 ### 2.3 Licence and the §3.4(c) hazard
 
@@ -121,9 +121,9 @@ Repo root `/LICENSE` is the **bilibili Model Use License Agreement**. `INDEX_MOD
 
 > "1.6 "Use": means downloading, copying, training, modifying, creating Derivative Works, distributing, publishing, running, fine-tuning, publicly displaying, communicating to the public, or otherwise exploiting the Model or any Derivative Work."
 
-"Running" is Use. So **generating audio with IndexTTS2 and feeding it anywhere near mapper training is prohibited**, because VoiceForge's description→identity mapper is a commercial AI model and none of the three exceptions apply.
+"Running" is Use. So **generating audio with IndexTTS2 and feeding it anywhere near mapper training is prohibited**, because Alaap's description→identity mapper is a commercial AI model and none of the three exceptions apply.
 
-**Concretely forbidden for VoiceForge:**
+**Concretely forbidden for Alaap:**
 - Synthesising a corpus with IndexTTS2 to train the description→identity mapper. **Forbidden.**
 - Using IndexTTS2 as a teacher for distillation, or its emotion vectors as supervision targets. **Forbidden.**
 - Using IndexTTS2 outputs as a reward signal, judge, ranker, or eval metric whose result feeds back into mapper selection or tuning. **Forbidden** — that is improvement by another name.
@@ -195,11 +195,11 @@ No `instruct` parameter. **No `instruct_ids` passed.** By contrast both `generat
 2. `generate_voice_clone` raises if `self.model.tts_model_type != "base"`; `generate_voice_design` and `generate_custom_voice` are gated the other way. The three modes are mutually exclusive checkpoints.
 3. Qwen's own **InstructTTSEval** table in the Base model card lists `Qwen3TTS-25Hz/12Hz-1.7B-CustomVoice` and `Qwen3TTS-12Hz-1.7B-VD` — and **no Base row at all**. They did not evaluate Base on instruction following, because it does not do it.
 
-**The question the brief asks — "if you hold `speaker_embed` fixed and vary the style instruction, does the perceived speaker change?" — is unanswerable as posed on Base**, because you cannot vary a style instruction on Base through the public API. It is a live question for **CustomVoice**, where timbre is a fixed table entry (9 speakers) and `instruct` varies per line — that is architecturally the exact shape VoiceForge wants, minus arbitrary identity minting. **UNVERIFIED**; no published SS-under-instruct number exists for any Qwen3-TTS variant. Experiment E1/E2 in §9.
+**The question the brief asks — "if you hold `speaker_embed` fixed and vary the style instruction, does the perceived speaker change?" — is unanswerable as posed on Base**, because you cannot vary a style instruction on Base through the public API. It is a live question for **CustomVoice**, where timbre is a fixed table entry (9 speakers) and `instruct` varies per line — that is architecturally the exact shape Alaap wants, minus arbitrary identity minting. **UNVERIFIED**; no published SS-under-instruct number exists for any Qwen3-TTS variant. Experiment E1/E2 in §9.
 
 **CustomVoice's 9 speakers** (Vivian, Serena, Uncle_Fu, Dylan, Eric, Ryan, Aiden, Ono_Anna, Sohee) score APS 83.0 / DSD 77.8 / RP 61.2 on InstructTTSEval-ZH — respectable but below Gemini-flash (88.2/90.9/77.3). VoiceDesign scores *higher* (85.2/81.1/65.1) but has no reusable identity.
 
-**The workflow Qwen themselves recommend** is the "Voice Design then Clone" pattern in the README: use VoiceDesign to synthesise a short reference clip matching the persona, feed it to `create_voice_clone_prompt`, then `generate_voice_clone` for every line. That is precisely VoiceForge's `mint_identity` → `render` split — **and it confirms that once you are in clone mode, the per-line Direction channel is gone from the API.**
+**The workflow Qwen themselves recommend** is the "Voice Design then Clone" pattern in the README: use VoiceDesign to synthesise a short reference clip matching the persona, feed it to `create_voice_clone_prompt`, then `generate_voice_clone` for every line. That is precisely Alaap's `mint_identity` → `render` split — **and it confirms that once you are in clone mode, the per-line Direction channel is gone from the API.**
 
 Licence: Apache-2.0 (`SPDX-License-Identifier: Apache-2.0` in every source header, copyright 2026 Alibaba Qwen team).
 
@@ -245,7 +245,7 @@ x_new = x(target, neutral) + α · τ_emo                     # applied to an UN
 
 **Cross-lingual validation:** τ extracted from English ESD, applied to unseen **Brazilian Portuguese** speakers (emoUERJ) with parallel ground truth. ΔEECS +0.092 (smaller only because the PT-BR baseline already starts at EECS ∈ [0.70, 0.91]; absolute best-α EECS ∈ [0.76, 0.97] matches EN→EN). WER ≈ 0. On the language-agnostic `xvec_cos_GT` metric, **`avg4spk` stays on the natural within-speaker reference line across the entire α grid while `single0017` falls below it at high α** — direct evidence of source-timbre leakage in the single-speaker variant. **τ is language-agnostic**, which matters for the "one voice profile per language per character" constraint: one τ library may serve all languages.
 
-**Why this is exactly right for VoiceForge:** α is a **continuous, post-hoc-selectable intensity knob** — *"Decreasing α monotonically recovers identity at the cost of emotional fidelity; the operating point is selectable post-hoc over the α sweep, without re-synthesis."* That is `Direction.intensity` with a published trade-off curve, on our primary backend, with no training.
+**Why this is exactly right for Alaap:** α is a **continuous, post-hoc-selectable intensity knob** — *"Decreasing α monotonically recovers identity at the cost of emotional fidelity; the operating point is selectable post-hoc over the α sweep, without re-synthesis."* That is `Direction.intensity` with a published trade-off curve, on our primary backend, with no training.
 
 **Caveats the paper states itself, and which we must respect:**
 1. Validated **only** on Qwen3-TTS-12Hz-1.7B. The architectural argument (any LM-TTS with a *learnable* speaker encoder co-trained for synthesis) is plausible but unvalidated elsewhere.
@@ -389,7 +389,7 @@ Range from the reference Gradio app: **`gr.Slider(0.25, 2, step=.05, value=.5)`*
 
 **Structurally favourable:** `emotion_adv` conditions only **T3** (the token LM). The acoustic path **S3Gen** is conditioned by `s3gen_ref_dict` (prompt mel + prompt tokens + embedding) derived from the reference wav and *not* touched by exaggeration. This is the same SLM/decoder split CoCoEmo recommends, so identity should be comparatively robust — **UNVERIFIED**, no published number. Chatterbox Multilingual V3 (500M, 23+ languages, `language_id` param) claims "more consistent speaker similarity". MIT licence.
 
-Note Chatterbox's identity is a reference **wav**, not a mintable vector — Tier 2/3 for VoiceForge — though `Conditionals.save()/load()` serialises the whole conditioning bundle to a `.pt`, which is a usable identity record.
+Note Chatterbox's identity is a reference **wav**, not a mintable vector — Tier 2/3 for Alaap — though `Conditionals.save()/load()` serialises the whole conditioning bundle to a `.pt`, which is a usable identity record.
 
 ### 3.8 CosyVoice 2 / 3 — the best-shaped Direction API in the audit
 
@@ -399,7 +399,7 @@ inference_instruct2(tts_text, instruct_text, prompt_wav, zero_shot_spk_id='', st
 add_zero_shot_spk(prompt_text, prompt_wav, zero_shot_spk_id)     # persist an identity
 ```
 
-**Three orthogonal inputs: identity (`prompt_wav` / persisted `zero_shot_spk_id`), performance (`instruct_text`), rate (`speed`).** This is exactly VoiceForge's `Direction` shape. CosyVoice3 terminates instructions with `<|endofprompt|>` and prefixes them conversationally (`'You are a helpful assistant. 请用广东话表达。<|endofprompt|>'`).
+**Three orthogonal inputs: identity (`prompt_wav` / persisted `zero_shot_spk_id`), performance (`instruct_text`), rate (`speed`).** This is exactly Alaap's `Direction` shape. CosyVoice3 terminates instructions with `<|endofprompt|>` and prefixes them conversationally (`'You are a helpful assistant. 请用广东话表达。<|endofprompt|>'`).
 
 **Emphasis and paralinguistics** — from `CosyVoice2Tokenizer` / `CosyVoice3Tokenizer` `additional_special_tokens`:
 `<strong>`, `</strong>`, `<laughter>`, `</laughter>`, `[breath]`, `[quick_breath]`, `[laughter]`, `[cough]`, `[sigh]`, `[clucking]`, `[accent]`, `[hissing]`, `[vocalized-noise]`, `[lipsmack]`, `[mn]`, `[noise]` — **plus the full CMU ARPAbet set (`[AA0]`…`[ZH]`) and a full Pinyin-with-tone set** for pronunciation inpainting. CosyVoice3 adds `<|endofsystem|>`.
@@ -554,7 +554,7 @@ Both are training-free, both operate on a frozen backend, and between them they 
 
 The mechanism, quoted: *"the SLM is not conditioned on speaker embeddings, whereas the flow-matching module is explicitly conditioned on speaker embeddings and reference speech, so perturbing CFM activations directly interferes with speaker-dependent representations."*
 
-That single sentence generalises into VoiceForge's architectural rule: **intervene in the module that does not see the identity.** It explains every result in §6 — why CFM steering costs 0.064 and SLM steering costs 0.000; why Kokoro's prosody predictor (which sees only `ref_s[128:]`) is a promising intervention point; why Indic-Mio's text tags are safe (the LM never sees `global_embedding`); and why Parler is hopeless (there is only one module and it sees everything).
+That single sentence generalises into Alaap's architectural rule: **intervene in the module that does not see the identity.** It explains every result in §6 — why CFM steering costs 0.064 and SLM steering costs 0.000; why Kokoro's prosody predictor (which sees only `ref_s[128:]`) is a promising intervention point; why Indic-Mio's text tags are safe (the LM never sees `global_embedding`); and why Parler is hopeless (there is only one module and it sees everything).
 
 Corroborating independent evidence: **DUET** (arXiv 2606.00066) measures emotion as only **8.5% of hidden-state variance** with speaker identity dominating, and finds emotion and speaker directions **near-orthogonal on F5-TTS (|cos θ| = 0.029** at the shared probe layer, separability peaking at layer 16). The accent-steering paper (arXiv 2603.05977) runs the same recipe on **Qwen3-TTS** for accent and reports middle layers (15, 20) as the best trade-off, with α=2.0 dropping Spk-Sim 0.84 → 0.76 for the 1.7B model — a useful reminder that steering the *backbone* of Qwen3-TTS is far costlier than steering its x-vector (§3.1a).
 
@@ -578,15 +578,15 @@ Corroborating independent evidence: **DUET** (arXiv 2606.00066) measures emotion
 - *"CoCoEmo achieves comparable and stronger mixed-emotion control while better preserving speaker similarity"* than EmoSteer-TTS, and *"simultaneous steering in both SLM and flow-matching modules degrades performance."*
 - Steering vectors extracted from **ESD + RAVDESS + CREMA-D**, 20,691 utterances (~4,000/emotion), speaker-independent 0.5/0.2/0.3 split. All three are standard, obtainable emotional corpora.
 
-**The architectural lesson VoiceForge should adopt wholesale:** in a two-stage backend (sequence model → acoustic decoder), **prosody belongs to the sequence model and timbre belongs to the decoder.** Every backend that scores well on identity-under-emotion in this audit has that shape and conditions them separately: Chatterbox (`emotion_adv` → T3 only, identity → S3Gen), Indic-Mio (tags → LM, `global_embedding` → MioCodec), CosyVoice2 (instruct → LM, `prompt_wav` → flow decoder). Every backend that fails has one fused path.
+**The architectural lesson Alaap should adopt wholesale:** in a two-stage backend (sequence model → acoustic decoder), **prosody belongs to the sequence model and timbre belongs to the decoder.** Every backend that scores well on identity-under-emotion in this audit has that shape and conditions them separately: Chatterbox (`emotion_adv` → T3 only, identity → S3Gen), Indic-Mio (tags → LM, `global_embedding` → MioCodec), CosyVoice2 (instruct → LM, `prompt_wav` → flow decoder). Every backend that fails has one fused path.
 
 **Related 2026 work, verified to exist:** "A Geometric Perspective on Composable Emotion Steering in TTS" (arXiv 2607.00946); "DUET: Unified Dual-Space Emotion Control for Diffusion and Flow-Matching Driven TTS" (arXiv 2606.00066); "Controllable Affective Generation via Latent Vector Steering" (arXiv 2608.25569). The field is moving fast and in our direction.
 
 ### 5.2 Techniques that require training — noted and excluded
 
 Verified real, but all require training an acoustic model, so **out of scope**:
-- **FC-TTS** (arXiv 2605.24618, 2026-05-23) — dual-reference disentangled style/timbre control. The closest published system to VoiceForge's ideal, and it needs full training.
-- **Voice Impression Control in Zero-Shot TTS** (arXiv 2506.05688 v3, 2026-02-18) — a low-dimensional vector over impression pairs (dark–bright), GRL for disentanglement, LLM-generated target vectors from a natural-language description. Architecturally the closest thing to VoiceForge's `description → identity` mapper in the literature. Worth reading for the mapper design (cross-ref [02-identity-representation.md](02-identity-representation.md)); not usable as a frozen technique.
+- **FC-TTS** (arXiv 2605.24618, 2026-05-23) — dual-reference disentangled style/timbre control. The closest published system to Alaap's ideal, and it needs full training.
+- **Voice Impression Control in Zero-Shot TTS** (arXiv 2506.05688 v3, 2026-02-18) — a low-dimensional vector over impression pairs (dark–bright), GRL for disentanglement, LLM-generated target vectors from a natural-language description. Architecturally the closest thing to Alaap's `description → identity` mapper in the literature. Worth reading for the mapper design (cross-ref [02-identity-representation.md](02-identity-representation.md)); not usable as a frozen technique.
 - **EmoSphere++** (VAD-sphere emotion control), **HED-TTS**, **EmoDubber**, **EmoVoice**, **FleSpeech**, **ControlSpeech**, **SelfTTS** (arXiv 2603.22252), **Joycent** (arXiv 2606.16417).
 
 ---
@@ -628,7 +628,7 @@ Verified real, but all require training an acoustic model, so **out of scope**:
 **A hard operating bound, stated by CoCoEmo's own experimental setup:**
 > "Emotion-vector control (IndexTTS2): use the built-in emotion-weight vector for control, with **scaling set to 0.6, the maximum that preserves speech intelligibility and speaker characteristics**."
 
-An independent group, choosing an operating point for a fair comparison, found **0.6** to be the ceiling. This corroborates IndexTTS2's own code, which rescales any emotion vector summing above **0.8** (`if emo_sum > 0.8: scale_factor = 0.8/emo_sum`) and recommends `emo_alpha ≈ 0.6` for text-derived emotion. **Three independent signals converge on ~0.6–0.8 as the intensity ceiling before identity degrades.** That is a concrete design constant for VoiceForge's `Direction.intensity`.
+An independent group, choosing an operating point for a fair comparison, found **0.6** to be the ceiling. This corroborates IndexTTS2's own code, which rescales any emotion vector summing above **0.8** (`if emo_sum > 0.8: scale_factor = 0.8/emo_sum`) and recommends `emo_alpha ≈ 0.6` for text-derived emotion. **Three independent signals converge on ~0.6–0.8 as the intensity ceiling before identity degrades.** That is a concrete design constant for Alaap's `Direction.intensity`.
 
 ### 6.3 EmoSteer-TTS Table 1 — cross-method, S-SIM from an SER-model embedding (Bredin et al. 2020), **not comparable in absolute terms** to §6.1/§6.2
 
@@ -707,7 +707,7 @@ Corroborating sweep (CoCoEmo appendices): IndexTTS2's native `Emo-Vector` scalin
 | Ground Truth | 0.8311 | 95.53 | | 0.8504 | 100.00 |
 | EmoSphere++ | **0.8181** *(−1.6%)* | 93.53 | | **0.7592** *(−10.7%)* | 94.61 |
 
-**The penalty is 6.7× larger in the zero-shot regime — which is the only regime VoiceForge operates in.** SECS_R alone falls 0.7725 → 0.6543 (−15.3%). Emotion accuracy barely moves (94.61): the model *keeps the emotion and pays in identity*. The paper's own reading: *"adapting to unseen speakers is more complex than adapting to unseen emotions."* Every number in §6.1–6.5 comes from seen-or-near-seen conditions; **assume our drift will be worse.**
+**The penalty is 6.7× larger in the zero-shot regime — which is the only regime Alaap operates in.** SECS_R alone falls 0.7725 → 0.6543 (−15.3%). Emotion accuracy barely moves (94.61): the model *keeps the emotion and pays in identity*. The paper's own reading: *"adapting to unseen speakers is more complex than adapting to unseen emotions."* Every number in §6.1–6.5 comes from seen-or-near-seen conditions; **assume our drift will be worse.**
 
 Also from Table IV: the naive "multiply the emotion embedding by a scalar" approach preserves identity (SECS_AVG 0.8112) but **barely conveys emotion (ECA 40.63%)** and is "unstable when adjusted on labels such as sad". Scalar intensity on an emotion embedding is not a substitute for a proper direction vector.
 
@@ -733,7 +733,7 @@ The paper's own verdict: *"under CFG, improving controllability inevitably degra
 - Deep layers *actively degrade* alignment with human judgement.
 - The authors' warning: *"If an inaccurate metric rewards sound copying over real emotional expression, models will simply learn to duplicate speaker and linguistic details."*
 
-**Consequences for VoiceForge, and they are not optional:**
+**Consequences for Alaap, and they are not optional:**
 1. Every E-SIM/EECS number in §6 is partly measuring speaker copying. Treat them as *weak* evidence of emotion control. The S-SIM numbers are unaffected and remain the reliable half.
 2. Our harness must **fix speaker and text across conditions** (E1 already specifies this) and pair emotion2vec cosine with an **independent SER classifier** plus human listening. Cross-ref [06-evaluation-harness.md](06-evaluation-harness.md).
 3. This is also why 2606.05367's own caveat about EECS saturating at 0.85–0.97 should be taken seriously rather than treated as a formality.

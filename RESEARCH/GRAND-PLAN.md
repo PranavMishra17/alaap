@@ -1,4 +1,4 @@
-# VoiceForge — The Grand Plan
+# Alaap — The Grand Plan
 
 > **From an empty folder to a public website, grounded in [`00-EXECUTIVE-VERDICT.md`](00-EXECUTIVE-VERDICT.md) and the 13 research files behind it.**
 > **Date:** 2026-09-02 · Plan v2 (supersedes scope §11)
@@ -9,6 +9,30 @@
 ## 0. The one-paragraph plan
 
 Build the English track on **Qwen3-TTS** (Apache-2.0 end to end), because it is the only open model whose speaker vector is both externally addressable and the *sole* identity input. Copy **PromptTTS++**'s MDN mapper — the working open reference implementation of exactly the contract we need. Store **both** a vector and a seed clip for every identity, because an encoder change orphaned every stored vector once already. Train on **LibriTTS-P** and friends, not ParaSpeechCaps, which is non-commercial. Watermark with **AudioSeal** from the first render, because EU Art. 50(2) has been live since 2 August 2026. Ship a **curated catalog** first — it is a real product, and it de-risks the platform while the mapper is still research. Treat **Indic as a separate project with its own go/no-go gate**, because the only servable Indic backend has no speaker vector at all.
+
+---
+
+## 0.5 Locked decisions
+
+Recorded in [`DECISIONS.md`](../DECISIONS.md). Summarised here because they shape every stage below.
+
+| ADR | Decision |
+|---|---|
+| **000** | The project is **Alaap** (आलाप) — the opening improvisation where a voice explores its full range |
+| **001** | Two-tower architecture kept; every component from the original scope replaced |
+| **002** | **Indic ships as a curated catalog in v1** (Indic Parler-TTS, Tier-2 identity, no custom Indic voice design). The Tier-1 fine-tune is **deferred to the S5 gate, not dropped** |
+| **003** | **Build the machinery on English, port to Indic early** |
+| **004** | **8 languages in v1:** Hindi, Telugu, Bengali, Marathi, Kannada, Malayalam, Odia, Assamese |
+
+### The Indic guards (ADR-003)
+
+Building on English risks producing an English-shaped architecture that does not fit Indic — which would be fatal, because Indic is the point of the project. Three hard rules prevent it:
+
+1. **No stage exits without its Indic column filled** in the scorecard, even if the number is bad. **A blank Indic column is a failed exit criterion.**
+2. **The renderer adapter carries an Indic implementation from S6**, not later. If the interface cannot express Indic, the interface is wrong.
+3. **The identity store schema is validated against a Tier-2 Indic identity at S1**, not assumed.
+
+And one scheduling rule: **captioning IndicVoices-R starts during S2/S4**, independent of the S5 gate — otherwise "decide later" becomes "decide later, then wait three months." See [`PHASE-05`](phases/PHASE-05-indic-gate.md) §8.
 
 ---
 

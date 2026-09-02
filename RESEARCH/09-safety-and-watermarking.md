@@ -296,7 +296,7 @@ For a 2-second render this is **single-digit milliseconds on GPU** — utterly n
 
 | Problem | Evidence |
 |---|---|
-| 🔴 **Hard ≥ 1 s floor** | The encoding unit is exactly 1 second at 16 kHz (32 bits via an invertible network over STFT). The SoK confirms WavMark *"only works with audio >= 1 second in length."* **Any VoiceForge line under 1.0 s cannot be watermarked at all** — and game barks routinely include sub-second interjections. |
+| 🔴 **Hard ≥ 1 s floor** | The encoding unit is exactly 1 second at 16 kHz (32 bits via an invertible network over STFT). The SoK confirms WavMark *"only works with audio >= 1 second in length."* **Any Alaap line under 1.0 s cannot be watermarked at all** — and game barks routinely include sub-second interjections. |
 | 🔴 **No redundancy at 1.5 s** | The headline **0.48 % utterance BER depends on repeated encoding across 10–20 s** with majority voting. A 1.5 s file holds **one** complete unit. The applicable numbers are the segment-level ones: 0.65 % clean, **6.41 % under median filtering**, 3.40 % under quantisation — with no votes to correct them. |
 | 🔴 **Short-file false positives** | Detection is **Brute Force Detection**: a 1-second window slides at a 5 % stride ≈ **20 decode attempts per second**, accepting on a **10-bit pattern match → 1/1 024 per attempt**. Naive per-file FPR for a 1.5 s clip is on the order of **3 %** unless acceptance is tightened. · **MEDIUM** (derivation from the paper's own stated numbers; validate empirically) |
 | 🔴 **Detection is slower than real time on CPU** | Encoding 7.7× RT on CPU, but **BFD localisation runs at 0.38× real time — ~2.6 s of compute per 1 s of audio.** The authors call this *"generally tolerable"*; for a service that must scan at scale it is not. |
@@ -362,7 +362,7 @@ On the 2026 "cross-vendor SynthID" headlines (OpenAI, ElevenLabs, NVIDIA Cosmos,
 | Method | Why interesting | Why unusable |
 |---|---|---|
 | **XAttnMark** (ICML 2025, Lehigh + **Dolby**) | Best published numbers in the field: detection avg **99.19 %**, attribution avg **93 %** (vs AudioSeal's 39 %), TPR 98.56 % @ FPR 0.19 %, PESQ 4.43 / SI-SNR 29.0. Runs the **only published duration ablation** (§2.y). | **No code or weights released.** A Dolby-authored watermarker is unlikely to ship permissively. |
-| **SyncGuard** (2025) | 🔑 **0.5 s → 99.63 %** — the only published sub-second result, and the only method surviving **pitch scaling 0.9–1.1 at 99.83–99.92 %**. Frame-wise broadcast embedding with time-dimension averaging is **architecturally exactly what VoiceForge needs.** | **No code repository or licensing information provided in the paper.** Baselines are FSVC/FDLM/DeAR/DRAW, not AudioSeal/WavMark, so cross-comparison is unsound. **Monitor for release — this is the one to watch.** |
+| **SyncGuard** (2025) | 🔑 **0.5 s → 99.63 %** — the only published sub-second result, and the only method surviving **pitch scaling 0.9–1.1 at 99.83–99.92 %**. Frame-wise broadcast embedding with time-dimension averaging is **architecturally exactly what Alaap needs.** | **No code repository or licensing information provided in the paper.** Baselines are FSVC/FDLM/DeAR/DRAW, not AudioSeal/WavMark, so cross-comparison is unsound. **Monitor for release — this is the one to watch.** |
 | **WaveVerify** (2025) | MIT badge; best published BER (0.00 across MP3 64k/128k, highpass 3500 Hz, bandpass); best ViSQOL **4.76**; the **only method evaluated on an emotional-speech corpus (RAVDESS)**. | ⚠️ **Weights licence UNVERIFIED** — the checkpoint *"will be automatically downloaded on first use"* with no stated host or terms. **Untested against Opus and every neural codec** — the axis that kills watermarks. 10 s evaluation only. |
 | **WAKE** (Interspeech 2025) | 🔑 **The only KEYED design found** — an 8-bit key; wrong key → ~50 % BER. That is the correct structural answer to the forgery problem in §2.1.5. Supports re-embedding without destroying the first mark. | Licence and code availability **unclear** (demo page only). **Monitor.** |
 | **VocBulwark** (Jan 2026) | In-model watermarking via adapter injection with frozen generative weights; claims resilience to codec regeneration and variable-length manipulation. | Research-stage. **And architecturally incompatible with us:** in-model watermarking contradicts our **frozen, swappable TTS backend** contract ([03](03-tts-backends-english.md)). |
@@ -370,7 +370,7 @@ On the 2026 "cross-vendor SynthID" headlines (OpenAI, ElevenLabs, NVIDIA Cosmos,
 
 **AudioMarkBench** repo (`moyangkuo/AudioMarkBench`) is **MPL-2.0** — fine as an *evaluation harness* (we do not ship it), but ⚠️ **do not vendor its files into the product tree, and note that it pulls GPL-3.0 Timbre as a submodule.** Keep it in an isolated eval container. **RAW-Bench** (`github.com/SonyResearch/raw_bench`) is the better harness for us (§2.y) — verify its licence before vendoring.
 
-> **Do not build a bespoke watermarker.** Every 2025–2026 improvement is unreleased, research-stage, or in-model. Post-hoc watermarking is architecturally correct for VoiceForge — it is the weaker family, but it is the one compatible with a frozen, swappable backend.
+> **Do not build a bespoke watermarker.** Every 2025–2026 improvement is unreleased, research-stage, or in-model. Post-hoc watermarking is architecturally correct for Alaap — it is the weaker family, but it is the one compatible with a frozen, swappable backend.
 
 ---
 
@@ -480,7 +480,7 @@ Verbatim, §A.3.7: *"The C2PA Manifest Store shall be embedded into a RIFF-compa
 **New in 2.4 and aimed precisely at us — the `c2pa.ai-disclosure` assertion (§18.28):**
 > *"a new AI Disclosure assertion is introduced to provide a means for a Claim Generator to provide machine-readable AI transparency information. This assertion enables verifiable AI transparency, automated compliance verification, and trustworthy AI content at scale."*
 
-Fields: `modelType` (required), `modelName`, `modelIdentifier`, `contentProfile.humanOversightLevel` ∈ {`fully_autonomous`, `prompt_guided`, `human_validated`}, `scientificDomain`. For VoiceForge the canonical manifest is `c2pa.actions` → `c2pa.created` with `digitalSourceType: http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia`, plus `c2pa.ai-disclosure` with `humanOversightLevel: prompt_guided`. · **HIGH**
+Fields: `modelType` (required), `modelName`, `modelIdentifier`, `contentProfile.humanOversightLevel` ∈ {`fully_autonomous`, `prompt_guided`, `human_validated`}, `scientificDomain`. For Alaap the canonical manifest is `c2pa.actions` → `c2pa.created` with `digitalSourceType: http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia`, plus `c2pa.ai-disclosure` with `humanOversightLevel: prompt_guided`. · **HIGH**
 
 ### 3.2 Does it survive transcode? No — and that is the whole problem for our users
 
@@ -529,7 +529,7 @@ The soft-binding assertion schema is audio-aware: `soft-binding-timespan-map` sc
 - Conformance requires signing a legal agreement with C2PA, providing architecture evidence, and working with programme staff. Two assurance levels.
 - CAs on the trust list as of April 2026: **DigiCert, SSL.com, Tauth Labs, Trufo**.
 - **Cost:** SSL.com publishes a **free tier — one Level 1 Claim Signing Certificate (1 year) + 10,000 trusted timestamps/year** — but it requires a valid C2PA conformance record ID, i.e. conformance first. Premium is quote-only. **The dollar cost of conformance itself is UNVERIFIED.**
-- **Self-signing is worse than nothing.** c2pa-rs defaults `trust.anchors` to `null`. Any conforming validator emits `signingCredential.untrusted` — *"The signing credential is not listed on any of the validator's applicable trust lists"* — and §15.7 says *"the claim shall be rejected."* A self-signed VoiceForge manifest reads as "unknown signer" everywhere it matters.
+- **Self-signing is worse than nothing.** c2pa-rs defaults `trust.anchors` to `null`. Any conforming validator emits `signingCredential.untrusted` — *"The signing credential is not listed on any of the validator's applicable trust lists"* — and §15.7 says *"the claim shall be rejected."* A self-signed Alaap manifest reads as "unknown signer" everywhere it matters.
 
 · **HIGH** (except conformance cost)
 
@@ -545,7 +545,7 @@ Fetched from `partner.steamgames.com/doc/gettingstarted/contentsurvey`. The Stea
 
 > *"We are aware that many modern game development environments have AI powered tools built into them. **Efficiency gains through the use of these tools is not the focus of this section. Instead, it is concerned with the use of AI in creating content that ships with your game, and is consumed by players. This includes content such as artwork, sound, narrative, localization, etc.**"*
 
-**"sound" is named explicitly. VoiceForge output is squarely in scope.** · **HIGH**
+**"sound" is named explicitly. Alaap output is squarely in scope.** · **HIGH**
 
 **Pre-Generated** (build-time — our normal case), verbatim:
 > *"Any kind of content that ships with your game and is consumed by players that is created with the help of AI tools during development. Under the Steam Distribution Agreement, **you promise Valve that your game will not include illegal or infringing content, and that your game will be consistent with your marketing materials.** In our prerelease review, we will evaluate the output of AI generated content in your game the same way we evaluate all non-AI content."*
@@ -567,7 +567,7 @@ Also: *"Products on Steam must adhere to the content rules, regardless of whethe
 > *"…we are **strictly enforcing disclosure for all game asset pages due to legal ambiguity around rights associated with Generative AI content. Failure to tag your asset page may result in delisting.**"*
 
 Selecting yes yields an `AI Generated` tag plus sub-tags — **`AI Generated Graphics`, `AI Generated Sound`, `AI Generated Text & Dialog`, `AI Generated Code`**. Untagged AI assets *"will no longer be eligible for indexing on our browse pages."* Traditional game AI (pathfinding, procgen) is exempt.
-**VoiceForge output → `AI Generated Sound`** (plus `AI Generated Text & Dialog` if we generated the script). · **HIGH**
+**Alaap output → `AI Generated Sound`** (plus `AI Generated Text & Dialog` if we generated the script). · **HIGH**
 
 #### 3.7.3 Consoles — mostly UNVERIFIED, and honestly so
 
@@ -597,7 +597,7 @@ Selecting yes yields an `AI Generated` tag plus sub-tags — **`AI Generated Gra
 
 Ratified July 2025 (**95.04 % to 4.96 %**), ending the video-game strike. Includes *"consent and disclosure requirements for A.I. digital replica use"*; consent must be *"set forth in writing in a clear and conspicuous manner"* and is invalidated if the use no longer fits the description given at consent time. Scope: *"The Visual Digital Replica covers scripted cinematic scenes only… All material, whether in-game or cinematic, is covered by a Vocal Digital Replica."* **Real Time Generation** carries a **7.5× scale** minimum.
 
-**Critically: this is a collective bargaining agreement binding signatory companies — not a law, and not binding on an indie studio using VoiceForge with no union talent.** It bites only when a VoiceForge voice is *derived from* a union performer's recorded performance (which our architecture forbids), or when a signatory studio uses us. **It is a boundary condition on features we have already ruled out, not a constraint on from-description synthesis.**
+**Critically: this is a collective bargaining agreement binding signatory companies — not a law, and not binding on an indie studio using Alaap with no union talent.** It bites only when a Alaap voice is *derived from* a union performer's recorded performance (which our architecture forbids), or when a signatory studio uses us. **It is a boundary condition on features we have already ruled out, not a constraint on from-description synthesis.**
 — sagaftra.org (**official pages, but DataDome-blocked to direct fetch; gathered via search index**) · **MEDIUM — re-verify in a browser before any customer-facing use**
 
 ### 3.8 What a Steam-shipping developer must do, and the five artefacts we owe them
@@ -606,7 +606,7 @@ Ratified July 2025 (**95.04 % to 4.96 %**), ending the video-game strike. Includ
 
 **We must ship:**
 
-1. **A paste-ready Steam disclosure paragraph**, auto-filled per project, in the register real store pages use — e.g. *"Character voice lines in this game were generated using VoiceForge, a text-description-to-speech synthesis service. Voices are synthetic and are not derived from, and do not replicate, any identifiable real person's voice. All generated dialogue was written and reviewed by the development team."*
+1. **A paste-ready Steam disclosure paragraph**, auto-filled per project, in the register real store pages use — e.g. *"Character voice lines in this game were generated using Alaap, a text-description-to-speech synthesis service. Voices are synthetic and are not derived from, and do not replicate, any identifiable real person's voice. All generated dialogue was written and reviewed by the development team."*
 2. **A rights attestation** the developer can rely on for the "not illegal or infringing" promise: a per-render statement that the voice is model-synthesised, not cloned from an identifiable person, with our training-data basis. Without this we silently push their Distribution Agreement risk onto them.
 3. **A per-render provenance record** with a stable ID — render UUID, timestamp, model + version, description prompt hash, output SHA-256, account, licence terms — retrievable by ID and exportable as JSON/CSV for a whole project.
 4. **The itch.io tag mapping** and a one-click "AI Generated Sound" checklist.
@@ -677,13 +677,13 @@ and *"'Persons' is to be understood as realistic, human beings (including digita
 | What the Omnibus postponed | **Annex III high-risk → 2 Dec 2027; Annex I → 2 Aug 2028.** **It did not postpone Article 50.** | **HIGH** |
 | Transitional relief, new Art 111(4) | Providers of synthetic-content systems **placed on the market before 2 August 2026** have until **2 December 2026** to comply with Art 50(2) | MEDIUM-HIGH |
 
-> **Operational conclusion: VoiceForge is not yet on the market, so no grace period applies. Marking must work on day one of EU availability.** · **HIGH**
+> **Operational conclusion: Alaap is not yet on the market, so no grace period applies. Marking must work on day one of EU availability.** · **HIGH**
 
 #### Territorial scope — being outside the EU does not help
 
 **Art 2(1)(a):** applies to *"providers placing on the market or putting into service AI systems… in the Union, **irrespective of whether those providers are established or located within the Union or in a third country**."*
 **Art 2(1)(c):** also to third-country providers *"where the output produced by the AI system is used in the Union."*
-**→ An India- or US-hosted VoiceForge serving EU game developers is in scope.** · **MEDIUM-HIGH**
+**→ An India- or US-hosted Alaap serving EU game developers is in scope.** · **MEDIUM-HIGH**
 
 #### 🔑 What technical form must the marking take? Two layers, and metadata alone is not enough
 
@@ -725,7 +725,7 @@ This matches the argument in *Watermarking Without Standards Is Not AI Governanc
 
 ### 4.2 United States
 
-| Instrument | Status as of 2026-09-02 | Binds VoiceForge? | Confidence |
+| Instrument | Status as of 2026-09-02 | Binds Alaap? | Confidence |
 |---|---|---|---|
 | **NO FAKES Act** | **S.4591 (2026)**, introduced 20 May 2026, reported favourably 18/24 Jun 2026, **placed on Senate Legislative Calendar, Calendar No. 446**. Identical House bill **H.R. 8915**. *(S.1367 of 2025 is superseded.)* **Not passed either chamber. Not law.** | **Not yet — but design for it** | **HIGH** (govinfo BILLSTATUS) |
 | **TAKE IT DOWN Act** (PL 119-12) | Law. Every operative term is *"intimate **visual** depiction"*. **No audio in scope.** | **No** | **HIGH** |
@@ -806,7 +806,7 @@ Supporting line, all interim orders with no final adjudication: **Anil Kapoor v.
 - **Rules notified 14 November 2025**, with *"an eighteen-month period for phased compliance"* (PIB). · **HIGH**
 - Phase-in: notification provisions Nov 2025; **Consent Managers (Rule 4) 13 Nov 2026**; **Rules 3, 5–16, 22–23 on 13 May 2027**. · **MEDIUM**
 - Penalties: up to **₹250 crore** (security safeguards), **₹200 crore** (breach notification; children's data), **₹50 crore** otherwise. · **HIGH**
-- **What binds us:** VoiceForge is a **Data Fiduciary** for account data *and for user-submitted voice descriptions and dialogue text*. Obligations: standalone plain-language consent notice, purpose limitation, minimisation, security safeguards, breach notification to the Board and affected principals, a published contact point, and **verifiable parental consent for users under 18** plus a ban on behavioural advertising to children. **Age assurance is a real product requirement**, and one a game-developer-facing tool will genuinely encounter. · **MEDIUM-HIGH**
+- **What binds us:** Alaap is a **Data Fiduciary** for account data *and for user-submitted voice descriptions and dialogue text*. Obligations: standalone plain-language consent notice, purpose limitation, minimisation, security safeguards, breach notification to the Board and affected principals, a published contact point, and **verifiable parental consent for users under 18** plus a ban on behavioural advertising to children. **Age assurance is a real product requirement**, and one a game-developer-facing tool will genuinely encounter. · **MEDIUM-HIGH**
 
 ### 4.4 THE COMPLIANCE CHECKLIST
 
@@ -818,7 +818,7 @@ Supporting line, all interim orders with no final adjudication: **Anil Kapoor v.
 |---|---|---|---|
 | 1 | **MUST** Embed an **imperceptible audio watermark** in every generated file, unconditionally, inside the render process. | EU Art 50(2); CoP 1.1.2; CA §22757.3 latent disclosure | AudioSeal, §2.z. 7.4 ms. No opt-out, no flag. |
 | 2 | **MUST** Embed **digitally signed, time-stamped provenance metadata**: AI-generated flag, provider name, system name + version, creation timestamp, unique identifier. **Two layers, not one.** | EU CoP 1.1.1 (*"relying on fingerprinting or logging alone is not considered sufficient"*); CA §22757.3; India r.3(3)(a)(ii) | This is the manifest sidecar of §3.9. Sign it even before C2PA conformance. |
-| 3 | **MUST** Embed a **permanent unique identifier identifying VoiceForge as the generating resource**, and **do not expose any UI that removes the label or metadata**. | India r.3(3)(a)(ii)+(b) | Note (b) forbids *enabling* removal — so no "strip metadata" export option. |
+| 3 | **MUST** Embed a **permanent unique identifier identifying Alaap as the generating resource**, and **do not expose any UI that removes the label or metadata**. | India r.3(3)(a)(ii)+(b) | Note (b) forbids *enabling* removal — so no "strip metadata" export option. |
 | 4 | **MUST** Ship a **detection mechanism** for every marking layer — public spec, downloadable library, or API — free to regulators, media, fact-checkers, researchers and civil society without volume limits. | EU CoP Commitment 2; CA §22757.3 | `POST /detect` + point at the public AudioSeal detector. Fee allowance below 1M monthly users, but only for excessive single-user volume. |
 | 5 | **MUST** Deploy **automated prohibited-use controls** on generation: CSAM/NCII/obscene, false documents/records, arms & explosives, and **audio that misrepresents a real person's identity, voice, conduct or statements**. | India r.3(3)(a)(i)(I)–(IV) | This is §5.3, and India makes it mandatory rather than merely prudent. |
 | 6 | **MUST** Put the **statutory misuse warning** in ToS and in the generation UI, naming IT Act, BNS 2023, POCSO, RPA 1951, IRWA 1986, POSH 2013, ITPA 1956. | India r.3(1)(ca) | Literal list; copy it. |
@@ -925,7 +925,7 @@ Holes 3, 4, 5 and 7 combine into a threat that **survives perfect description-la
 
 > **We can refuse every named-person prompt flawlessly and still mint a voice that a jury believes is Tom Waits.**
 
-*Midler* requires **deliberate imitation** — pure coincidence may fall outside it. But the moment a user types a description *aimed at* a person, deliberateness is supplied by the user, and VoiceForge is the instrumentality. **Our prompt logs become the plaintiff's evidence of intent.** And note what our architecture actually defends against: "no audio in" defeats a **copying** claim we were never going to face. **Right of publicity does not require copying. The architecture defends against the wrong tort.**
+*Midler* requires **deliberate imitation** — pure coincidence may fall outside it. But the moment a user types a description *aimed at* a person, deliberateness is supplied by the user, and Alaap is the instrumentality. **Our prompt logs become the plaintiff's evidence of intent.** And note what our architecture actually defends against: "no audio in" defeats a **copying** claim we were never going to face. **Right of publicity does not require copying. The architecture defends against the wrong tort.**
 
 Two further pressures in the same direction:
 - ***Asha Bhosle*** (§4.3) shows Indian courts **will enjoin a tool provider**, though on a ratio about converting *into* a celebrity's voice — which we do not do.
@@ -1003,7 +1003,7 @@ Llama Guard 4 hazard taxonomy: S1 Violent Crimes · S2 Non-Violent Crimes · S3 
 
 Attribute probing confirms embeddings carry demographics: x-vectors probed at `segment6` recover **gender at ~99 %** and speaking rate at ~100 % (Raj et al., SLT 2018, arXiv:1909.06351). ⚠️ **That paper does not probe age** — a widely-circulated "age MAE ≈ 4.9 years" figure could not be verified and **must not be cited**. · **HIGH** / claim **LOW**
 
-**NOT confirmed — that sampling a sparse region catastrophically degrades output.** The closest published analogue to VoiceForge is **Speaker Generation / TacoSpawn** (Stanton et al., ICASSP 2022), which fits a GMM prior (K=10) over speaker embeddings and samples novel speakers:
+**NOT confirmed — that sampling a sparse region catastrophically degrades output.** The closest published analogue to Alaap is **Speaker Generation / TacoSpawn** (Stanton et al., ICASSP 2022), which fits a GMM prior (K=10) over speaker embeddings and samples novel speakers:
 
 | Dataset | s2s | g2s | g2g |
 |---|---|---|---|
@@ -1028,7 +1028,7 @@ Weakly against a sharp cliff: optimal-transport GMM interpolation for *intermedi
 
 #### 🔑 The distinction the brief misses: conditioning failure vs decoder failure
 
-VoiceForge's TTS is **frozen**. That splits the worry into two failure modes which rebalancing treats *completely differently*:
+Alaap's TTS is **frozen**. That splits the worry into two failure modes which rebalancing treats *completely differently*:
 
 | Mode | Mechanism | Does rebalancing VoicePersona help? |
 |---|---|---|
@@ -1126,7 +1126,7 @@ Maithili 4.5 · Hindi 5.3 · Tamil 5.3 · Gujarati 6.0 · Odia 6.2 · Urdu 6.2 �
 
 **PSP** (arXiv:2604.25476), benchmarking ElevenLabs v3, Cartesia Sonic-3, Sarvam Bulbul, Indic Parler-TTS and Praxy Voice on Hindi/Telugu/Tamil, reports **retroflex collapse rate rising monotonically with phonological difficulty: Hindi ~1 %, Telugu ~40 %, Tamil ~68 %** — and finds that **"PSP ordering diverges from WER ordering."**
 
-> **This is the single most directly transferable Indic finding for VoiceForge: add a phoneme-level accent metric alongside WER, or Tamil retroflex collapse at 68 % will pass our eval harness undetected.** · **HIGH** · Cross-ref [`04-indic-track.md`](04-indic-track.md) and [`06-evaluation-harness.md`](06-evaluation-harness.md).
+> **This is the single most directly transferable Indic finding for Alaap: add a phoneme-level accent metric alongside WER, or Tamil retroflex collapse at 68 % will pass our eval harness undetected.** · **HIGH** · Cross-ref [`04-indic-track.md`](04-indic-track.md) and [`06-evaluation-harness.md`](06-evaluation-harness.md).
 
 #### Dataset demographics as actually published
 
@@ -1181,7 +1181,7 @@ The brief's §15.2 lists four obligations and §16 lists one risk ("voice-clonin
 | **A1** | 🔴 **Voice-biometric defeat (master voices).** Our service is a black-box generator of novel voices with an iterable input. That is exactly the primitive the dictionary attack needs: adversarial master voices match **69 % of females / 38 % of males** at FAR 1 %, **transfer between speaker encoders**, and require **no victim audio and no victim identity**. Banks and telcos deploy voice biometrics. | **HIGH** — arXiv:2204.11304 (IEEE). The attack was *demonstrated using a black-box voice cloning system*; ours is a black-box voice *generation* system with a text handle. | Never expose similarity scores; cap regenerations per lineage; rate-limit; watermark; log. **Add "defeating voice authentication" to the prohibited-use policy explicitly** — no vendor policy we found names it. |
 | **A2** | 🔴 **Fraud and vishing scripts at industrial scale.** The render endpoint turns arbitrary text into convincing speech in an arbitrary voice. "This is your bank's fraud department" in 22 languages, at fractions of a cent per line. | **HIGH** — the FCC issued a **$6 M forfeiture** against Steve Kramer and a **$1 M settlement** with Lingo Telecom over one AI-voice robocall; 13 felony + 13 misdemeanour counts followed in NH. And **no permissively-licensed vishing-script classifier exists** (§5.3) — *no evidence found.* | The bespoke fraud layer in §5.3. **This is the highest-frequency real-world abuse of synthetic speech and the brief does not mention it once.** |
 | **A3** | 🔴 **Coincidental collision → right-of-publicity liability with no impersonation intent.** A novel voice that sounds like a real person is actionable under *Midler*/*Waits* without any copying. | **HIGH** — §5.2 holes 3, 4, 7. *Waits*: **$2.375 M** affirmed. | ASV screen against a public-figure index before release; log it (§5.2). |
-| **A4** | 🔴 **Watermark forgery — being blamed for audio we did not generate.** AudioSeal's detector is public and unkeyed. AudioMarkBench: *"All watermarking methods have high FPRs under white-box perturbations that preserve audio quality"* — an attacker can **stamp a VoiceForge-detectable mark onto third-party audio.** | **HIGH** | The **provenance log is the rebuttal**: a mark with no matching render record is a forgery. **This is a second, independent reason the log must exist and must be authoritative over the watermark.** Publish the rebuttal procedure. |
+| **A4** | 🔴 **Watermark forgery — being blamed for audio we did not generate.** AudioSeal's detector is public and unkeyed. AudioMarkBench: *"All watermarking methods have high FPRs under white-box perturbations that preserve audio quality"* — an attacker can **stamp a Alaap-detectable mark onto third-party audio.** | **HIGH** | The **provenance log is the rebuttal**: a mark with no matching render record is a forgery. **This is a second, independent reason the log must exist and must be authoritative over the watermark.** Publish the rebuttal procedure. |
 | **A5** | 🔴 **Child voices.** "A frightened eight-year-old girl" is a legitimate game-character description and an obvious CSAM-adjacent and grooming-script vector. **The brief never mentions minors' voices**, and our own §6.2 slice spec has a `child` age band. | **MEDIUM-HIGH** — India IT Rules r.3(3)(a)(i)(I) makes blocking CSAM-adjacent generation a **legal duty**, and DPDP imposes children's-data obligations. Llama Guard's S4 exists but at 69 % English / 43 % multilingual recall. | Treat child-voice descriptions as an elevated-review class: allow, but with stricter dialogue moderation, mandatory logging, and no bulk/API access without review. **Decide this deliberately rather than discovering it.** |
 | **A6** | **Non-consensual intimate audio.** Sexual dialogue rendered in a voice described to match someone the user knows. Description-layer gazetteers do not fire on "my colleague Priya, 28, soft Bengali accent". | **MEDIUM-HIGH** — India r.3(3)(a)(i)(I) names NCII explicitly; Steam refuses Adult-Only sexual content via live-generated AI (§3.7.1). | Dialogue moderation + the private-individual problem below. |
 | **A7** | **Harassment of private individuals.** The gazetteer protects celebrities. **Nobody is protecting the user's ex-partner, manager, or classmate** — an ordinary name is exactly the false-positive case we deliberately tuned the gazetteer *not* to catch. | **MEDIUM** — the FP/FN trade in §5.1 makes this structural, not incidental. | Dialogue-text named-person check (§5.3 item 4); reporting channel; retention for investigation. |

@@ -1,4 +1,4 @@
-# VoiceForge — Research Corpus
+# Alaap — Research Corpus
 
 > **Purpose:** ground every decision from Stage 0 through public deployment in verified, primary-source evidence — so the build can proceed for months without re-deriving anything and without a major architectural deviation.
 >

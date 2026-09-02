@@ -209,7 +209,7 @@ Look at rows 3 and 5 together: on the *same* encoder, different real people scor
 - **SIM-o** ("original"): cosine similarity between the speaker embedding of the **generated** audio and that of the **original, real** reference/prompt audio.
 - **SIM-r** ("resynthesized"): cosine similarity against a **codec-resynthesized** version of the reference — i.e. the reference passed through the system's own audio codec/vocoder round-trip. It removes the codec's own fidelity ceiling from the score.
 - **SIM-r is not comparable across systems using different vocoders/codecs** and is therefore the weaker number; SIM-o is the one to report. **[HIGH on the definitions; MEDIUM on VALL-E as the specific originating paper — widely attributed there but not re-verified against arXiv 2301.02111 in this pass.]**
-- **The known inconsistency you must not reproduce:** VALL-E excluded the prompt from the scored segment (0.754) while VALL-E 2 included it (0.905) — **a 0.151 absolute difference from a definitional choice alone** ([arXiv 2510.06927](https://arxiv.org/html/2510.06927v1), HIGH). **Write down which convention you use, in the scorecard, forever.** For VoiceForge the prompt-inclusion question is moot (there is no audio prompt — identity comes from a vector), which is a genuine simplification. State that explicitly so nobody later "corrects" your numbers to a convention that doesn't apply.
+- **The known inconsistency you must not reproduce:** VALL-E excluded the prompt from the scored segment (0.754) while VALL-E 2 included it (0.905) — **a 0.151 absolute difference from a definitional choice alone** ([arXiv 2510.06927](https://arxiv.org/html/2510.06927v1), HIGH). **Write down which convention you use, in the scorecard, forever.** For Alaap the prompt-inclusion question is moot (there is no audio prompt — identity comes from a vector), which is a genuine simplification. State that explicitly so nobody later "corrects" your numbers to a convention that doesn't apply.
 
 **Published work on intra-identity consistency across many generations:** the closest is Chen et al. 2025's "Stability" metric (0.85–0.90). It measures embedding similarity across utterances converted *from different source speakers* to the same generated target — structurally the same statistic as ours. Beyond that, **the literature is thin: TTS eval overwhelmingly measures similarity-to-a-reference, not self-consistency-across-generations.** The position paper confirms the gap: "existing metrics rarely account for speaker consistency over extended durations." **This axis is genuinely under-served, and building it is a real contribution rather than a re-implementation. [HIGH]**
 
@@ -304,7 +304,7 @@ Silhouette score over all M×N embeddings labelled by description ID.
 
 ### 5.2 MOS predictors, and where they lie to you
 
-| Predictor | Package / repo | Licence | Status 2026 | Verdict for VoiceForge |
+| Predictor | Package / repo | Licence | Status 2026 | Verdict for Alaap |
 |---|---|---|---|---|
 | **UTMOSv2** | `sarulab-speech/UTMOSv2` | **MIT** | Maintained (pushed 2026-04-02, 365★) | Best-maintained of the classic family. **Still pitch-biased (r = −0.722).** |
 | UTMOS (22) | `sarulab-speech/UTMOS22` | **MIT** | Stale (last push 2024-04) | Still the most-cited. Use only for comparability with older papers. |
@@ -326,7 +326,7 @@ Silhouette score over all M×N embeddings labelled by description ID.
 | DNSMOS | **r = −0.788** |
 | UTMOSv2 | **r = −0.722** |
 
-**Every one of these models penalises higher-pitched voices for reasons human listeners do not share.** VoiceForge deliberately spans children, elderly, falsetto, and heavily stylized voices. Using any of these as a quality gate installs a **systematic bias against high-pitched identities** — and because it is systematic, it will look like a consistent, believable finding ("our child voices score worse on naturalness") rather than an artefact. **This is the trap most likely to silently corrupt this project's conclusions.**
+**Every one of these models penalises higher-pitched voices for reasons human listeners do not share.** Alaap deliberately spans children, elderly, falsetto, and heavily stylized voices. Using any of these as a quality gate installs a **systematic bias against high-pitched identities** — and because it is systematic, it will look like a consistent, believable finding ("our child voices score worse on naturalness") rather than an artefact. **This is the trap most likely to silently corrupt this project's conclusions.**
 
 **Trap 2 — prosodic blindness.** Same paper: pitch-accent corruption dropped **human** MOS from 4.00 → 3.19 → 2.16 (**−1.84**). All six models moved **< 0.1**. They measure signal cleanliness, not delivery. For dramatic/game content where delivery *is* the product, MOS predictors are close to irrelevant.
 
@@ -356,7 +356,7 @@ Silhouette score over all M×N embeddings labelled by description ID.
 | **ParaSpeechCaps** (59 style tags, 342h human-labelled + 2,427h scaled) | Rich and well-matched in vocabulary, held-out sets exist — but **CC-BY-NC-SA-4.0 ⛔ non-commercial.** Usable to *inform* your tag vocabulary; not usable as a shipped eval asset. |
 | **TTSDS2 benchmark set** | Auto-regenerated quarterly from recent YouTube specifically to avoid leakage; 14 languages; 50 speaker-matched pairs per language. **Use as-is for the naturalness axis**, and inherit its anti-leakage discipline. |
 | **IndicVoices-R** (1,704h, 10,496 speakers, 22 languages, NeurIPS 2024 D&B) | The right source for **real-speaker Indic calibration audio** (your `C_same`/`C_diff` reference sets), not for descriptions. |
-| Seed-TTS-eval | Reference-audio-driven; **structurally inapplicable** — VoiceForge has no audio prompt. Borrow its WER normalisation code only. |
+| Seed-TTS-eval | Reference-audio-driven; **structurally inapplicable** — Alaap has no audio prompt. Borrow its WER normalisation code only. |
 
 **Conclusion: build your own, borrow the structure.** No existing set covers description→voice for Indic languages with game-dialogue registers.
 

@@ -57,7 +57,7 @@ Three further findings that constrain the design:
 
 ## 2. The adjacent field the scope document missed: speaker anonymization
 
-**VoiceForge's core technical problem has been an open benchmark since 2020.** The VoicePrivacy Challenge asks: replace a speaker's identity with a synthetic pseudo-speaker such that the output is natural, intelligible, and *distinct from other pseudo-speakers*. That last requirement is exactly VoiceForge's diversity axis, and it has a named metric and six years of results.
+**Alaap's core technical problem has been an open benchmark since 2020.** The VoicePrivacy Challenge asks: replace a speaker's identity with a synthetic pseudo-speaker such that the output is natural, intelligible, and *distinct from other pseudo-speakers*. That last requirement is exactly Alaap's diversity axis, and it has a named metric and six years of results.
 
 | Edition | Document | ID | Conf. |
 |---|---|---|---|
@@ -109,7 +109,7 @@ Srivastava, verbatim:
 
 In VPC 2024, the averaged-x-vector pipeline is the **best baseline on WER** — better than the neural-codec and GAN baselines. Speech from an entirely artificial x-vector is intelligible. [HIGH]
 
-*(B1's privacy collapsed against modern attackers — EER 6.08% vs 4.59% original — which is why it was retired. That is a privacy result, not a voice-quality result, and does not bear on VoiceForge.)*
+*(B1's privacy collapsed against modern attackers — EER 6.08% vs 4.59% original — which is why it was retired. That is a privacy result, not a voice-quality result, and does not bear on Alaap.)*
 
 ### 3.3 …but they collapse into a single voice
 
@@ -170,7 +170,7 @@ Srivastava et al., Table 1 (test WER):
 
 **Averaging inside sparse (low-density) regions costs +60% relative WER.** Direct evidence that the space is *not uniformly* navigable — low-density regions synthesize measurably worse. [HIGH]
 
-> **Consequence for VoiceForge:** "a gravelly 80-year-old woman's voice" is a *low-density region* in every corpus you will train on (see [`05-datasets-and-annotation.md`](05-datasets-and-annotation.md) on the 76%-twenties skew). This finding predicts that exactly the descriptions your users most want will land in the worst-behaved part of the space. Per-demographic eval slices are not a fairness nicety — they are a *quality* instrument.
+> **Consequence for Alaap:** "a gravelly 80-year-old woman's voice" is a *low-density region* in every corpus you will train on (see [`05-datasets-and-annotation.md`](05-datasets-and-annotation.md) on the 76%-twenties skew). This finding predicts that exactly the descriptions your users most want will land in the worst-behaved part of the space. Per-demographic eval slices are not a fairness nicety — they are a *quality* instrument.
 
 ### 3.7 Vocoder drift — you don't get the voice you asked for
 
@@ -180,7 +180,7 @@ Panariello, Todisco & Evans, Interspeech 2023, [DOI 10.21437/Interspeech.2023-44
 
 Follow-up: "Vocoder drift compensation by x-vector alignment in speaker anonymisation," 3rd SPSC Symposium 2023, pp. 16–20 — drift is **systematic and correctable**, not noise.
 
-> **This is the most important caveat for Tier-1 identity.** Scope §4.3 claims a stored vector reproduces the voice "exactly, by construction." That is true of the *conditioning input* and false of the *rendered output*. VoiceForge must either (a) accept identity is defined at the input and measure output consistency separately, or (b) run a closed loop: synthesize → re-extract → compare → correct. Option (b) costs a GPU render per mint — which erases Tier 1's main economic advantage over Tier 2 (see [`11-production-api-landscape.md`](11-production-api-landscape.md) §9.3).
+> **This is the most important caveat for Tier-1 identity.** Scope §4.3 claims a stored vector reproduces the voice "exactly, by construction." That is true of the *conditioning input* and false of the *rendered output*. Alaap must either (a) accept identity is defined at the input and measure output consistency separately, or (b) run a closed loop: synthesize → re-extract → compare → correct. Option (b) costs a GPU render per mint — which erases Tier 1's main economic advantage over Tier 2 (see [`11-production-api-landscape.md`](11-production-api-landscape.md) §9.3).
 
 ### 3.8 How much of B1's unnaturalness is the vector's fault? Not much.
 
@@ -190,7 +190,7 @@ Follow-up: "Vocoder drift compensation by x-vector alignment in speaker anonymis
 
 Listener reports include "a severe muffling effect, often at [utterance] beginnings, **rendering the part of the utterance completely unintelligible**" and "random impulsive artifacts, somewhat like a 'sizzling frying pan'." Conclusion: "the copy synthesis scores better than the synthesis from representations."
 
-> **Engineering read:** a large fraction of B1's unnaturalness is attributable to a 2019-era NSF vocoder and bottleneck features — **not** to the x-vector being artificial. Modern backends (see [`03-tts-backends-english.md`](03-tts-backends-english.md)) should carry substantially less of this penalty. Do not read VPC-era naturalness numbers as the ceiling for VoiceForge.
+> **Engineering read:** a large fraction of B1's unnaturalness is attributable to a 2019-era NSF vocoder and bottleneck features — **not** to the x-vector being artificial. Modern backends (see [`03-tts-backends-english.md`](03-tts-backends-english.md)) should carry substantially less of this penalty. Do not read VPC-era naturalness numbers as the ceiling for Alaap.
 
 ---
 
@@ -207,7 +207,7 @@ Listener reports include "a severe muffling effect, often at [utterance] beginni
 | **SVT-assisted Matrix** | [arXiv:2405.10786](https://arxiv.org/abs/2405.10786), IEEE/ACM TASLP | Explicit critique: utterance-level ASV vectors "averaged or modified … suffer from **deterioration in the naturalness**, **degradation in speaker distinctiveness**, and severe privacy leakage." Proposes frame-level speaker vectors + SVD transform. | HIGH (abstract) |
 | **VPC 2024 entry T10** (NPU-NTU) | [arXiv:2409.04173](https://arxiv.org/abs/2409.04173) | Interpolates explicitly: **s_anon = α·s̄ + (1−α)·ŝ** (pool average vs Gaussian random identity). Organizers: "A higher α puts more weight on the averaged speaker identity, typically resulting in **less anonymity but better utility** preservation, while a lower α increases randomness, enhancing anonymity but potentially decreasing utility." | HIGH |
 
-> **⭐ Direct read for VoiceForge's CFG dial (scope §4.2 option 3):** T10's α *is* the adherence↔diversity dial, already built and characterised. The mean-voice direction is the **high-utility, low-diversity** end. This gives the dial a published precedent and a sane default region, and confirms [`01-ttv-landscape.md`](01-ttv-landscape.md)'s finding that the trade is real and bidirectional.
+> **⭐ Direct read for Alaap's CFG dial (scope §4.2 option 3):** T10's α *is* the adherence↔diversity dial, already built and characterised. The mean-voice direction is the **high-utility, low-diversity** end. This gives the dial a published precedent and a sane default region, and confirms [`01-ttv-landscape.md`](01-ttv-landscape.md)'s finding that the trade is real and bidirectional.
 
 ---
 
@@ -385,7 +385,7 @@ Quantified fix (sub-center ECAPA-TDNN, multiple prototypes per speaker): intra/i
 - **Turner et al. venue** — arXiv preprint + VPC 2020 submission; no ISCA/IEEE proceedings entry found.
 - **VPC 2026 results do not exist yet.** Workshop is 2026-09-26. Only the evaluation plan and baseline numbers are available.
 - **Hubness** in speaker-embedding space: **UNVERIFIED**, no primary source found.
-- **Every number here comes from pipelines built on 2019–2024 vocoders.** Modern backends should perform better in absolute terms; treat these figures as *relative* evidence about geometry, not as VoiceForge's expected quality.
+- **Every number here comes from pipelines built on 2019–2024 vocoders.** Modern backends should perform better in absolute terms; treat these figures as *relative* evidence about geometry, not as Alaap's expected quality.
 
 ---
 
