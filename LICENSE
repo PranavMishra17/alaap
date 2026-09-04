@@ -1,0 +1,48 @@
+Alaap — research and documentation
+Copyright (c) 2026 Pranav Mishra
+
+This work is licensed under the Creative Commons Attribution 4.0
+International License (CC BY 4.0).
+
+You are free to:
+  Share  — copy and redistribute the material in any medium or format
+  Adapt  — remix, transform, and build upon the material for any purpose,
+           even commercially
+
+Under the following terms:
+  Attribution — You must give appropriate credit, provide a link to the
+  license, and indicate if changes were made. You may do so in any
+  reasonable manner, but not in any way that suggests the licensor
+  endorses you or your use.
+
+Full licence text:
+  https://creativecommons.org/licenses/by/4.0/legalcode
+Human-readable summary:
+  https://creativecommons.org/licenses/by/4.0/
+
+---
+
+NOTE ON SCOPE
+
+This licence covers the research prose and planning documents in this
+repository, which are the original work of the copyright holder.
+
+It does NOT extend to:
+
+  - Third-party material quoted for analysis and criticism. Quotations
+    from model cards, LICENSE files, API specifications and papers remain
+    under their own terms and are reproduced here as short excerpts for
+    the purpose of technical review.
+
+  - RESEARCH/_source/VOICEFORGE-SCOPE-v1.md, retained as the historical
+    input document this research verifies.
+
+  - Any code added to this repository later, which will be MIT-licensed
+    and marked as such at the time it is added.
+
+NOT LEGAL ADVICE
+
+The licence and regulatory analysis in this repository is engineering
+research conducted against primary source text. It is not legal advice,
+was not produced by a lawyer, and is a snapshot dated 2026-09-02.
+Licences change. Verify independently before relying on any of it.
