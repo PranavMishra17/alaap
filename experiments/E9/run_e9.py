@@ -88,7 +88,11 @@ attrs = [Attributes.from_dict(a) for a in json.loads(str(d["attrs"]))]
 binner = Binner.load(args.binner)
 caps = [caption_from_bins(binner.bin_one(a), seed=i) for i, a in enumerate(attrs)]
 space = SpeakerSpace.fit(Z, n_components=150)
-mapper = RetrievalMapper(space, TextEncoder(), pca_dims=50).fit(caps, Z)
+# S9b/S10: pca_dims=50 of 150 zero-pads the discarded components, so every
+# minted voice is near-identical there -- it cost 11%-vs-20% of the available
+# diversity in E11. Use the full basis.
+mapper = RetrievalMapper(space, TextEncoder(),
+                         pca_dims=space.components.shape[0]).fit(caps, Z)
 print(f"      {len(caps)} pairs | {space}")
 
 # --------------------------------------------------------------- 2. render

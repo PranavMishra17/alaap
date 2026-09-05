@@ -100,7 +100,11 @@ out = {"control_real_isolation": base_real, "nn_real": nn_real, "novelty": [],
 print("  NOVELTY  (gmm_components=5)")
 print(f"  {'novelty':>7} {'nn med':>7} {'vs real':>8} {'<floor':>7} {'isolation':>10}")
 print(f"  {'-'*7} {'-'*7} {'-'*8} {'-'*7} {'-'*10}")
-m5 = RetrievalMapper(space, text, pca_dims=50, gmm_components=5).fit(capsf, Z[i_fit])
+# S9b/S10: pca_dims=50 of 150 zero-pads the discarded components, so every
+# minted voice is near-identical there -- it cost 11%-vs-20% of the available
+# diversity in E11. Use the full basis.
+m5 = RetrievalMapper(space, text, pca_dims=space.components.shape[0],
+                     gmm_components=5).fit(capsf, Z[i_fit])
 for nov in (0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.0):
     V = np.vstack([m5.mint(x, novelty=nov, seed=i).vector for i, x in enumerate(descs)])
     E = space.encode(V); nn = nn_distances(E); iso = isolation_pct(E, R)
@@ -116,7 +120,8 @@ print("  COMPONENTS  (novelty=1.0)")
 print(f"  {'k':>7} {'nn med':>7} {'vs real':>8} {'<floor':>7} {'isolation':>10}")
 print(f"  {'-'*7} {'-'*7} {'-'*8} {'-'*7} {'-'*10}")
 for k in (1, 3, 5, 12, 24, 48):
-    mk = RetrievalMapper(space, text, pca_dims=50, gmm_components=k).fit(capsf, Z[i_fit])
+    mk = RetrievalMapper(space, text, pca_dims=space.components.shape[0],
+                         gmm_components=k).fit(capsf, Z[i_fit])
     V = np.vstack([mk.mint(x, novelty=1.0, seed=i).vector for i, x in enumerate(descs)])
     E = space.encode(V); nn = nn_distances(E); iso = isolation_pct(E, R)
     out["components"].append({"k": k, "actual": int(mk.gmm.n_components),

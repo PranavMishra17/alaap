@@ -105,7 +105,10 @@ i_fit, i_test = perm[:half], perm[half:half + args.n_test]
 
 space = SpeakerSpace.fit(Z[i_fit], n_components=150)
 text = TextEncoder()
-mapper = RetrievalMapper(space, text, pca_dims=50).fit(
+# S9b/S10: pca_dims=50 of 150 zero-pads the discarded components, so every
+# minted voice is near-identical there -- it cost 11%-vs-20% of the available
+# diversity in E11. Use the full basis.
+mapper = RetrievalMapper(space, text, pca_dims=space.components.shape[0]).fit(
     [caps[i] for i in i_fit], Z[i_fit])
 print(f"      fitted on {len(i_fit)} pairs | testing {len(i_test)} held-out captions")
 
