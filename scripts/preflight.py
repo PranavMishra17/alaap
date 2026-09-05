@@ -65,17 +65,40 @@ def _hf():
         return BLOCK, ("absent. Gated corpora (ai4bharat/indicvoices_r, Rasa, "
                        "IndicVoices) and indic-parler-tts are unreachable. "
                        "See NEEDS-FROM-YOU section 1")
-    return OK, f"present ({tok[:6]}...{len(tok)} chars)"
+    # Deliberately prints NOTHING of the token itself. The first version
+    # echoed tok[:6], which puts a live secret prefix into every log and
+    # screenshot for no diagnostic benefit -- length and presence are enough.
+    return OK, f"present ({len(tok)} chars)"
 
 
 @check("Parler gate terms")
 def _gate():
-    for p in ("GATE-TERMS-indic-parler.txt", "docs/GATE-TERMS-indic-parler.txt"):
-        if os.path.exists(p) and os.path.getsize(p) > 40:
-            return OK, f"captured in {p}"
-    return BLOCK, ("not captured. indic-parler-tts stays public_servable=False "
-                   "until somebody reads what the gate actually says "
-                   "(RESEARCH/08 section 4.7)")
+    """
+    RESEARCH/08 section 4.7 blocked indic-parler-tts partly on unread gate terms:
+    "you cannot responsibly host weights whose gate terms you have not read."
+
+    That is answerable from the Hub rather than by asking a human to paste
+    something. A repo declaring no extra_gated_* fields has no terms beyond its
+    licence -- there is nothing to read, which is a different and better
+    outcome than nobody having read it.
+    """
+    tok = (os.environ.get("HF_TOKEN") or
+           (io.open(".hf_token", encoding="utf-8").read().strip()
+            if os.path.exists(".hf_token") else ""))
+    if not tok:
+        return WARN, "needs the HF token to check; see above"
+    from huggingface_hub import HfApi
+    raw = HfApi(token=tok).model_info("ai4bharat/indic-parler-tts").cardData
+    # ModelCardData is not a dict; it exposes to_dict()
+    cd = raw.to_dict() if hasattr(raw, "to_dict") else dict(raw or {})
+    extra = {k: v for k, v in cd.items()
+             if k.startswith("extra_gated") and v}
+    if extra:
+        return BLOCK, (f"declares gate terms that nobody has read: "
+                       f"{sorted(extra)} -- read them before serving")
+    return OK, (f"none declared (licence {cd.get('license')}, gated=auto) -- "
+                f"section 4.7's 'unread gate terms' concern is answered: there are "
+                f"none. The IITM IndicTTS question is separate and open")
 
 
 # --------------------------------------------------------- code vs the audit
