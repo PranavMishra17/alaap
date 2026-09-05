@@ -1,0 +1,13 @@
+datasets==5.0.1
+librosa==1.0.0
+matplotlib==3.11.1
+numpy==2.5.2
+qwen-tts==0.1.1
+scikit-learn==1.9.0
+scipy==1.18.1
+sentence-transformers==6.0.1
+soundfile==0.14.0
+speechbrain==1.1.1
+torch==2.5.1+cu121
+torchaudio==2.5.1+cu121
+transformers==4.57.3

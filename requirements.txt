@@ -1,0 +1,37 @@
+# Alaap — pinned working set for the Qwen3 environment.
+#
+# ⚠️ FRAGILE COMBINATION. Read before upgrading anything.
+#
+# qwen-tts pins transformers EXACTLY ==4.57.3.
+# sentence-transformers 6.x DECLARES it needs transformers>=5.0.0.
+# They are both installed and both work at 4.57.3 -- the declared floor is
+# wrong for the narrow use we make of sentence-transformers (encode only).
+#
+# pip WILL warn about this on every install. The warning is expected.
+# What matters is that `import qwen_tts` and `TextEncoder()` both succeed.
+# Verify with:
+#
+#   python -c "import transformers,qwen_tts; from alaap.mapper import TextEncoder; \
+#              TextEncoder(); print('ok', transformers.__version__)"
+#
+# If a future upgrade forces transformers>=5, split the text encoder into its
+# own venv and call it over a socket. RESEARCH/04 and PHASE-00 section 1 flag
+# environment isolation -- not VRAM -- as the real constraint on this project,
+# and parler-tts (Indic) pins transformers>=4.46.1,<=4.46.1, which is
+# already incompatible with this environment. Three services, three venvs.
+
+--index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cu121
+torchaudio==2.5.1+cu121
+
+--extra-index-url https://pypi.org/simple
+transformers==4.57.3
+qwen-tts
+sentence-transformers
+speechbrain
+datasets
+librosa
+soundfile
+scikit-learn
+matplotlib
+g2p-en
