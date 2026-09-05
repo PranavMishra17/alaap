@@ -100,46 +100,10 @@ OUT = args.out
 AUD = os.path.join(OUT, "audio")
 os.makedirs(AUD, exist_ok=True)
 
-# The five axes that caption_from_bins actually renders into prose, in the
-# order it renders them. snr/jitter/shimmer are recording-quality axes; a
-# catalog voice should not be described as "very noisy" on purpose.
-AXES = ["f0_mean", "spectral_tilt", "hnr_db", "f0_cv", "speaking_rate"]
-
-
-def sample_cells(n: int, seed: int) -> list[dict[str, str]]:
-    """
-    Stratified cover of bin space: all one-axis extremes first, then a
-    space-filling random sample of the interior. Deterministic in `seed`.
-    """
-    rng = np.random.default_rng(seed)
-    cells, seen = [], set()
-
-    def add(idx):
-        key = tuple(idx)
-        if key in seen:
-            return False
-        seen.add(key)
-        cells.append({a: BIN_LABELS[a][i] for a, i in zip(AXES, idx)})
-        return True
-
-    mid = [2] * len(AXES)
-    add(mid)
-    # every single-axis extreme, and every single-axis one-step move
-    for ai in range(len(AXES)):
-        for v in (0, 1, 3, 4):
-            idx = list(mid)
-            idx[ai] = v
-            add(idx)
-    # the far corners -- E9 showed these are where identity is most at risk
-    for _ in range(min(64, n)):
-        add([int(rng.choice([0, 4])) for _ in AXES])
-    # interior fill
-    guard = 0
-    while len(cells) < n and guard < n * 200:
-        guard += 1
-        add([int(rng.integers(0, 5)) for _ in AXES])
-    return cells[:n]
-
+# Shared with S7 (the Indic catalog) so both saturation curves are measured on
+# the same cover of bin space. A curve over a different cover is not comparable,
+# and comparing the two backends is the point of running it twice.
+from alaap.catalog import CATALOG_AXES as AXES, sample_cells
 
 # ------------------------------------------------------------- 1. the mapper
 print(f"[1/4] rebuilding the mapper from {args.corpus_cache}")
