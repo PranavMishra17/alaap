@@ -17,6 +17,9 @@ THE HYPOTHESIS. A vector far from the speakers the backend was trained on is a
 vector the backend has less reason to render faithfully. So drift should fall
 with distance from the corpus.
 
+    extremity    how many of the five described axes sit in an OUTERMOST bin
+                 -- E9 asked this on 0.6B; this is the same question with
+                 rendered drift and a decorrelated binner
     d_corpus     cosine distance to the nearest real speaker
     knn5         distance to the 5th nearest real speaker (local density)
     norm_z       vector norm, in corpus standard deviations
@@ -110,6 +113,7 @@ for spec in args.arms:
                      "consistency": r.get("consistency"),
                      "uniqueness": r.get("uniqueness"),
                      "attempts": r.get("attempts", 1),
+                     "cell": r.get("cell") or {},
                      "vec": emb[iid]})
     print(f"      {path}  novelty={nov}  {len(rows)-n0} voices")
 
@@ -168,6 +172,42 @@ for u in sorted(set(nov)):
     m = nov == u
     print(f"    {u:>8.2f} {int(m.sum()):>4} {drift[m].mean():>8.3f} "
           f"{d_corpus[m].mean():>10.3f} {knn5[m].mean():>8.3f}")
+
+# ---------------------------------------------------------------- extremity
+# The other candidate for what drives drift, and the one E9 asked about on
+# 0.6B: how EXTREME the description is. Each caption is a cell in bin space;
+# extremity counts how many of its five axes sit in an outermost bin.
+from alaap.acoustics import BIN_LABELS
+ext = []
+for r in rows:
+    c = r["cell"]
+    ext.append(sum(1 for a, lbl in c.items()
+                   if a in BIN_LABELS and lbl in (BIN_LABELS[a][0],
+                                                  BIN_LABELS[a][-1])))
+ext = np.array(ext, dtype=float)
+report["extremity"] = {}
+if ext.std() > 0:
+    print()
+    print("  EXTREMITY -- does asking for an extreme voice cost drift?")
+    print("  (how many of the 5 described axes sit in an outermost bin)")
+    r_all, _ = spearman(ext, drift)
+    report["extremity"]["pooled"] = r_all
+    print(f"    pooled            spearman vs drift {r_all:>7.3f}")
+    for u in sorted(set(nov)):
+        m = nov == u
+        if m.sum() >= 8:
+            rr, _ = spearman(ext[m], drift[m])
+            report["extremity"][str(u)] = rr
+            print(f"    novelty {u:<5.2f} n={int(m.sum()):<3} "
+                  f"spearman vs drift {rr:>7.3f}")
+    print()
+    print(f"    {'axes at an extreme':>20} {'n':>4} {'mean drift':>11} "
+          f"{'below floor':>12}")
+    for e in sorted(set(ext.astype(int))):
+        m = ext == e
+        if m.sum() >= 3:
+            print(f"    {e:>20} {int(m.sum()):>4} {drift[m].mean():>11.3f} "
+                  f"{(drift[m] < 0.40).mean():>11.0%}")
 
 json.dump(report, open(os.path.join(OUT, "results.json"), "w"), indent=2)
 print()
