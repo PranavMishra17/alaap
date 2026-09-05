@@ -60,6 +60,13 @@ real token, yet emphasising an early versus a late word moves energy the same di
 under one noise unit. The text channel carries no direction at all on this backend. Filed
 upstream (`S13`, `S13b`).
 
+**So direction is driven in the signal instead, and it works.** A phase vocoder moves
+speaking rate over a 3.3× range while shifting pitch by at most 2.3 Hz; identity holds
+at ECAPA 0.80–0.88 and English CER stays 0.000. Naive resampling — the negative control,
+which moves pitch too — collapses identity to 0.10, so the check is sensitive. Measured
+operating range: **0.67× to 1.43× normal speaking rate** (`S14`). One real delivery axis
+with a measured bound; emotion still has no lever here.
+
 **Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
 worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)
 and is a **top delivery axis** (ratio 2.01 across emotions within a speaker). The axes

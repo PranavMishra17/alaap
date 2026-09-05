@@ -360,7 +360,20 @@ predicted ordering does not hold, so the marker is inert.
 
 **The text channel on this backend carries no direction at all.** What remains is
 signal-level re-timing of `speaking_rate` — not a model capability, and therefore not
-subject to whether the model was trained to obey anything. *(S12, S13, S13b)*
+subject to whether the model was trained to obey anything.
+
+**`S14` built it and measured its bound.** A phase vocoder moves rate over a 3.3× range
+while shifting `f0_mean` by at most 2.3 Hz; identity holds at ECAPA 0.80–0.88 and English
+CER stays 0.000. The negative control — naive resampling, which moves pitch too — collapses
+ECAPA to 0.10, so the identity check is sensitive enough to be trusted.
+
+**Operating range, measured rather than chosen: ×0.70 to ×1.50 stretch = 0.67× to 1.43×
+normal speaking rate** (ECAPA ≥ 0.80, English CER ≤ 0.10). Bound of the same kind as
+`DRIFT_FLOOR`. Outside it, identity degrades gradually rather than failing, so this is a
+quality boundary, not a cliff. `Direction.rate` is the field it belongs on.
+
+**What it still does not give is emotion.** Rate is one delivery axis; pitch contour,
+emphasis placement and voice quality have no lever on this backend. *(S12, S13, S13b, S14)*
 
 ---
 
