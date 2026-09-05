@@ -2423,13 +2423,16 @@ Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
-2:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125]   File "E:\VoiceForge TTV Pipeine\v3\envs\qwen3\Lib\site-packages\torch\_dynamo\output_graph.py", line 1465, in _call_user_compiler
+Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
+me.py:1125]   File "E:\VoiceForge TTV Pipeine\v3\envs\qwen3\Lib\site-packages\torch\_dynamo\output_graph.py", line 1465, in _call_user_compiler
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125]     raise BackendCompilerFailed(self.compiler_fn, e) from e
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] torch._dynamo.exc.BackendCompilerFailed: backend='inductor' raised:
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] RuntimeError: Compiler: cl is not found.
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] 
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] Set TORCH_LOGS="+dynamo" and TORCHDYNAMO_VERBOSE=1 for more information
 W0905 09:02:55.777000 17684 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] 
+Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.

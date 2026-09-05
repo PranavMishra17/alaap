@@ -172,9 +172,24 @@ descs = [(f"cat{i:04d}", caption_from_bins(c, seed=i), c)
 print(f"[3/4] minting {len(descs)} voices (novelty {args.novelty})")
 print(f"      uniqueness floor {UNIQUENESS_MIN} -- rejections here ARE the result")
 
-rows, t0 = [], time.time()
+# --resume keeps the DB, so it must keep the audit trail too. Starting a fresh
+# list overwrote rows.json on the first flush, destroying every row from the
+# earlier run -- and re-minted characters the catalog already held, which then
+# collided with themselves and burned retries.
+rows: list[dict] = []
+if args.resume and os.path.exists(os.path.join(OUT, "rows.json")):
+    rows = json.load(open(os.path.join(OUT, "rows.json")))
+    print(f"      resuming: {len(rows)} rows already logged")
+done = {r.get("character_id") for r in rows}
+if done:
+    skipped = sum(1 for cid, _, _ in descs if cid in done)
+    print(f"      skipping {skipped} characters already minted")
+
+t0 = time.time()
 vectors: list[np.ndarray] = []
 for i, (cid, desc, cell) in enumerate(descs):
+    if cid in done:
+        continue
     try:
         out = svc.mint(desc, character_id=cid, language="en",
                        novelty=args.novelty, verify=True, tags=["catalog"])
