@@ -1,6 +1,6 @@
 # S5 — the two-tower split works in Indic
 
-**Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` (0.61B) + `Aratako/MioCodec-25Hz-44.1kHz` · Hindi, Tamil, English
+**Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` (0.61B) + `Aratako/MioCodec-25Hz-44.1kHz-v2` · Hindi, Tamil, English
 **Question:** can a stored speaker vector carry a voice onto new Indic text, with the TTS frozen?
 
 > This is `RESEARCH/04`'s **E1** — the experiment that document called *"the highest-value experiment in this file"* and *"the entire Tier-1 claim for Indic"*. It became runnable when the licence question was settled as research-only and the HF gate opened.
@@ -105,7 +105,7 @@ This experiment now uses **`MioCodec-25Hz-44.1kHz-v2`**, whose tokenizer is bit-
 to the 24 kHz model's and which is natively 44.1 kHz — matching what the authors'
 own `MioTTS-Inference` defaults to.
 
-## A measurement trap this nearly walked into## A measurement trap this nearly walked into
+## A measurement trap this nearly walked into
 
 The first smoke test compared MioCodec global embeddings by **raw cosine** and printed *"NOT separable — red flag"*: two different speakers sat at 0.9882, the same speaker at 0.9970, a separation of 0.0088.
 
@@ -116,7 +116,7 @@ The independent ECAPA numbers above are the honest measurement, and they are una
 ## Not established
 
 - **Intelligibility is now measured** (S5b, `run_intelligibility.py`), and it was the check that exposed the codec error. With the corrected codec: **CER 0.000 on Tamil and English**, 0.114 mean on Hindi — and the Hindi residual is `whisper-small`'s Devanagari orthography (नमस्ते→नमस्ती, मौसम→मोसम), not synthesis error. Critically, **CER spread between the two donors is 0.000 on every line**: who speaks has no effect on what is said, which is the two towers being genuinely independent. `ai4bharat/indic-conformer-600m-multilingual` is the better instrument and is gated pending one accept click.
-- **Nobody has listened yet.** Everything here is machine-scored.
+- **A fluent Hindi speaker has listened**, but to the WRONG-codec renders, and without being told the target sentence — so that confirmation established naturalness, not correctness. The corrected renders have not been heard by anyone.
 - 2 donors, 4 lines, 8 comparisons, one seed. Small.
 - No drift/consistency floors, no minting from a *description* — this carries an **existing** speaker's vector, it does not yet mint a new one from text. That is the next step and the one that makes it a two-tower *product* rather than a voice cloner.
 - The global embedding mixes speaker with **recording environment and microphone** by the card's own admission, so some of the transfer may be channel rather than voice (`RESEARCH/04`'s E3).
