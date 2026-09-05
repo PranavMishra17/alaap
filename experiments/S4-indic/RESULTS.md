@@ -1,7 +1,7 @@
 # S4 — the Indic caption pipeline
 
 **Run:** 2026-09-05 · `SPRINGLab/IndicVoices-R_{Hindi,Tamil}` · 250 clips each · 141 / 153 speakers · Devanagari + Tamil
-**Question:** can we manufacture (caption, voice) pairs for Hindi, and are the measurements underneath them real?
+**Question:** can we manufacture (caption, voice) pairs for Indic languages, and are the measurements underneath them real?
 
 ---
 
