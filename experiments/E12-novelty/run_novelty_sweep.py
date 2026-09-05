@@ -30,13 +30,26 @@ being renderable -- which is exactly what E1's off-manifold warning is about.
 So the output is a CANDIDATE setting, not a decision. The winner has to be
 confirmed by an E11-style run that actually renders and measures drift.
 
-Reported per novelty value:
-    vendi (normalised)   fraction of maximum diversity -- the capacity proxy
-    effective voices     vendi x n
+SPREAD IS NOT THE TARGET. Every diversity metric below can be maximised by
+sampling OFF the manifold -- points far from all real speakers are far from
+each other too, so "novel" and "implausible" produce identical numbers. That is
+the sparse region RESEARCH/12 measured at +60% relative WER. So the deciding
+column is a likelihood comparison, not a distance:
+
+    on_manifold_pct    where the median minted voice's log-likelihood falls
+                       within the distribution of REAL speaker log-likelihoods,
+                       under an INDEPENDENT reference mixture. 50 = as typical
+                       as the median real speaker; 0 = less likely than every
+                       real speaker in the corpus.
+
+Also reported:
+    vendi (normalised)   fraction of maximum diversity
     nn median / p05      nearest-neighbour cosine distance between minted voices
     frac below floor     share that would trip UNIQUENESS_MIN against each other
-    anchor similarity    how well the description still steers the result
-                         (this is what novelty trades away)
+
+`anchor_sim_mean` is recorded but is CONSTANT across novelty by construction --
+anchor_similarity is the retrieval similarity of the top anchor, computed
+before novelty is applied. It does not measure what novelty costs.
 
 Outputs -> experiments/E12-novelty/out/
 
@@ -120,7 +133,17 @@ print(f"      {len(caps)} anchors | {space}")
 # Every number below is meaningless without something to compare it to. The
 # corpus itself is the reference: this is what REAL speaker spacing looks like
 # in the same space, on the same metric.
+# Independent reference density for the on-manifold test. E12b found that
+# every diversity metric here can be maximised by sampling OFF the manifold:
+# points far from all real speakers are far from each other too, so "novel"
+# and "off-manifold" produce identical spread numbers. Only a likelihood
+# comparison separates them. Fit once on the corpus, never on the samples.
+from sklearn.mixture import GaussianMixture
 E_real = space.encode(Z)
+_P_ref = space.to_pca(E_real)[:, :50]
+REF = GaussianMixture(24, covariance_type="full", reg_covar=1e-4,
+                      random_state=1, max_iter=500).fit(_P_ref)
+_ll_real = REF.score_samples(_P_ref)
 idx = np.random.default_rng(args.seed).choice(len(E_real),
                                               size=min(args.n, len(E_real)),
                                               replace=False)
@@ -154,8 +177,12 @@ for nov in NOVELTIES:
         "nn_vs_real": float(np.median(nn) / max(np.median(nn_real), 1e-9)),
         "frac_below_uniqueness_floor": float((nn < UNIQUENESS_MIN).mean()),
         "anchor_sim_mean": float(np.mean(anchors)),
+        "on_manifold_pct": float(
+            (_ll_real < np.median(REF.score_samples(
+                space.to_pca(E)[:, :50]))).mean() * 100.0),
     })
     print(f"      novelty {nov:.2f} | vendi {vs:.3f} | nn {np.median(nn):.3f} "
+          f"| on-manifold {rows[-1]['on_manifold_pct']:.0f}% "
           f"| {time.time()-t0:.0f}s", flush=True)
 
 json.dump({"n": args.n, "real_baseline":
@@ -171,22 +198,24 @@ print("=" * 88)
 print(f"  real speakers (n={len(idx)}):  vendi {vendi_real:.3f}   "
       f"nn median {np.median(nn_real):.3f}   <- the target to match")
 print()
-print(f"  {'novelty':>7} {'vendi':>7} {'vs real':>8} {'nn med':>7} {'vs real':>8} "
-      f"{'<floor':>7} {'anchor':>7}")
-print(f"  {'-'*7} {'-'*7} {'-'*8} {'-'*7} {'-'*8} {'-'*7} {'-'*7}")
+print(f"  {'novelty':>7} {'vendi':>7} {'nn med':>7} {'vs real':>8} "
+      f"{'<floor':>7} {'on-manif':>9}")
+print(f"  {'-'*7} {'-'*7} {'-'*7} {'-'*8} {'-'*7} {'-'*9}")
 best = max(rows, key=lambda r: r["vendi_normalised"])
 for r in rows:
     star = "  <-- most diverse" if r is best else ""
     print(f"  {r['novelty']:>7.2f} {r['vendi_normalised']:>7.3f} "
-          f"{r['vendi_vs_real']:>7.2f}x {r['nn_median']:>7.3f} "
-          f"{r['nn_vs_real']:>7.2f}x {r['frac_below_uniqueness_floor']:>6.1%} "
-          f"{r['anchor_sim_mean']:>7.3f}{star}")
+          f"{r['nn_median']:>7.3f} {r['nn_vs_real']:>7.2f}x "
+          f"{r['frac_below_uniqueness_floor']:>6.1%} "
+          f"{r['on_manifold_pct']:>8.0f}%{star}")
 print()
 print("  'vs real' is the ratio to real speaker spacing in the same space -- "
       "1.00x")
 print("  means synthesised voices are as far apart as real people are.")
-print("  'anchor' is how well the description still steers the result; novelty")
-print("  buys diversity by spending exactly that.")
+print("  'on-manif' is where the median minted voice falls in the distribution")
+print("  of REAL speaker likelihoods. 50% = as typical as the median real")
+print("  speaker; LOW = generating in the tails. Spread alone cannot tell")
+print("  'novel' from 'off-manifold' -- this column is what does.")
 print()
 print("  NOT MEASURED HERE: drift and consistency. A setting that wins on")
 print("  geometry can still render badly, which is what E1's off-manifold")
