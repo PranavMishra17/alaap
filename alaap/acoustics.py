@@ -139,6 +139,116 @@ def snr_estimate(wav: np.ndarray, sr: int = SR) -> float:
     return float(10 * np.log10(sp / max(no, 1e-12)))
 
 
+# ------------------------------------------------------------------ formants
+#
+# E14 measured why these are here. Among REAL speakers, the distance between
+# two captions in bin space predicts the distance between their voices at only
+# rho = 0.260 -- and the mapper already transports 90% of that. The catalog
+# saturates because five axes (pitch, tilt, HNR, expressiveness, rate) do not
+# determine a speaker, not because the mapper loses information. The only way
+# to raise the ceiling is to describe more.
+#
+# Vocal-tract length is the obvious missing axis: it is one of the strongest
+# correlates of perceived speaker identity, it is largely INDEPENDENT of F0
+# (which is why it adds rather than duplicates -- pitch is the larynx, VTL is
+# the tube above it), and RESEARCH/05 already flagged formants as an attribute
+# the project would have to build because Data-Speech does not supply them.
+#
+# Method: LPC on pre-emphasised voiced frames, roots -> formant frequencies.
+# VTL from Fitch's formant dispersion, D = mean spacing between successive
+# formants, VTL = c / (2D). This is the uniform-tube model -- an approximation
+# a phonetician would call crude, but it is the standard one, it needs no
+# corpus-specific calibration, and it is validated below against gender.
+
+_C_CM_PER_S = 35000.0   # speed of sound in warm moist air, cm/s
+
+
+def formants(wav: np.ndarray, sr: int = SR, n: int = 4,
+             max_formant_hz: float = 5000.0, max_frames: int = 200) -> np.ndarray:
+    """
+    Median of the first `n` formants over voiced frames, in Hz.
+
+    Follows the standard (Praat) recipe rather than running LPC at the native
+    rate: **resample to 2 x max_formant first, then use ~2 poles per formant.**
+    A first attempt used the full 24 kHz with order 26 and inverted the gender
+    effect -- females measured LONGER vocal tracts than males, and F2/F3 came
+    out lower for females than for males, both anatomically backwards. At 24 kHz
+    an order-26 filter spends most of its poles modelling the 5-12 kHz region,
+    which carries no formant information, and for low-F0 voices it locks onto
+    individual harmonics instead.
+
+    Returns NaN for any formant that could not be estimated, so a caller sees a
+    missing value rather than a fabricated one.
+    """
+    import librosa
+    out = np.full(n, np.nan)
+    wav = np.asarray(wav, dtype=np.float64).reshape(-1)
+    if len(wav) < sr // 20:
+        return out
+    vm = voiced_mask(wav, sr)
+    idx = np.flatnonzero(vm)
+    if len(idx) == 0:
+        return out
+
+    target_sr = int(2 * max_formant_hz)
+    y = librosa.resample(wav.astype(np.float32), orig_sr=sr, target_sr=target_sr)         if sr != target_sr else wav.astype(np.float32)
+    scale = target_sr / sr
+
+    hop, win = int(target_sr * 0.010), int(target_sr * 0.025)
+    if len(idx) > max_frames:
+        idx = idx[np.linspace(0, len(idx) - 1, max_frames).astype(int)]
+    order = 2 * n + 2                       # 2 poles per formant, + a pair spare
+    hamm = np.hamming(win)
+    rows = []
+    for i in idx:
+        a = int(i * (sr * 0.010) * scale)
+        b = a + win
+        if b > len(y):
+            continue
+        fr = y[a:b].astype(np.float64)
+        fr = np.append(fr[0], fr[1:] - 0.67 * fr[:-1])   # pre-emphasis
+        fr = fr * hamm
+        if not np.any(fr):
+            continue
+        try:
+            A = librosa.lpc(fr, order=order)
+        except Exception:
+            continue
+        r = np.roots(A)
+        r = r[np.imag(r) > 0.01]
+        if len(r) == 0:
+            continue
+        fr_hz = np.arctan2(np.imag(r), np.real(r)) * (target_sr / (2 * np.pi))
+        bw = -0.5 * (target_sr / (2 * np.pi)) * np.log(np.maximum(np.abs(r), 1e-12))
+        o = np.argsort(fr_hz)
+        fr_hz, bw = fr_hz[o], bw[o]
+        keep = (fr_hz > 90) & (fr_hz < max_formant_hz) & (bw < 400)
+        fr_hz = fr_hz[keep]
+        if len(fr_hz) >= n:
+            rows.append(fr_hz[:n])
+    if rows:
+        out = np.nanmedian(np.vstack(rows), axis=0)
+    return out
+
+
+def vocal_tract_length(fmts: np.ndarray) -> float:
+    """
+    VTL in cm from formant dispersion (Fitch 1997), c / (2 * mean spacing).
+
+    Typical adult values run ~13-15 cm for females and ~15-18 cm for males,
+    which is the check that matters -- see the gender validation in tests.
+    Returns NaN if fewer than two formants were estimated.
+    """
+    f = np.asarray(fmts, dtype=np.float64)
+    f = f[np.isfinite(f)]
+    if len(f) < 2:
+        return float("nan")
+    disp = float(np.mean(np.diff(np.sort(f))))
+    if disp <= 1e-6:
+        return float("nan")
+    return float(_C_CM_PER_S / (2.0 * disp))
+
+
 # ------------------------------------------------------- script-aware phones
 #
 # Speaking rate needs a phone COUNT. g2p-en covers Latin script only, and the
@@ -291,6 +401,13 @@ class Attributes:
     snr_db: float
     duration_s: float
     voiced_frac: float
+    # Added after E14. Defaults keep every cached corpus loadable -- they were
+    # measured before these existed, and Attributes.from_dict drops unknowns.
+    f1: float = float("nan")
+    f2: float = float("nan")
+    f3: float = float("nan")
+    formant_dispersion: float = float("nan")
+    vtl_cm: float = float("nan")
 
     def to_dict(self):
         return asdict(self)
@@ -312,7 +429,20 @@ class Attributes:
         return cls(**{k: v for k, v in d.items() if k in known})
 
 
-def measure(wav: np.ndarray, text: str = "", sr: int = SR) -> Attributes:
+def _formant_fields(wav, sr, on: bool) -> dict:
+    """Formant/VTL fields, or NaNs if disabled. LPC is the slowest step in
+    measure(), so it is switchable for callers that do not need it."""
+    if not on:
+        return {}
+    f = formants(wav, sr, n=4)
+    d = np.diff(np.sort(f[np.isfinite(f)])) if np.isfinite(f).sum() >= 2 else []
+    return {"f1": float(f[0]), "f2": float(f[1]), "f3": float(f[2]),
+            "formant_dispersion": float(np.mean(d)) if len(d) else float("nan"),
+            "vtl_cm": vocal_tract_length(f)}
+
+
+def measure(wav: np.ndarray, text: str = "", sr: int = SR,
+            formants_on: bool = True) -> Attributes:
     wav = np.asarray(wav, dtype=np.float32).reshape(-1)
     pk = float(np.abs(wav).max())
     if pk > 1.0:
@@ -328,7 +458,8 @@ def measure(wav: np.ndarray, text: str = "", sr: int = SR) -> Attributes:
         speaking_rate=speaking_rate(wav, text, sr) if text else 0.0,
         hnr_db=hnr(wav, sr), jitter=jit, shimmer=shim,
         spectral_tilt=spectral_tilt(wav, sr), snr_db=snr_estimate(wav, sr),
-        duration_s=float(len(wav) / sr), voiced_frac=float(vm.mean()))
+        duration_s=float(len(wav) / sr), voiced_frac=float(vm.mean()),
+        **_formant_fields(wav, sr, formants_on))
 
 
 # -------------------------------------------------------------------- bins
@@ -340,6 +471,11 @@ BIN_LABELS = {
     "speaking_rate": ["very slow", "slow", "measured", "quick", "rapid"],
     "hnr_db": ["very rough", "rough", "slightly rough", "clear", "very clear"],
     "spectral_tilt": ["very dark", "dark", "balanced", "bright", "very bright"],
+    # VTL: the size of the resonating tube, largely independent of pitch.
+    # "small/large" rather than "child/adult" -- the measurement is anatomy,
+    # not age, and a caption that claims age from a formant is overreaching.
+    "vtl_cm": ["very small-throated", "small-throated", "medium-throated",
+               "large-throated", "very large-throated"],
     "snr_db": ["very noisy", "noisy", "fair", "clean", "very clean"],
     "shimmer": ["very steady", "steady", "slightly unsteady", "unsteady",
                 "very unsteady"],

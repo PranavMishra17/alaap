@@ -791,3 +791,93 @@ class TestIsolationMetricPassesItsOwnControl:
         for j in range(shuf.shape[1]):
             shuf[:, j] = shuf[rng.permutation(len(shuf)), j]
         assert isolation_pct(shuf, reference) > isolation_pct(held_out, reference) + 15
+
+
+class TestFormantsAndVTL:
+    """
+    E14 found the catalog is limited by the DESCRIPTION, not the mapper: among
+    real speakers, bin distance predicts voice distance at only rho = 0.260,
+    and the mapper already transports 90% of that. Vocal-tract length was added
+    to widen the description, because it is a strong correlate of perceived
+    identity and largely independent of F0.
+
+    The first implementation ran LPC at the native 24 kHz with order 26 and
+    INVERTED the anatomy -- females measured longer vocal tracts than males,
+    and F2/F3 came out lower for females. At 24 kHz most of those poles model
+    the 5-12 kHz region, which carries no formant information. The fix is the
+    standard recipe: resample to 2 x max_formant, ~2 poles per formant.
+
+    Validated on 200 GLOBE_V2 clips with gender labels:
+        VTL      female 15.53 cm  <  male 16.37 cm   (Cohen's d 0.52)
+        F1       female 410 Hz    >  male 355 Hz
+        F2       female 1513      >  male 1442
+        F3       female 2662      >  male 2554
+        VTL vs F0  r = -0.415     (correct sign, and not redundant with pitch)
+
+    That needs the corpus, so it is not a unit test. These are the parts that
+    can be checked without a network: a longer tube must measure longer.
+    """
+
+    @staticmethod
+    def _vowel(f_scale=1.0, f0=120.0, sr=24000, dur=1.2):
+        """
+        Source-filter synthesis: a glottal pulse train through resonators at
+        scaled formant frequencies. Scaling the formants by `f_scale` models a
+        vocal tract 1/f_scale times as long.
+        """
+        from scipy.signal import lfilter
+        n = int(sr * dur)
+        t = np.arange(n) / sr
+        src = np.zeros(n)
+        src[:: max(int(sr / f0), 1)] = 1.0          # glottal pulses
+        src = src - 0.95 * np.roll(src, 1)
+        y = src
+        for f, bw in ((500 * f_scale, 60), (1500 * f_scale, 90),
+                      (2500 * f_scale, 120), (3500 * f_scale, 150)):
+            r = np.exp(-np.pi * bw / sr)
+            th = 2 * np.pi * f / sr
+            y = lfilter([1.0], [1.0, -2 * r * np.cos(th), r * r], y)
+        y = y / (np.abs(y).max() + 1e-9) * 0.8
+        return (y * (0.6 + 0.4 * np.sin(2 * np.pi * 3 * t))).astype(np.float32)
+
+    def test_formants_recover_synthesised_resonances(self):
+        from alaap.acoustics import formants
+        f = formants(self._vowel(1.0), 24000, n=4)
+        assert np.isfinite(f[:3]).all(), f
+        for got, want in zip(f[:3], (500, 1500, 2500)):
+            assert abs(got - want) < 0.25 * want, f"got {f}, wanted ~500/1500/2500"
+
+    def test_a_longer_tube_measures_longer(self):
+        """
+        The property that made the first implementation detectably wrong.
+        Formants scaled UP by 1.25 means a tract 1/1.25 as long, so VTL must
+        come out SMALLER.
+        """
+        from alaap.acoustics import formants, vocal_tract_length
+        long_tract = vocal_tract_length(formants(self._vowel(1.0), 24000))
+        short_tract = vocal_tract_length(formants(self._vowel(1.25), 24000))
+        assert np.isfinite(long_tract) and np.isfinite(short_tract)
+        assert short_tract < long_tract, (short_tract, long_tract)
+        assert 1.1 < long_tract / short_tract < 1.4, long_tract / short_tract
+
+    def test_vtl_is_not_a_restatement_of_pitch(self):
+        """Same tract, different F0 -> VTL must barely move."""
+        from alaap.acoustics import formants, vocal_tract_length
+        a = vocal_tract_length(formants(self._vowel(1.0, f0=110), 24000))
+        b = vocal_tract_length(formants(self._vowel(1.0, f0=200), 24000))
+        assert abs(a - b) / max(a, 1e-9) < 0.20, (a, b)
+
+    def test_missing_formants_are_nan_not_invented(self):
+        from alaap.acoustics import formants, vocal_tract_length
+        assert np.isnan(vocal_tract_length(np.array([np.nan, np.nan])))
+        assert np.isnan(formants(np.zeros(200, dtype=np.float32), 24000)).all()
+
+    def test_old_caches_still_load_without_the_new_fields(self):
+        """Attributes gained fields after several corpora were measured."""
+        from alaap.acoustics import Attributes
+        a = Attributes.from_dict({
+            "f0_mean": 150.0, "f0_std": 20.0, "f0_range": 80.0,
+            "speaking_rate": 12.0, "hnr_db": 10.0, "jitter": 0.01,
+            "shimmer": 0.05, "spectral_tilt": -6.0, "snr_db": 30.0,
+            "duration_s": 4.0, "voiced_frac": 0.6})
+        assert np.isnan(a.vtl_cm) and a.f0_cv > 0
