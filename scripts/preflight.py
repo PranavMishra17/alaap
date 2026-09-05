@@ -127,18 +127,38 @@ def _binners():
     return OK, f"{len(v2)} v2 binners, no v1"
 
 
-@check("emotion tau vectors")
+@check("emotion tau for the DEFAULT model")
 def _tau():
-    p = "assets/emotion_tau_qwen3_0.6B.npz"
-    if not os.path.exists(p):
-        return WARN, "absent -- Direction(emotion=...) will be REJECTed"
+    """
+    Checking a hardcoded 0.6B path reported 'ok' while the DEFAULT model had no
+    usable tau at all -- which is exactly how emotion came to do nothing on
+    1.7B without anyone noticing. tau is per-model, so check the one the
+    default backend would actually load.
+    """
+    import glob
     import numpy as np
+    from alaap.encoder import DEFAULT_MODEL
+    tag = "1.7B" if "1.7B" in DEFAULT_MODEL else "0.6B"
+    want = 2048 if tag == "1.7B" else 1024
+    p = f"assets/emotion_tau_qwen3_{tag}.npz"
+    others = [os.path.basename(x) for x in glob.glob("assets/emotion_tau_*.npz")
+              if os.path.basename(x) != os.path.basename(p)]
+    if not os.path.exists(p):
+        return BLOCK, (f"{p} absent, so Direction(emotion=...) renders NEUTRAL "
+                       f"on {DEFAULT_MODEL.split('/')[-1]}. tau is per-model; "
+                       f"rebuild with scripts/fit_emotion_tau.py"
+                       + (f" (present but unusable here: {', '.join(others)})"
+                          if others else ""))
     d = np.load(p)
     # the archive also carries provenance keys (model, n_speakers, source,
     # dim) -- counting those as emotions overstates what Direction can do
     emo = sorted(k[4:] for k in d.files if k.startswith("tau_"))
-    meta = f"{int(d['n_speakers'])} speakers" if "n_speakers" in d.files else ""
-    return OK, f"{len(emo)} emotions ({', '.join(emo)}) {meta}".strip()
+    got = int(d["dim"]) if "dim" in d.files else None
+    if got is not None and got != want:
+        return BLOCK, (f"{p} is {got}-d but {tag} needs {want}-d -- it will be "
+                       f"dropped at load and emotion will render NEUTRAL")
+    spk = f"{int(d['n_speakers'])} speakers" if "n_speakers" in d.files else ""
+    return OK, f"{len(emo)} emotions ({', '.join(emo)}) {spk} @ {want}-d".strip()
 
 
 @check("dev-only corpora are gated in code")
