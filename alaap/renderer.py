@@ -129,7 +129,10 @@ class Qwen3BaseRenderer:
                   "es": "spanish"}
     public_servable = True          # Apache-2.0 code AND weights, chain traced
     direction_support = {
-        "emotion": Honouring.REJECT,       # no instruct channel; E0 supplies this
+        # E0 measured a real Direction channel via task-vector arithmetic.
+        # APPROXIMATE, not HONOURED, because it carries a measured identity
+        # cost -- see direction_bounds.
+        "emotion": Honouring.APPROXIMATE,
         "style": Honouring.REJECT,
         "rate": Honouring.REJECT,
         "pitch_var": Honouring.REJECT,
@@ -137,6 +140,21 @@ class Qwen3BaseRenderer:
         "target_seconds": Honouring.REJECT,
         "pauses": Honouring.REJECT,
         "emphasis": Honouring.REJECT,
+    }
+
+    # A bound is REQUIRED for anything marked APPROXIMATE. RESEARCH/10's rule:
+    # "approximate without a published bound is REJECT".
+    direction_bounds = {
+        "emotion": {
+            "emotions": ["anger", "disgust", "fear", "happy", "sad"],
+            "alpha_max": 1.0,
+            # identity retained at alpha=1.0, normalised so 0.0 = a DIFFERENT
+            # speaker and 1.0 = the target (E0, tau over 32 speakers)
+            "identity_retained_ecapa": 0.591,
+            "identity_retained_wavlm": 0.853,
+            "note": "the two encoders disagree; ECAPA is the stricter and the "
+                    "better discriminator (EER 2.58% vs 5.34%). Quote both.",
+        },
     }
 
     # Generation cap -- cheap insurance, NOT the fix for the stall below.
@@ -159,7 +177,8 @@ class Qwen3BaseRenderer:
 
     def __init__(self, model_id: str = "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
                  device: str = "cuda", dtype: str = "bfloat16",
-                 max_new_tokens: int | None = None):
+                 max_new_tokens: int | None = None,
+                 emotion_tau: str | None = None):
         import torch
         from qwen_tts import Qwen3TTSModel
         self._torch = torch
@@ -173,6 +192,32 @@ class Qwen3BaseRenderer:
         self.backend_version = model_id
         self.device = device
         self.max_new_tokens = max_new_tokens or self.DEFAULT_MAX_NEW_TOKENS
+        self.tau = self._load_tau(emotion_tau)
+
+    def _load_tau(self, path=None) -> dict:
+        """
+        Emotion direction vectors (E0). Dimension must match this model's
+        enc_dim -- tau fitted on 0.6B (1024-d) is meaningless on 1.7B (2048-d),
+        so a mismatch is dropped LOUDLY rather than silently broadcast.
+        """
+        import os
+        want = int(self.model.config.speaker_encoder_config.enc_dim)
+        if path is None:
+            path = f"assets/emotion_tau_qwen3_{'0.6B' if want == 1024 else '1.7B'}.npz"
+        if not os.path.exists(path):
+            return {}
+        z = np.load(path, allow_pickle=False)
+        out = {}
+        for k in z.files:
+            if not k.startswith("tau_"):
+                continue
+            v = np.asarray(z[k], dtype=np.float32).reshape(-1)
+            if v.shape[0] != want:
+                print(f"[renderer] tau {k} has dim {v.shape[0]} but this model "
+                      f"expects {want} -- DROPPED (tau is per-model)")
+                continue
+            out[k[4:]] = v
+        return out
 
     # ------------------------------------------------------------- direction
     def _lang(self, language: str) -> str:
@@ -190,6 +235,10 @@ class Qwen3BaseRenderer:
         degr = []
         for f in d.requested_fields():
             h = self.direction_support.get(f, Honouring.REJECT)
+            if h is Honouring.APPROXIMATE and f not in self.direction_bounds:
+                raise NotImplementedError(
+                    f"{f} is APPROXIMATE but has no published bound; "
+                    f"RESEARCH/10 requires that be treated as REJECT")
             if h is Honouring.REJECT:
                 msg = f"{f}: not supported by {self.backend_id}"
                 if d.strict:
@@ -198,6 +247,38 @@ class Qwen3BaseRenderer:
         return degr
 
     # ---------------------------------------------------------------- render
+    def steer(self, vec, direction):
+        """
+        Apply the Direction channel to a TIMBRE vector at render time.
+
+        Invariant I5: this never touches the stored identity. The identity is
+        minted neutral and stays neutral; steering happens per line.
+        """
+        if direction is None or not direction.emotion or not self.tau:
+            return np.asarray(vec, dtype=np.float32), []
+        v = np.asarray(vec, dtype=np.float64).copy()
+        n0 = float(np.linalg.norm(v))
+        notes, applied = [], False
+        cap = self.direction_bounds["emotion"]["alpha_max"]
+        keep = self.direction_bounds["emotion"]["identity_retained_ecapa"]
+        for emo, w in direction.emotion.items():
+            t = self.tau.get(emo)
+            if t is None:
+                notes.append(f"emotion {emo!r}: no direction vector "
+                             f"(have {sorted(self.tau)})")
+                continue
+            alpha = float(np.clip(w * direction.intensity, -cap, cap))
+            v = v + alpha * t.astype(np.float64)
+            applied = True
+            notes.append(f"emotion {emo!r} applied at alpha={alpha:.2f}; "
+                         f"identity retained ~{keep:.2f} at alpha=1.0 "
+                         f"(ECAPA-normalised)")
+        if applied:
+            n = float(np.linalg.norm(v))     # keep it on the shell (E3)
+            if n > 0:
+                v = v / n * n0
+        return v.astype(np.float32), notes
+
     def _prompt_from_vector(self, vec: np.ndarray):
         from qwen_tts.inference.qwen3_tts_model import VoiceClonePromptItem
         t = self._torch.as_tensor(np.asarray(vec, dtype=np.float32)).reshape(-1)
@@ -209,6 +290,8 @@ class Qwen3BaseRenderer:
     def render_from_vector(self, vec: np.ndarray, text: str, language: str = "en",
                            direction: Direction | None = None, **kw) -> Audio:
         degr = self._apply_direction(direction)
+        vec, notes = self.steer(vec, direction)
+        degr += notes
         item = self._prompt_from_vector(vec)
         wavs, sr = self.model_generate(text, self._lang(language), [item], **kw)
         return Audio(wav=wavs[0], sample_rate=sr, backend_id=self.backend_id,

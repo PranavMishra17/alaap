@@ -281,3 +281,122 @@ class TestAcoustics:
         bins = b.bin_one(attrs[0])
         r = adherence_error(bins, attrs[0], b)
         assert r["exact_match_rate"] == 1.0 and r["mean_bin_distance"] == 0.0
+
+
+# =================================================== Direction channel (E0)
+class TestDirectionChannel:
+    """
+    The Direction channel is task-vector arithmetic (E0). These guard the
+    properties that make it safe to expose, not the quality of the effect.
+    """
+
+    def _shim(self, enc_dim=1024):
+        """A renderer shell with no model loaded -- tests pure vector logic."""
+        from alaap.renderer import Qwen3BaseRenderer
+
+        class Cfg:
+            class speaker_encoder_config:
+                pass
+        Cfg.speaker_encoder_config.enc_dim = enc_dim
+
+        class M:
+            config = Cfg()
+        r = Qwen3BaseRenderer.__new__(Qwen3BaseRenderer)
+        r.model = M()
+        r.tau = {}
+        return r
+
+    def test_tau_dim_mismatch_is_dropped_not_broadcast(self):
+        """
+        tau fitted on 0.6B (1024-d) is MEANINGLESS on 1.7B (2048-d).
+        Silently broadcasting or truncating it would corrupt every render.
+        """
+        import os
+        p = "assets/emotion_tau_qwen3_0.6B.npz"
+        if not os.path.exists(p):
+            pytest.skip("tau asset not built")
+        assert self._shim(2048)._load_tau(p) == {}      # dropped
+        assert len(self._shim(1024)._load_tau(p)) > 0   # kept
+
+    def test_steer_is_noop_without_direction(self):
+        r = self._shim(); r.tau = {"anger": np.ones(8, dtype=np.float32)}
+        v = np.arange(8, dtype=np.float32)
+        out, notes = r.steer(v, None)
+        assert np.allclose(out, v) and notes == []
+
+    def test_steer_preserves_norm(self):
+        """E3: generated vectors belong on the manifold's shell."""
+        r = self._shim(); r.tau = {"anger": np.ones(8, dtype=np.float32) * 3}
+        v = np.arange(1, 9, dtype=np.float32)
+        out, _ = r.steer(v, Direction(emotion={"anger": 1.0}, intensity=1.0))
+        assert np.isclose(np.linalg.norm(out), np.linalg.norm(v), rtol=1e-5)
+        assert not np.allclose(out, v)
+
+    def test_unknown_emotion_is_reported_not_ignored(self):
+        r = self._shim(); r.tau = {"anger": np.ones(8, dtype=np.float32)}
+        out, notes = r.steer(np.ones(8, dtype=np.float32),
+                             Direction(emotion={"smug": 1.0}))
+        assert any("smug" in n for n in notes)
+
+    def test_alpha_is_capped_at_the_published_bound(self):
+        from alaap.renderer import Qwen3BaseRenderer
+        cap = Qwen3BaseRenderer.direction_bounds["emotion"]["alpha_max"]
+        r = self._shim(); r.tau = {"anger": np.ones(8, dtype=np.float32)}
+        _, notes = r.steer(np.ones(8, dtype=np.float32),
+                           Direction(emotion={"anger": 99.0}, intensity=1.0))
+        assert f"alpha={cap:.2f}" in notes[0]
+
+    def test_approximate_requires_a_published_bound(self):
+        """RESEARCH/10: 'approximate without a published bound is REJECT'."""
+        from alaap.renderer import Qwen3BaseRenderer, Honouring
+        for f, h in Qwen3BaseRenderer.direction_support.items():
+            if h is Honouring.APPROXIMATE:
+                assert f in Qwen3BaseRenderer.direction_bounds, \
+                    f"{f} is APPROXIMATE with no bound"
+
+    def test_bounds_quote_both_encoders(self):
+        """E0: reporting only the forgiving encoder overstates the result."""
+        from alaap.renderer import Qwen3BaseRenderer
+        b = Qwen3BaseRenderer.direction_bounds["emotion"]
+        assert "identity_retained_ecapa" in b and "identity_retained_wavlm" in b
+
+
+# ====================================================== calibration (E0/E4)
+class TestCalibration:
+    def test_normalised_similarity_anchors(self):
+        from alaap.metrics import normalised_similarity, CALIBRATION
+        for enc, (same, diff, _) in CALIBRATION.items():
+            assert abs(normalised_similarity(same, enc) - 1.0) < 1e-9
+            assert abs(normalised_similarity(diff, enc) - 0.0) < 1e-9
+
+    def test_unknown_encoder_refuses(self):
+        """A similarity without a measured floor is not a claim."""
+        from alaap.metrics import normalised_similarity
+        with pytest.raises(KeyError):
+            normalised_similarity(0.9, "some-encoder-we-never-calibrated")
+
+    def test_encoders_disagree_on_the_same_raw_value(self):
+        """
+        The E0 finding, as an executable claim: 0.88 means very different
+        things on WavLM and ECAPA, so a bare SECS is uninterpretable.
+        """
+        from alaap.metrics import normalised_similarity as n
+        assert n(0.88, "wavlm") - n(0.88, "ecapa") < -0.5
+
+
+# ================================================ service thresholds (E9)
+class TestServiceThresholds:
+    def test_floors_sit_between_cdiff_and_csame(self):
+        from alaap.service import DRIFT_FLOOR, CONSISTENCY_FLOOR, UNIQUENESS_MIN
+        from alaap.metrics import CALIBRATION
+        same, diff, _ = CALIBRATION["ecapa"]
+        assert diff < CONSISTENCY_FLOOR < same, \
+            "a consistency floor outside [C_diff, C_same] is meaningless"
+        assert 0.0 < DRIFT_FLOOR < 1.0
+        assert 0.0 < UNIQUENESS_MIN < 1.0
+
+    def test_consistency_probe_uses_multiple_lines(self):
+        """One line cannot measure consistency ACROSS lines."""
+        from alaap.service import CONSISTENCY_PROBE_LINES
+        assert len(CONSISTENCY_PROBE_LINES) >= 2
+        assert len(set(CONSISTENCY_PROBE_LINES)) == len(CONSISTENCY_PROBE_LINES)

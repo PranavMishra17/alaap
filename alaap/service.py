@@ -43,6 +43,22 @@ from .renderer import Audio, Direction, load_backend
 DRIFT_FLOOR = 0.40          # below this, re-mint (E2 worst case was 0.3546)
 UNIQUENESS_MIN = 0.30       # VoicePrivacy B3's threshold, applied in WORKING space
 
+# E9: extreme voices hold together as well as central ones ON AVERAGE, but
+# their WORST CASE is worse (0.4279 vs 0.5008 ECAPA consistency). Means were
+# equal; the tail was not. A single character whose voice wanders between
+# lines is exactly the failure a game studio would notice, so minting probes
+# CONSISTENCY across several lines, not just drift on one.
+#
+# Floor is set at the E9 extreme-group worst case. ECAPA C_diff on real
+# speech is 0.2011 and C_same is 0.6988, so 0.43 is ~46% of the way from a
+# different speaker to the same one -- deliberately permissive, because it
+# rejects only genuinely unstable identities.
+CONSISTENCY_FLOOR = 0.43
+CONSISTENCY_PROBE_LINES = [
+    "The mountains remember every footstep.",
+    "It's cold today, colder than anyone promised.",
+]
+
 
 @dataclass
 class MintOutcome:
@@ -53,12 +69,13 @@ class MintOutcome:
     uniqueness: float
     attempts: int
     warnings: list[str]
+    consistency: Optional[float] = None
 
 
 class VoiceService:
     def __init__(self, renderer, space: SpeakerSpace, store: IdentityStore,
                  mapper=None, watermarker=None, audio_dir: str = "data/audio",
-                 is_public: bool = True):
+                 is_public: bool = True, sv=None):
         # I3 -- refuses here, not at request time
         load_backend(renderer, is_public_deployment=is_public)
         self.r = renderer
@@ -66,6 +83,7 @@ class VoiceService:
         self.store = store
         self.mapper = mapper
         self.wm = watermarker
+        self.sv = sv           # INDEPENDENT scorer for the consistency probe
         self.audio_dir = os.path.abspath(audio_dir)
         os.makedirs(self.audio_dir, exist_ok=True)
         self.space_ref = f"space-{getattr(space, 'version', '1')}-{space.stats.dim}d"
@@ -83,6 +101,27 @@ class VoiceService:
         if not existing:
             return 1.0
         return self.space.uniqueness_distance(vec, np.stack(existing))
+
+    def _consistency(self, vec: np.ndarray, language: str) -> tuple:
+        """
+        Render a couple of probe lines and measure self-similarity with an
+        INDEPENDENT encoder. Returns (score, clips) or (None, []) if no
+        independent scorer was supplied -- never scored with the conditioning
+        encoder, which would be marking its own homework (RESEARCH/06).
+        """
+        if self.sv is None:
+            return None, []
+        embs, clips = [], []
+        for line in CONSISTENCY_PROBE_LINES:
+            a = self.r.render_from_vector(vec.astype(np.float32), line, language)
+            embs.append(self.sv.embed(a.wav, sr=a.sample_rate))
+            clips.append(a)
+        if len(embs) < 2:
+            return None, clips
+        sims = [float(embs[i] @ embs[j] /
+                      max(np.linalg.norm(embs[i]) * np.linalg.norm(embs[j]), 1e-12))
+                for i in range(len(embs)) for j in range(i + 1, len(embs))]
+        return float(np.mean(sims)), clips
 
     def _drift(self, intended: np.ndarray, wav: np.ndarray, sr: int) -> float:
         back = self.r.extract_vector(wav, sr).astype(np.float64)
@@ -123,20 +162,32 @@ class VoiceService:
             # Tier 2 is mandatory: mint the seed clip now (I2)
             a = self.r.render_from_vector(vec.astype(np.float32), seed_line, language)
             drift = self._drift(vec, a.wav, a.sample_rate) if verify else None
+            cons, _ = self._consistency(vec, language) if verify else (None, [])
 
-            cand = (vec, a, drift, uniq)
-            if best is None or (drift is not None and best[2] is not None
-                                and drift > best[2]):
+            cand = (vec, a, drift, uniq, cons)
+            score = (drift or 0) + (cons or 0)
+            if best is None or score > (best[2] or 0) + (best[4] or 0):
                 best = cand
-            if drift is None or drift >= DRIFT_FLOOR:
+            drift_ok = drift is None or drift >= DRIFT_FLOOR
+            cons_ok = cons is None or cons >= CONSISTENCY_FLOOR
+            if drift_ok and cons_ok:
                 break
-            warnings.append(f"attempt {attempt}: drift {drift:.3f} < {DRIFT_FLOOR}")
+            if not drift_ok:
+                warnings.append(f"attempt {attempt}: drift {drift:.3f} < {DRIFT_FLOOR}")
+            if not cons_ok:
+                warnings.append(f"attempt {attempt}: consistency {cons:.3f} < "
+                                f"{CONSISTENCY_FLOOR} (E9: unstable identities "
+                                f"wander between lines)")
 
-        vec, a, drift, uniq = best
+        vec, a, drift, uniq, cons = best
         if drift is not None and drift < DRIFT_FLOOR:
             warnings.append(
                 f"accepted with drift {drift:.3f} below the {DRIFT_FLOOR} floor "
                 f"after {max_attempts} attempts")
+        if cons is not None and cons < CONSISTENCY_FLOOR:
+            warnings.append(
+                f"accepted with consistency {cons:.3f} below the "
+                f"{CONSISTENCY_FLOOR} floor after {max_attempts} attempts")
 
         wav = a.wav
         if self.wm is not None:
@@ -150,13 +201,14 @@ class VoiceService:
             backend_id=self.r.backend_id, backend_version=self.r.backend_version,
             generation_params={"novelty": novelty, "mapper": "retrieval+gmm",
                                "seed_line": seed_line, "attempts": attempt,
-                               "drift": drift, "uniqueness": uniq},
+                               "drift": drift, "uniqueness": uniq,
+                               "consistency": cons},
             embedding=vec.astype(np.float32), space_ref=self.space_ref,
             tags=tags or [])
         self.store.put(idn)
         return MintOutcome(identity=idn, seed_audio=wav, sample_rate=a.sample_rate,
                            drift=drift, uniqueness=uniq, attempts=attempt,
-                           warnings=warnings)
+                           warnings=warnings, consistency=cons)
 
     # --------------------------------------------------------------- render
     def render(self, identity_id: str, text: str,
