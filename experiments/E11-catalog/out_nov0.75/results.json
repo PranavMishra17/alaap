@@ -1,0 +1,56 @@
+{
+  "n_attempted": 20,
+  "n_minted": 20,
+  "n_errors": 0,
+  "n_clean": 6,
+  "clean_rate": 0.3,
+  "tiers": {
+    "1": 20
+  },
+  "drift": {
+    "mean": 0.4122982311533045,
+    "min": 0.3191258683406089,
+    "p05": 0.32220125691269125,
+    "below_floor": 8,
+    "floor": 0.4
+  },
+  "consistency": {
+    "mean": 0.5643544524908066,
+    "min": 0.41866663098335266,
+    "p05": 0.45494073927402495,
+    "below_floor": 1,
+    "floor": 0.43
+  },
+  "uniqueness": {
+    "mean": 0.7591929809142742,
+    "min": 0.45280754008364443,
+    "p05": 0.46252366741228135,
+    "below_floor": 0,
+    "floor": 0.3
+  },
+  "saturation_curve": [
+    {
+      "from": 0,
+      "to": 10,
+      "clean_rate": 0.2,
+      "mean_uniqueness": 0.8611296058456421,
+      "mean_attempts": 2.5
+    },
+    {
+      "from": 10,
+      "to": 20,
+      "clean_rate": 0.4,
+      "mean_uniqueness": 0.6572563559829064,
+      "mean_attempts": 2.1
+    }
+  ],
+  "diversity": {
+    "n_vectors": 20,
+    "vendi_normalised": 0.7044258523306224,
+    "effective_voices": 14.088517046612449,
+    "verdict": "ok",
+    "nn_median": 0.6277901277414124,
+    "nn_p05": 0.45280754152398783,
+    "nn_min": 0.45280754152398783
+  }
+}
