@@ -400,3 +400,30 @@ class TestServiceThresholds:
         from alaap.service import CONSISTENCY_PROBE_LINES
         assert len(CONSISTENCY_PROBE_LINES) >= 2
         assert len(set(CONSISTENCY_PROBE_LINES)) == len(CONSISTENCY_PROBE_LINES)
+
+
+# ============================================== cache keying (regression)
+class TestCacheKeying:
+    def test_embedding_cache_key_includes_model(self):
+        """
+        REGRESSION. An experiment cache keyed WITHOUT model_id silently served
+        0.6B embeddings to a 1.7B run. It failed loudly only because the dims
+        differed (2048 vs 1024) -- two models with the same enc_dim would have
+        produced quietly wrong numbers.
+        """
+        from alaap.encoder import EmbeddingCache
+        base = dict(corpus="globe_v2", n=100, per_speaker=1,
+                    min_dur=2.0, max_dur=15.0, seed=0, skip=0)
+        a = EmbeddingCache.key(model_id="Qwen/Qwen3-TTS-12Hz-0.6B-Base", **base)
+        b = EmbeddingCache.key(model_id="Qwen/Qwen3-TTS-12Hz-1.7B-Base", **base)
+        assert a != b, "cache key must distinguish models"
+
+    def test_cache_key_distinguishes_every_spec_field(self):
+        from alaap.encoder import EmbeddingCache
+        base = dict(model_id="m", corpus="c", n=10, per_speaker=1,
+                    min_dur=2.0, max_dur=15.0, seed=0, skip=0)
+        ref = EmbeddingCache.key(**base)
+        for field, alt in [("corpus", "other"), ("n", 11), ("per_speaker", 2),
+                           ("min_dur", 3.0), ("max_dur", 14.0), ("seed", 1),
+                           ("skip", 5)]:
+            assert EmbeddingCache.key(**{**base, field: alt}) != ref, field

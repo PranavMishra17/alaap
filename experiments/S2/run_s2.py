@@ -42,10 +42,14 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--n", type=int, default=600, help="corpus clips")
 ap.add_argument("--per-speaker", type=int, default=3)
 ap.add_argument("--corpus", default="libritts_r_train")
+ap.add_argument("--model", default=None, help="defaults to alaap.encoder.DEFAULT_MODEL")
 ap.add_argument("--candidates", type=int, default=3, help="voices minted per description")
 ap.add_argument("--line", default="The mountains remember every footstep.")
 ap.add_argument("--skip-render", action="store_true")
 args = ap.parse_args()
+from alaap.encoder import DEFAULT_MODEL as _DM
+if args.model is None:
+    args.model = _DM
 
 # The fixed evaluation set (PHASE-00 section 3.2). Deliberately spans the
 # range, INCLUDING low-density regions -- E3/RESEARCH/12 warn that "elderly",
@@ -65,7 +69,15 @@ def stage(msg):
 
 # ------------------------------------------------------- 1. corpus + measure
 stage(f"1. corpus: {args.n} clips from {args.corpus}")
-cache = os.path.join(OUT, f"corpus_{args.corpus}_{args.n}_{args.per_speaker}.npz")
+# The cache key MUST include the model. It did not, and a 1.7B run silently
+# loaded 0.6B embeddings; every render then failed with a 2048-vs-1024
+# mismatch. That failed LOUDLY only by luck -- two models with the same
+# enc_dim would have produced quietly wrong numbers. alaap.encoder's
+# EmbeddingCache already hashes model_id for exactly this reason; this
+# script's ad-hoc cache did not.
+_mtag = args.model.split("/")[-1].replace(".", "")
+cache = os.path.join(
+    OUT, f"corpus_{args.corpus}_{args.n}_{args.per_speaker}_{_mtag}.npz")
 if os.path.exists(cache):
     d = np.load(cache, allow_pickle=True)
     Z = d["Z"].astype(np.float64); ids = list(d["ids"])
@@ -83,7 +95,7 @@ else:
         if (i + 1) % 100 == 0:
             print(f"        {i+1}/{len(clips)} | {time.time()-t0:.0f}s", flush=True)
     from alaap.encoder import SpeakerEncoder
-    enc = SpeakerEncoder()
+    enc = SpeakerEncoder(args.model)
     Z = enc.embed_many([c.wav for c in clips], progress_every=200).astype(np.float64)
     del enc
     import torch; torch.cuda.empty_cache()
@@ -97,7 +109,7 @@ print(f"      {len(attrs)} measured, {len(set(ids))} speakers")
 # -------------------------------------------------- 2. bin + caption + space
 stage("2. binning, captioning, fitting the speaker space")
 binner = Binner.fit(attrs)
-binner.save(os.path.join(OUT, f"binner_{args.corpus}.json"))
+binner.save(os.path.join(OUT, f"binner_{args.corpus}_{_mtag}.json"))
 
 # Build (caption, vector) pairs.
 #
@@ -140,14 +152,14 @@ print(f"      {len(spk_vec)} speaker identities with grounded captions")
 print(f"      e.g. {spk_cap[0]}")
 
 space = SpeakerSpace.fit(spk_vec, n_components=min(150, len(spk_vec) - 1))
-space.save(os.path.join(OUT, f"speaker_space_{args.corpus}.npz"))
+space.save(os.path.join(OUT, f"speaker_space_{args.corpus}_{_mtag}.npz"))
 print(f"      {space}")
 
 # ------------------------------------------------------------- 3. mapper
 stage("3. fitting the retrieval mapper")
 te = TextEncoder()
 mapper = RetrievalMapper(space, te, pca_dims=50).fit(spk_cap, spk_vec)
-mapper.save(os.path.join(OUT, f"mapper_{args.corpus}.npz"))
+mapper.save(os.path.join(OUT, f"mapper_{args.corpus}_{_mtag}.npz"))
 print(f"      fitted on {len(spk_cap)} (caption, vector) pairs, "
       f"text dim {te.dim}, PCA {mapper.k}")
 
@@ -192,7 +204,7 @@ if not args.skip_render:
     stage("5. rendering + re-measuring (the adherence loop)")
     from alaap.renderer import Qwen3BaseRenderer, load_backend
     import soundfile as sf
-    r = Qwen3BaseRenderer(); load_backend(r, is_public_deployment=True)
+    r = Qwen3BaseRenderer(args.model); load_backend(r, is_public_deployment=True)
     rows = []
     t0 = time.time()
     todo = [m for m in minted if m["cand"] == 0]     # one candidate per cell
@@ -205,7 +217,7 @@ if not args.skip_render:
         at = measure(a.wav, args.line, a.sample_rate)
         tgt = target_bins_from_text(m["desc"])
         adh = adherence_error(tgt, at, binner)
-        fn = f"{args.corpus}_d{m['desc_i']}_n{m['novelty']}.wav"
+        fn = f"{args.corpus}_{_mtag}_d{m['desc_i']}_n{m['novelty']}.wav"
         sf.write(os.path.join(AUD, fn), a.wav, a.sample_rate)
         rows.append({"desc_i": m["desc_i"], "desc": m["desc"],
                      "novelty": m["novelty"], "file": fn,
@@ -232,7 +244,7 @@ summary = {
     "eval_descriptions": EVAL_DESCRIPTIONS,
     "renders": results_render,
 }
-json.dump(summary, open(os.path.join(OUT, f"results_{args.corpus}.json"), "w"),
+json.dump(summary, open(os.path.join(OUT, f"results_{args.corpus}_{_mtag}.json"), "w"),
           indent=2, default=float)
 
 print()
