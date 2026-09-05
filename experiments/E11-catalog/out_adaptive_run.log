@@ -2427,3 +2427,5 @@ W0905 07:40:07.588000 8916 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_fr
 W0905 07:40:07.588000 8916 envs\qwen3\Lib\site-packages\torch\_dynamo\convert_frame.py:1125] 
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
 Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:2150 for open-end generation.
