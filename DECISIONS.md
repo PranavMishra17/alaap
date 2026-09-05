@@ -262,6 +262,80 @@ That is the invariant working as designed rather than being worked around: **the
 
 ---
 
+## ADR-010 — the diversity knobs are `top_k` and `pca_dims`, and they were mis-set
+
+**Status:** locked, 2026-09-05 · **Supersedes:** the settings used by E9, E11, E12, E14, S2, S6, S7
+
+Minting blends the `top_k` nearest anchors in a `pca_dims`-truncated PCA basis and
+zero-pads the rest. Both cost diversity, and both defaults were wrong:
+
+| `pca_dims` / `top_k` | effective voices (Indic, bound ~38) |
+|---|---|
+| 32 / 4 ← every experiment before this ADR | 13 |
+| 64 / 2 | 20 |
+| – / 1 | 33 = *pure retrieval* |
+
+`mint` floored `top_k` at 2, which made pure retrieval **inexpressible as a mint
+setting**. That is why S7-vs-S8 read as two competing methods: it is one method at two
+settings, and each anchor blended in costs diversity.
+
+**Decision.** `top_k` defaults to 2 and may be 1. `pca_dims` defaults to the full basis
+in new experiments. Committed numbers from earlier experiments stand as records of their
+configuration and are annotated, not silently restated.
+
+**Rejected:** rescaling minted vectors to the real-speaker radius. Measured first; it
+moved Vendi 0.161 → 0.161. The radial contraction is a symptom of blending, not the
+mechanism. *(S9b, S10)*
+
+---
+
+## ADR-011 — the uniqueness floor is per-space and must be validated by listening
+
+**Status:** locked, 2026-09-05
+
+`UNIQUENESS_MIN = 0.30` was VoicePrivacy B3's threshold, borrowed and applied in a
+working space nobody had validated it for. It survived nine experiments. A listener then
+heard pairs at d = 0.323 as **the same person half the time**, and everything at
+d ≥ 0.506 correctly, with controls 4/4.
+
+Raising it is nearly free: 0.30 → 0.45 drops 10 of 50 accepted voices and 3% of effective
+diversity. Those ten were duplicates.
+
+**Decision.** `UNIQUENESS_MIN_MIOCODEC = 0.45`, selected via
+`service.mint(uniqueness_min=...)`. `UNIQUENESS_MIN` stays 0.30 for Qwen3 **because that
+listening test was Indic only** — a 2048-d space is a different geometry and a cosine
+distance in it does not mean the same thing. **A floor is a claim about perception and may
+not be transferred between spaces without being re-measured.** The English floor is
+unvalidated in both directions until it has its own test. *(S11)*
+
+---
+
+## ADR-012 — description and direction run on disjoint acoustic axes
+
+**Status:** locked, 2026-09-05
+
+Measured on CREMA-D (91 actors × 6 emotions × 12 fixed sentences), the ratio of
+within-speaker variance across emotions to between-speaker variance:
+
+| axis | identity weight | delivery ratio |
+|---|---|---|
+| `f0_mean` | **2.72 – 3.85** ← dominant | 1.04 ⚠️ |
+| `f0_cv` | 0.23 – 0.66 | **1.57** |
+| `speaking_rate` | **0.10 – 0.31** ← worthless | **2.01** |
+
+The axes identity discards are the axes delivery uses. `speaking_rate` was measured as
+near-useless for identity five times across three corpora and two languages; that was the
+signature of an axis belonging to the other channel, not a curiosity.
+
+**Decision.** The direction channel is built on `speaking_rate`, `f0_cv`, `jitter` and
+`shimmer`. **`f0_mean` is off-limits to direction** — at ratio 1.04 emotion moves pitch
+about as much as different speakers differ in pitch, and pitch is what identity is mostly
+made of here. The naive "make it angry → raise the pitch" is the most damaging thing this
+channel could do. `hnr_db` and `spectral_tilt` are contested and may be used only with
+their identity cost measured. *(S12, verified against synthesis in S13)*
+
+---
+
 ## Open questions — deliberately not decided yet
 
 | # | Question | Decided at | Blocked on |
@@ -281,6 +355,7 @@ That is the invariant working as designed rather than being worked around: **the
 | 2026-09-02 | Research pass 1 complete. ADR-000 through ADR-005 locked. Project renamed VoiceForge → Alaap. |
 | 2026-09-05 | ADR-009: research-only posture. The owner has no commercial intent, and the Parler gate turns out to declare no extra terms at all, so the licence audit becomes documentation rather than a gate. Indic-Mio becomes the Indic backend; S5 then measured the two-tower split working on it. No code change was needed — load_backend already separated research use from public serving. |
 | 2026-09-05 | ADR-007 and ADR-008: catalog capacity is a description problem, not a sampler one — re-weight the axes, retrieve on bins, change the anchor corpus; and novelty becomes adaptive rather than fixed. |
+| 2026-09-05 | ADR-010, ADR-011, ADR-012: the diversity knobs were mis-set project-wide (14 → 22 Indic, 23 → 41 English effective voices); the uniqueness floor was too low and is now per-space and listener-validated; and delivery and identity were measured onto disjoint acoustic axes, making a direction channel that cannot disturb identity structurally possible. |
 | 2026-09-05 | ADR-006: no publicly-servable Indic path exists today. Both halves of `RESEARCH/04` §9's stack fail the licence audit; `Qwen3-TTS` has no Indic language at all. Four routes recorded, decision deferred to S5. |
 
 ---
