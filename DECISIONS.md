@@ -172,6 +172,61 @@ Concretely, now:
 
 ---
 
+## ADR-007 — catalog capacity is a DESCRIPTION problem; stop tuning the sampler
+
+**Date:** 2026-09-05 · **Status:** accepted · **Supersedes:** the framing in E11/E12, not their measurements
+
+### Context
+
+E11 built the catalog and found it saturating at **40 voices** — mean uniqueness halving (0.803 → 0.457), three pairs breaching the uniqueness floor, and a Vendi score of 0.482, i.e. **20 effectively-distinct voices out of 42 minted.**
+
+The obvious reading was that the sampler was set wrong, so `novelty` and `gmm_components` were swept. That produced two reversals and one withdrawn metric before the actual answer arrived, and the sequence is worth keeping because the failure mode recurs:
+
+1. **A defect, not a curve.** `GaussianMixture.sample()` re-seeds from a fixed `random_state`, so the generative branch had **at most 64 possible outputs** for the life of a mapper. E1's "novelty 1.0 collapsed" was reading that bug.
+2. **Spread is not a target.** After the fix, every diversity metric preferred the *crudest* prior available (a single Gaussian). "Far from the data" and "novel" produce identical spread numbers.
+3. **The plausibility metric was broken too.** A GMM log-likelihood test scored **real held-out speakers the same as Gaussian noise**. Everything it justified was withdrawn, including a `typicality` mode added to `mint()`.
+4. **Geometry does not predict rendering.** E13: distance-to-corpus correlates with drift at ρ = −0.35, ~12% of rank variance. E11 then rendered E12's recommendation and found the opposite.
+
+### Decision
+
+**The catalog's capacity is limited by the description, not by the mapper or the sampler. Work on the description.**
+
+E14 measured it against the corpus's own real (caption, voice) pairs: five acoustic axes predict voice distance at **ρ = 0.260**, and the mapper already transports **90%** of that (`echoes source` 0.0%, so it is not retrieval in disguise). **No sampling knob can manufacture distinctions the description never made.**
+
+### Consequences, in order of evidence
+
+| # | Action | Evidence |
+|---|---|---|
+| 1 | **Re-weight the axes.** `f0` alone beats all five equally-weighted (0.386 vs 0.278 on GLOBE; 0.616 vs 0.374 on LibriTTS-R) | E14b, replicated E14c |
+| 2 | **Retrieve on bins, not sentence embeddings.** The text path is barely better than chance (rank 129.7/350, chance 175); weighted bin retrieval is +66% / +55% | E15, replicated E15d |
+| 3 | **Change the anchor corpus.** GLOBE_V2's speaker labels are unreliable (E4: EER 20.0% vs 2.46%), which depresses everything measured against them | E14c |
+| 4 | **Add axes.** `vtl_cm` is built and validated, worth +15% relative | E14b |
+| 5 | *Only then* revisit sampling | E12, E13 |
+
+**And a standing rule that follows from (4) above:** *a geometry sweep narrows candidates; it never picks among them.* Anything that changes the sampler needs a rendering arm before its default moves.
+
+### What was NOT decided
+
+- `novelty` stays adaptive rather than fixed (see below), not raised.
+- `retrieval="hybrid"` is implemented but **default off** — its evidence is all embedding-space, and rule (4) applies to it too.
+- `ρ = 0.260` is **not** the limit of a five-axis description. It is that limit *on GLOBE_V2*; on LibriTTS-R the same axes reach 0.374.
+
+---
+
+## ADR-008 — novelty is adaptive, not a fixed setting
+
+**Date:** 2026-09-05 · **Status:** accepted
+
+**Context.** `novelty`'s cost is immediate and its benefit is deferred. Measured at matched catalog size, raising it degrades the vocoder round-trip from the very first voice (drift below floor 5% → 30% → 40% for 0.0 / 0.45 / 0.75), while its benefit — avoiding collisions — does not matter until the catalog is dense enough to collide, which for the control did not happen until voice 30. `novelty=0.45` bought **no** mean-uniqueness gain at all while costing six times the drift failures.
+
+**Decision.** Mint at the caller's `novelty` and escalate by `NOVELTY_STEP` **only when a mint actually collides**. Drift and consistency failures never escalate — they are precisely the failures more novelty makes worse.
+
+**Measured (E11 arm 4, 30 voices):** uniqueness floor breaches **3% → 0%**, closest pair 0.292 → 0.320, **drift-below-floor identical at 7%**. One escalation across thirty voices.
+
+**Consequence.** `service.mint` owns this; callers keep passing `novelty=0.0`. Do not reintroduce a raised fixed default — three independent measurements (E11 drift, E14 transport 0.90×→0.35×, E1's off-manifold warning) say it costs description fidelity.
+
+---
+
 ## Open questions — deliberately not decided yet
 
 | # | Question | Decided at | Blocked on |
@@ -189,6 +244,7 @@ Concretely, now:
 | Date | Change |
 |---|---|
 | 2026-09-02 | Research pass 1 complete. ADR-000 through ADR-005 locked. Project renamed VoiceForge → Alaap. |
+| 2026-09-05 | ADR-007 and ADR-008: catalog capacity is a description problem, not a sampler one — re-weight the axes, retrieve on bins, change the anchor corpus; and novelty becomes adaptive rather than fixed. |
 | 2026-09-05 | ADR-006: no publicly-servable Indic path exists today. Both halves of `RESEARCH/04` §9's stack fail the licence audit; `Qwen3-TTS` has no Indic language at all. Four routes recorded, decision deferred to S5. |
 
 ---
