@@ -1,7 +1,7 @@
 # E11 — catalog saturation, and what novelty actually costs
 
 **Run:** 2026-09-05 · `Qwen3-TTS-12Hz-1.7B-Base` · v2 (decorrelated) binner · GLOBE_V2 mapper
-**Two arms:** `out/` = `novelty=0.0` (**40 voices, complete**) · `out_nov0.75/` = `novelty=0.75` (**running**)
+**Three arms:** `out/` = novelty 0.0 (40 voices) · `out_nov0.45/` = 0.45 (running) · `out_nov0.75/` = 0.75 (20 voices)
 
 **Question:** how many distinct voices does this backend actually hold before new descriptions stop producing new voices?
 
@@ -68,14 +68,60 @@ Drift is the vocoder round-trip: intended vector vs the vector re-extracted from
 
 ---
 
+## Three arms, compared at matched catalog size
+
+Uniqueness depends on how full the catalog already is, so the arms are only
+comparable at the same n. At the first **20** minted voices each:
+
+| novelty | clean | drift mean | **drift below floor** | uniq mean | uniq min | uniq below floor | attempts |
+|---|---|---|---|---|---|---|---|
+| **0.00** | **85%** | 0.463 | **5%** | 0.698 | 0.292 | 5% | 1.25 |
+| 0.45 | 50% | 0.409 | 30% | **0.694** | 0.313 | 0% | 1.80 |
+| 0.75 | 30% | 0.412 | 40% | 0.759 | 0.453 | 0% | 2.30 |
+
+**Read the two uniqueness columns together — they say something the single-arm
+view hid.** At twenty voices, `novelty=0.45` delivers *no* improvement in mean
+uniqueness at all (0.694 against the control's 0.698) while costing **six times**
+the drift failures. Only `0.75` moves mean uniqueness, and it costs eight times.
+
+What novelty *does* buy immediately is the elimination of floor breaches (5% → 0%).
+But the control only had one breach at n=20; its collisions became a real problem
+between 30 and 40 voices, where mean uniqueness fell to 0.457 and three pairs
+breached.
+
+### The design consequence: novelty should be adaptive
+
+**Novelty's cost is immediate and its benefit is deferred.** Drift degrades from
+the very first voice, while collisions only start to matter once the catalog is
+dense. A fixed setting therefore has to pay the full cost from voice one to buy
+insurance it does not need until voice thirty.
+
+So the setting should not be fixed. **Mint at `novelty=0` while the space is
+empty, and raise it only when a mint actually collides** — which `service.mint`
+already detects, since it retries on exactly that condition. The retry, not the
+initial attempt, is where novelty belongs.
+
+That is a design proposal, not a measured result. It follows from these three
+arms but has not itself been run.
+
 ## Where this leaves the catalog
 
-Nothing here supports changing the default yet, and the two arms together frame the real problem:
+The three arms together say the capacity limit is **not** a knob that was set wrong:
 
-- **`novelty=0.0` saturates** — uniqueness halves within 40 voices, and 3 pairs already breach the floor.
-- **`novelty=0.75` does not saturate but does not render** — 50% below the drift floor at n=10.
+- **`novelty=0.0` saturates** — uniqueness halves within 40 voices, 3 pairs breach the floor.
+- **`novelty=0.45` costs 30% drift failures and buys no mean-uniqueness gain at n=20.**
+- **`novelty=0.75` does not collide but renders badly** — 40% below the drift floor.
 
-So the capacity limit is **not** a knob that was set wrong. It sits between two failures, and the useful settings are in between. **Next: an arm at `novelty≈0.45`**, where E12 measured collisions already down (12.7% vs 19.0%) and the move from the anchors is half as far.
+There is no fixed setting that avoids both failures, which is what motivates the
+adaptive proposal above.
+
+**And E14 then found the reason there isn't one.** Measured against the corpus's
+real (caption, voice) pairs, five acoustic axes predict voice distance at only
+ρ = 0.260, and the mapper already transports 90% of that. The catalog saturates
+because **the description cannot distinguish more voices** — not because the
+sampler is set wrong. That redirects the work from tuning `novelty` to widening
+and re-weighting the description; see `experiments/E14-transport/RESULTS.md` and
+`experiments/E15-retrieval/RESULTS.md`.
 
 `gmm_components` is the other lever and E12 rates it higher than novelty — k=1 scored best on spread, collisions and plausibility simultaneously. It has had **no** rendering test at all, and given what this experiment just did to E12's geometry conclusion, it should get one before it is believed.
 
