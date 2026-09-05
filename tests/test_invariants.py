@@ -1046,26 +1046,34 @@ class TestShippedScriptsLoadTheirArtefacts:
         joined = re.sub(r'"\s*\n\s*"', "", src)
         return re.findall(r'"(experiments/[^"]+\.(?:npz|json))"', joined)
 
-    def test_demo_script_artefacts_are_loadable(self):
+    def test_every_shipped_script_can_load_what_it_names(self):
+        import glob
         import os
         from alaap.acoustics import Attributes, Binner
         import json as _json
-        script = os.path.join(os.path.dirname(__file__), "..", "scripts",
-                              "demo_script_render.py")
-        script = os.path.abspath(script)
-        if not os.path.exists(script):
-            pytest.skip("demo script not present")
-        root = os.path.dirname(os.path.dirname(script))
-        refs = self._referenced_paths(script)
-        assert refs, "no artefact paths found in the demo -- did it get rewritten?"
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        scripts = sorted(glob.glob(os.path.join(root, "scripts", "*.py")))
+        if not scripts:
+            pytest.skip("no scripts directory")
+        checked = 0
+        refs = []
+        for script in scripts:
+            # preflight globs its own paths at runtime; nothing to pin here
+            if os.path.basename(script) == "preflight.py":
+                continue
+            refs += self._referenced_paths(script)
         for rel in refs:
             full = os.path.join(root, rel)
             if not os.path.exists(full):
-                pytest.skip(f"{rel} not built in this checkout")
+                continue                               # not built in this checkout
             if rel.endswith(".json") and "binner" in rel:
                 Binner.load(full)                      # raises on a v1 binner
+                checked += 1
             elif rel.endswith(".npz"):
                 d = np.load(full, allow_pickle=True)
+                checked += 1
                 if "attrs" in d:
                     for a in _json.loads(str(d["attrs"]))[:5]:
                         Attributes.from_dict(a)        # must tolerate old caches
+        assert checked, ("no artefacts were actually loaded -- the guard would "
+                         "pass on a repo where every path is broken")
