@@ -427,3 +427,90 @@ class TestCacheKeying:
                            ("min_dur", 3.0), ("max_dur", 14.0), ("seed", 1),
                            ("skip", 5)]:
             assert EmbeddingCache.key(**{**base, field: alt}) != ref, field
+
+
+# ------------------------------------------------- Indic phone counting
+class TestIndicPhones:
+    """
+    Guards the silent failure that motivated count_phones_indic.
+
+    g2p-en does not raise on Devanagari, and the vowel-group fallback under it
+    matches `[aeiouy]+`, which finds nothing in any Brahmic script. `max(.., 1)`
+    then made a whole Hindi sentence 2.5 phones, so every Indic clip would have
+    read ~0.5 phones/s and speaking_rate would have collapsed to one bin with
+    no error anywhere. These tests make that failure loud.
+    """
+
+    def test_detects_the_nine_brahmic_scripts(self):
+        from alaap.acoustics import detect_script
+        for text, want in [("नमस्ते", "devanagari"),
+                           ("বাংলা", "bengali"),
+                           ("தமிழ்", "tamil"),
+                           ("వాడు", "telugu"),
+                           ("ಕನ್ನಡ", "kannada")]:
+            assert detect_script(text) == want, text
+
+    def test_latin_returns_zero_so_caller_falls_back(self):
+        from alaap.acoustics import count_phones_indic, detect_script
+        assert detect_script("Hello there") is None
+        assert count_phones_indic("Hello there") == 0
+
+    def test_phone_counts_match_hand_transcription(self):
+        """Hand-checked against the standard romanisation of each word."""
+        from alaap.acoustics import count_phones_indic
+        cases = [("कमल", 5),            # kamal   k a m a l
+                 ("भारत", 5),       # bhaarat bh aa r a t
+                 ("राम", 3),             # raam    r aa m
+                 ("नमस्ते", 7),  # namaste n a m a s t e
+                 ("हिन्दी", 5)]  # hindii  h i n d ii
+        for text, want in cases:
+            assert count_phones_indic(text) == want, (text, want)
+
+    def test_virama_suppresses_the_inherent_vowel(self):
+        """The abugida rule: a halant kills the schwa, so the count drops."""
+        from alaap.acoustics import count_phones_indic
+        # सत = s a t a(deleted) -> 3 ; स्त = s t a -> 3? no: virama kills s's schwa
+        assert count_phones_indic("सत") > count_phones_indic("स्त")
+
+    def test_final_schwa_deleted_for_indo_aryan_only(self):
+        """
+        Hindi कमल is /kəmal/, not /kəmələ/. Dravidian languages keep
+        their final vowels, so the same rule must NOT apply to Tamil/Telugu.
+        """
+        from alaap import acoustics as A
+        word = "कमल"
+        with_rule = A.count_phones_indic(word)
+        A._SCHWA_DELETING.discard("devanagari")
+        try:
+            without = A.count_phones_indic(word)
+        finally:
+            A._SCHWA_DELETING.add("devanagari")
+        assert with_rule == without - 1
+        assert "tamil" not in A._SCHWA_DELETING
+        assert "telugu" not in A._SCHWA_DELETING
+
+    def test_speaking_rate_uses_the_indic_branch(self):
+        """
+        End-to-end: Devanagari text must NOT fall through to the vowel-group
+        estimate, which would report ~0.5 phones/s for any Indic sentence.
+
+        The signal is an amplitude-modulated harmonic stack rather than a pure
+        tone: voiced_mask thresholds energy at the 40th percentile, so a
+        CONSTANT-amplitude signal has no frame above its own threshold and
+        reads as 0% voiced. Real speech always has that contrast.
+        """
+        from alaap.acoustics import speaking_rate, voiced_mask, SR
+        import numpy as np
+        t = np.arange(int(SR * 2.0)) / SR
+        harm = sum(np.sin(2 * np.pi * 140 * k * t) / k for k in (1, 2, 3, 4))
+        env = 0.5 + 0.5 * np.sin(2 * np.pi * 3.0 * t)          # syllabic rate
+        wav = (0.3 * harm * env).astype(np.float32)
+        voiced_s = float(voiced_mask(wav, SR).sum() * 0.010)
+        assert voiced_s > 0.3, f"fixture is not voiced ({voiced_s:.2f}s)"
+
+        sentence = "राम घर गया"   # raam ghar gayaa = 10 phones
+        r = speaking_rate(wav, sentence, SR)
+        # 10 phones over ~1s of voiced audio. The vowel-group fallback would
+        # give int(2.5 * 1) / voiced_s, i.e. under 2.5 -- so 4.0 separates them.
+        assert r > 4.0, f"Indic branch not used, got {r:.2f} phones/s"
+        assert abs(r * voiced_s - 10) < 1e-6, "phone count is not 10"

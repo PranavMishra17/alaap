@@ -139,6 +139,102 @@ def snr_estimate(wav: np.ndarray, sr: int = SR) -> float:
     return float(10 * np.log10(sp / max(no, 1e-12)))
 
 
+# ------------------------------------------------------- script-aware phones
+#
+# Speaking rate needs a phone COUNT. g2p-en covers Latin script only, and the
+# vowel-group fallback below it counts `[aeiouy]+`, which finds ZERO matches in
+# any Indic script. `max(..., 1)` then turns a whole Hindi sentence into 2.5
+# phones, so every Indic clip would read ~0.5 phones/s and the entire
+# speaking_rate axis would collapse into one bin -- silently, with no error.
+#
+# Brahmic scripts are abugidas: a consonant carries an inherent vowel (schwa)
+# unless a vowel sign (matra) replaces it or a virama suppresses it. So phones
+# are countable from graphemes without a lexicon:
+#
+#     consonant             -> 1 phone, plus 1 more for its inherent vowel
+#                              UNLESS followed by a matra or a virama
+#     matra (vowel sign)    -> 1 phone (it IS the vowel that replaced the schwa)
+#     independent vowel     -> 1 phone
+#     virama / halant       -> 0 (it only cancels the inherent vowel)
+#     anusvara / candrabindu/ visarga -> 1 (nasal or /h/)
+#
+# Unicode allocates the nine Indic blocks in PARALLEL: the same offset inside
+# each 128-point block means the same class of character. That is a property of
+# the standard (each block was encoded on the ISCII layout), not a coincidence,
+# so one offset table serves all nine scripts.
+#
+# SCHWA DELETION. Indo-Aryan languages delete the word-final inherent schwa:
+# Hindi कमल is /kəmal/, three vowels, not /kəmələ/. Without this the count runs
+# ~10-15% high on Hindi. Dravidian languages (Tamil, Telugu, Kannada,
+# Malayalam) retain final vowels, so the deletion is applied per-script.
+# Medial schwa deletion is real but lexically conditioned; it is not modelled
+# here, which leaves a known small overcount. See RESEARCH/05.
+
+_BLOCKS = {  # script -> base codepoint of its 128-point Unicode block
+    "devanagari": 0x0900, "bengali": 0x0980, "gurmukhi": 0x0A00,
+    "gujarati":   0x0A80, "oriya":   0x0B00, "tamil":    0x0B80,
+    "telugu":     0x0C00, "kannada": 0x0C80, "malayalam": 0x0D00,
+}
+# Indo-Aryan drop the word-final schwa; Dravidian do not.
+_SCHWA_DELETING = {"devanagari", "bengali", "gurmukhi", "gujarati", "oriya"}
+
+# offsets within a block (identical across all nine)
+_VOWEL_IND = range(0x05, 0x15)   # independent vowels  अ..औ
+_CONSONANT = range(0x15, 0x3A)   # consonants          क..ह
+_MATRA     = range(0x3E, 0x4D)   # dependent vowels    ा..ौ
+_VIRAMA    = 0x4D
+_NASAL_H   = (0x01, 0x02, 0x03)  # candrabindu, anusvara, visarga
+
+
+def detect_script(text: str) -> Optional[str]:
+    """Dominant Indic script in `text`, or None if it is not Indic."""
+    counts = {}
+    for ch in text:
+        cp = ord(ch)
+        for name, base in _BLOCKS.items():
+            if base <= cp < base + 0x80:
+                counts[name] = counts.get(name, 0) + 1
+                break
+    return max(counts, key=counts.get) if counts else None
+
+
+def count_phones_indic(text: str, script: Optional[str] = None) -> int:
+    """
+    Estimate phones in Brahmic-script text. Returns 0 for non-Indic input so
+    callers can fall back rather than trusting a bogus count.
+    """
+    script = script or detect_script(text)
+    if script is None:
+        return 0
+    base = _BLOCKS[script]
+    off = [ord(c) - base if base <= ord(c) < base + 0x80 else None for c in text]
+    n = 0
+    for i, o in enumerate(off):
+        if o is None:
+            continue
+        nxt = off[i + 1] if i + 1 < len(off) else None
+        if o in _CONSONANT:
+            n += 1                                   # the consonant itself
+            if nxt in _MATRA or nxt == _VIRAMA:
+                pass                                 # vowel supplied, or killed
+            else:
+                n += 1                               # inherent schwa
+        elif o in _VOWEL_IND or o in _MATRA:
+            n += 1
+        elif o in _NASAL_H:
+            n += 1
+    if script in _SCHWA_DELETING:
+        # one schwa per word ending in a bare consonant
+        import re as _re
+        for w in _re.findall(r"[^\s\u0964\u0965.,!?;:]+", text):
+            if not w:
+                continue
+            last = ord(w[-1]) - base
+            if last in _CONSONANT:
+                n -= 1
+    return max(n, 0)
+
+
 def speaking_rate(wav: np.ndarray, text: str, sr: int = SR) -> float:
     """
     Phones per second of VOICED audio (silence excluded).
@@ -148,20 +244,27 @@ def speaking_rate(wav: np.ndarray, text: str, sr: int = SR) -> float:
     Measured on LibriTTS-R: mean 20.7 phones/s voiced, i.e. ~12 overall.
 
     No forced aligner needed -- in TTV the text is known (RESEARCH/06).
-    Uses g2p-en if installed, else a vowel-group syllable estimate x 2.5.
+
+    Three counters, tried in order of how much they know about the text:
+      1. Brahmic script  -> count_phones_indic (grapheme rules, see above)
+      2. Latin + g2p-en  -> a real English lexicon
+      3. anything else   -> vowel groups x 2.5
+    The Indic branch comes FIRST because g2p-en does not fail loudly on
+    Devanagari, it just returns junk.
     """
     voiced = voiced_mask(wav, sr)
     voiced_s = float(voiced.sum() * 0.010)
     if voiced_s <= 0.05:
         return 0.0
-    n_ph = None
-    try:
-        from g2p_en import G2p
-        if not hasattr(speaking_rate, "_g2p"):
-            speaking_rate._g2p = G2p()
-        n_ph = len([p for p in speaking_rate._g2p(text) if p.strip() and p != " "])
-    except Exception:
-        pass
+    n_ph = count_phones_indic(text)
+    if not n_ph:
+        try:
+            from g2p_en import G2p
+            if not hasattr(speaking_rate, "_g2p"):
+                speaking_rate._g2p = G2p()
+            n_ph = len([p for p in speaking_rate._g2p(text) if p.strip() and p != " "])
+        except Exception:
+            pass
     if not n_ph:
         import re
         n_ph = int(2.5 * max(len(re.findall(r"[aeiouyAEIOUY]+", text)), 1))
