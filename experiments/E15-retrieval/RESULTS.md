@@ -52,7 +52,7 @@ Two other limits: 350 anchors here against 2,500 in the real mapper — retrieva
 
 # E15b — how much of a real description actually parses? 22%
 
-E15's caveat named a number it did not have. Here it is ():
+E15's caveat named a number it did not have. Here it is (`measure_parse_coverage.py`):
 
 | kind of input | axes recovered, of 6 |
 |---|---|
@@ -69,23 +69,26 @@ So E15's +66% is real but applies to roughly a fifth of the signal. **The hybrid
 
 ### It also uncovered a dead axis
 
-Building this measurement exposed a silent defect. The parser's synonym table was keyed **** — an axis S2 run 4 removed, replacing it with .  has no , and  **skips any target bin whose axis it cannot find**, so every natural synonym for expressiveness (*monotone, flat, animated, expressive, lively*) was parsed into an axis that was then silently discarded and never scored.
+Building this measurement exposed a silent defect. The parser's synonym table was keyed **`f0_std`** — an axis S2 run 4 removed, replacing it with `f0_cv`. `BIN_LABELS` has no `f0_std`, and `adherence_error` **skips any target bin whose axis it cannot find**, so every natural synonym for expressiveness (*monotone, flat, animated, expressive, lively*) was parsed into an axis that was then silently discarded and never scored.
 
 The bare word **"monotone"** — the likeliest thing a user types for that axis — produced a target that could never be satisfied. Nothing errored. The axis simply stopped being covered, and it looked fine whenever it was tested with a *generated* caption, because those use a phrasing that also appears in the correctly-keyed caption phrasebook.
 
-Fixed, with  asserting that every axis the parser can emit exists in . Coverage moved 1.25 → 1.29 axes, which is small — the defect cost scoring accuracy, not parse rate.
+Fixed, with `TestCaptionAxesAreLive` asserting that every axis the parser can emit exists in `BIN_LABELS`. Coverage moved 1.25 → 1.29 axes, which is small — the defect cost scoring accuracy, not parse rate.
 
 ## Not established
 
 - One corpus, English, one backend, `top_k=4`, one SLERP blending scheme.
 - The weights are measured on 350 speakers and are not validated on a second corpus.
 - No rendering: no drift, consistency, or adherence, and no listening.
-- The hybrid design above is **proposed, not tested**. The number that matters for it — how much of a real user's description `target_bins_from_text` recovers — has not been measured.
+- The hybrid design above is **proposed, not tested**.
+- E15b's descriptions are **my own**, written by someone who had just read the parser. That biases coverage upward, so 22% is more likely an over-estimate than an under-estimate.
+- Parse coverage is measured on 24 descriptions across four styles, which is a sketch, not a survey of how people actually write character briefs.
 
 ## Reproduce
 
 ```bash
 envs/qwen3/Scripts/python.exe experiments/E15-retrieval/run_retrieval.py
+envs/qwen3/Scripts/python.exe experiments/E15-retrieval/measure_parse_coverage.py
 ```
 
 Under a minute on CPU. Needs `experiments/E14-transport/out/vtl_attrs_500.npz` (produced by `run_vtl_gain.py`) for the `vtl_cm` axis.
