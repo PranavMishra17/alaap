@@ -77,31 +77,10 @@ LINES = [
 ]
 
 
-def edit_distance(a, b):
-    if len(a) < len(b):
-        a, b = b, a
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        cur = [i]
-        for j, cb in enumerate(b, 1):
-            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
-        prev = cur
-    return prev[-1]
-
-
-def normalise(s):
-    """Strip the emotion tags and punctuation the ASR will never emit."""
-    import re
-    s = re.sub(r"<[a-z]+>", " ", s)
-    s = re.sub(r"[।॥.,!?;:'\"\-—‘’“”]", " ", s)
-    return " ".join(s.split())
-
-
-def cer(ref, hyp):
-    r, h = normalise(ref), normalise(hyp)
-    if not r:
-        return float("nan")
-    return edit_distance(r, h) / len(r)
+# Shared with S6b so both experiments score on the same definition -- a CER
+# that differs between them by its normalisation is not a comparison.
+from alaap.metrics import cer
+from alaap.metrics import normalise_transcript as normalise
 
 
 print(f"[1/3] loading {args.asr} on {args.device}")

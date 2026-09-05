@@ -1365,3 +1365,40 @@ class TestDirectionBoundNamesItsModel:
         _, notes = r.steer(np.ones(4, dtype=np.float32),
                            Direction(emotion={"anger": 1.0}))
         assert notes and "NOT re-measured" not in notes[0], notes
+
+
+class TestCharacterErrorRate:
+    """
+    CER is how intelligibility is scored for Indic, and it caught a real
+    failure: renders decoded through the wrong codec were fluent-sounding
+    but said different words. A listener could not detect that without the
+    reference text; CER could.
+    """
+
+    def test_identical_is_zero(self):
+        from alaap.metrics import cer
+        assert cer("नमस्ते आप कैसे हैं", "नमस्ते आप कैसे हैं") == 0.0
+
+    def test_punctuation_and_tags_do_not_count(self):
+        """An ASR emits neither the danda nor the backend's <happy> tags."""
+        from alaap.metrics import cer
+        assert cer("मुझे यह फिल्म बहुत पसंद आई! <happy>",
+                   "मुझे यह फिल्म बहुत पसंद आई") == 0.0
+
+    def test_wrong_words_score_high(self):
+        """The actual failure: fluent Devanagari, entirely different words."""
+        from alaap.metrics import cer
+        c = cer("नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है",
+                "अज़्ट उद आयार मुशिलो के लब शिबगो जो लिख चिए आया")
+        assert c > 0.5, c
+
+    def test_a_spelling_variant_scores_low(self):
+        """whisper's नमस्ते->नमस्ती is not a synthesis error."""
+        from alaap.metrics import cer
+        c = cer("नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है",
+                "नमस्ती आप कैसे है आज मोसम बहुत अच्छा है")
+        assert 0 < c < 0.2, c
+
+    def test_empty_reference_is_nan(self):
+        from alaap.metrics import cer
+        assert np.isnan(cer("", "anything"))

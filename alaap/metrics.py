@@ -235,3 +235,43 @@ def isolation_pct(X: np.ndarray, R: np.ndarray, k: int = 5) -> float:
     """
     r_self = knn_radius(R, R, k=k, self_exclude=True)
     return float((r_self < np.median(knn_radius(X, R, k=k))).mean() * 100.0)
+
+
+# ------------------------------------------------------------ transcription
+def edit_distance(a: str, b: str) -> int:
+    """Levenshtein distance, iterative, O(min(|a|,|b|)) memory."""
+    if len(a) < len(b):
+        a, b = b, a
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def normalise_transcript(s: str) -> str:
+    """
+    Strip what an ASR will never emit: the backend's own control tags and
+    punctuation. Includes the Devanagari danda (U+0964) and double danda.
+    """
+    import re
+    s = re.sub(r"<[a-z_]+>", " ", s)
+    s = re.sub(r"[।॥.,!?;:'\"\-—‘’“”()]", " ", s)
+    return " ".join(s.split())
+
+
+def cer(reference: str, hypothesis: str) -> float:
+    """
+    Character error rate, after normalisation.
+
+    CER rather than WER because Indic scripts are abugidas: word boundaries
+    are less reliable than characters, and Devanagari/Tamil segmentation would
+    add its own error term on top of the ASR's. Returns NaN for an empty
+    reference rather than dividing by zero.
+    """
+    r, h = normalise_transcript(reference), normalise_transcript(hypothesis)
+    if not r:
+        return float("nan")
+    return edit_distance(r, h) / len(r)

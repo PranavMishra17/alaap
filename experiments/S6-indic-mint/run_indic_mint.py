@@ -219,6 +219,27 @@ for name, desc in CAST:
 nn = nn_distances(np.vstack([x["e"] for x in minted]))
 print(f"      minted-to-minted nn: median {np.median(nn):.3f} min {nn.min():.3f}")
 
+# Persist for S6b. It needs the minted vectors AND real corpus vectors from the
+# same space, so it can decode identical content tokens through both and
+# attribute any CER difference to minting rather than to the path.
+# Two DISTINCT speakers. With --per-speaker 2 the first two clips are the same
+# person, which would make the control a comparison of one speaker with herself.
+_seen, DONOR_IDX = set(), []
+for _i, _m in enumerate(metas[:n]):
+    if _m["speaker_id"] not in _seen:
+        _seen.add(_m["speaker_id"])
+        DONOR_IDX.append(_i)
+    if len(DONOR_IDX) == 2:
+        break
+np.savez_compressed(
+    os.path.join(OUT, "minted.npz"),
+    names=np.array([x["name"] for x in minted]),
+    V=np.vstack([x["v"] for x in minted]).astype(np.float32),
+    donor_V=Z[DONOR_IDX].astype(np.float32),
+    donor_ids=np.array([metas[i]["speaker_id"] for i in DONOR_IDX]),
+    script=np.array(SCRIPT_HI))
+print(f"      minted vectors + {len(DONOR_IDX)} real donors -> out/minted.npz")
+
 if args.skip_render:
     print("[6/6] --skip-render, stopping before synthesis")
     sys.exit(0)
