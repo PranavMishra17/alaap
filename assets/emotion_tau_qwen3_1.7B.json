@@ -1,0 +1,31 @@
+{
+  "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+  "dim": 2048,
+  "n_speakers": 37,
+  "emotions": {
+    "anger": {
+      "n_speakers": 37,
+      "norm": 2.310215080504798
+    },
+    "disgust": {
+      "n_speakers": 37,
+      "norm": 0.825725189141687
+    },
+    "fear": {
+      "n_speakers": 37,
+      "norm": 1.1381511582080783
+    },
+    "happy": {
+      "n_speakers": 37,
+      "norm": 1.419851113128951
+    },
+    "sad": {
+      "n_speakers": 37,
+      "norm": 1.2871604509074692
+    }
+  },
+  "method": "arXiv:2606.05367 task-vector arithmetic",
+  "fit": "speaker-disjoint half of CREMA-D, seed 0; per-speaker mean before cross-speaker mean",
+  "tau_share_of_vector_norm_pct": 8.59,
+  "licence": "derived from CREMA-D (ODbL upstream, mirror declares nothing) -- RESEARCH-LANE ONLY, do not ship"
+}

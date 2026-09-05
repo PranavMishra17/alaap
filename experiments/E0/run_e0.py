@@ -66,7 +66,12 @@ SR = 24000
 
 # ------------------------------------------------------------------ 1. data
 print(f"[1/5] loading CREMA-D ({args.n} clips)")
-cache = os.path.join(OUT, f"crema_{args.n}.npz")
+# The cache key MUST carry the model. Zq holds that model's speaker
+# embeddings, and the same bug was already caught once in S2, where a key
+# without model_id silently served 0.6B embeddings to a 1.7B run. It failed
+# loudly there only because the dims differed.
+_mtag = args.model.split("/")[-1].replace(".", "")
+cache = os.path.join(OUT, f"crema_{args.n}_{_mtag}.npz")
 if os.path.exists(cache):
     d = np.load(cache, allow_pickle=True)
     Zq, Ze = d["Zq"].astype(np.float64), d["Ze"].astype(np.float64)
