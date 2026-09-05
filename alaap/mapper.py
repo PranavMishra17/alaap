@@ -291,9 +291,40 @@ class RetrievalMapper:
             kind = "hybrid_z"
         return np.argsort(-sims)[:max(top_k, 1)], sims, kind
 
-    def mint(self, description: str, novelty: float = 0.5, top_k: int = 4,
+    def mint(self, description: str, novelty: float = 0.5, top_k: int = 2,
              seed: int | None = None, typicality: bool = False) -> MintResult:
         """
+        `top_k` IS THE DIVERSITY KNOB, and it was mis-set for the whole project.
+
+        S9b measured effective voices (normalised Vendi x n) on 80 Indic mints
+        against a bound of ~38 from the real speakers they were built from:
+
+            pca_dims  top_k   effective
+                  32      4          13     <- the old defaults
+                  64      4          17
+                  64      2          20
+                   -      1          33     = pure retrieval (S8)
+
+        Every anchor blended in costs diversity, because SLERPing k points on a
+        shell lands nearer the centroid than any of them. top_k=1 does no
+        blending at all and reduces exactly to retrieval, which is why the
+        S7-vs-S8 gap was never two methods -- it was one method at two settings.
+
+        `max(top_k, 1)` rather than `max(top_k, 2)` so that end of the
+        continuum is reachable; the old floor of 2 made retrieval inexpressible
+        as a mint setting and hid the relationship.
+
+        pca_dims matters for the same reason from the other side: blending in a
+        truncated basis and zero-padding the rest makes every minted voice
+        IDENTICAL on the discarded components. At pca_dims=32 of 64 that is
+        14.2% of real speaker variance set to a constant, and minted variance
+        beyond component 32 measured 0.0069 against the corpus's 17.23.
+
+        What did NOT work, measured before this was written: rescaling the
+        minted vector back to the real-speaker radius. The radial contraction
+        (92% of real at novelty 0, 75% at 0.70) is a SYMPTOM of blending, not
+        the mechanism -- correcting it moved Vendi 0.161 to 0.161.
+
         novelty 0.0  pure retrieval/SLERP -- safest, near-duplicate of catalog
                      (E1: 0.20x natural speaker spacing)
         novelty 1.0  pure GMM sample -- most novel, still in-distribution
@@ -319,7 +350,7 @@ class RetrievalMapper:
         novelty = float(np.clip(novelty, 0.0, 1.0))
         rng = np.random.default_rng(seed)
 
-        order, sims, score_kind = self.retrieve(description, top_k=max(top_k, 2))
+        order, sims, score_kind = self.retrieve(description, top_k=max(top_k, 1))
         anchor_score = float(sims[order[0]])
 
         # retrieval end: SLERP among the top-k anchors, weighted by similarity

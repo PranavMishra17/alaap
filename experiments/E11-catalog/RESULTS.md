@@ -25,6 +25,8 @@ Every mint is audited by `service.mint` against three floors: **uniqueness ≥ 0
 | consistency | 0.564 | 0.454 | 0.464 | 0 / 40 |
 | uniqueness | 0.616 | **0.149** | 0.294 | 3 / 40 |
 
+> ⚠️ **Superseded in part by `S10`.** These numbers were produced with `pca_dims=50, top_k=4`, which `S9b` later measured as the settings that cost the most diversity. Against the bound `S10` established — 203 effective voices in GLOBE_V2's real speakers — this run reached **11%** of what was available, and the same corpus at `pca_dims=full, top_k=2` reaches 41 (**+81%**). Nothing below is wrong; it is a record of a configuration that has since been improved.
+
 **Vendi (normalised) 0.482 → 20.2 effectively-distinct voices from 42 minted.** Against `RESEARCH/06`'s anti-mode-collapse target of ≥0.35 that passes, but **fewer than half the voices minted are effectively distinct.**
 
 ### The catalog gets harder to add to as it fills

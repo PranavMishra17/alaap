@@ -183,7 +183,10 @@ print("      aligned.")
 # --------------------------------------------------------- 4. the mapper
 print(f"[4/6] fitting the mapper on {n} (caption, MioCodec vector) pairs")
 space = SpeakerSpace.fit(Z, n_components=min(64, n - 1))
-mapper = RetrievalMapper(space, TextEncoder(), pca_dims=min(32, space.components.shape[0]),
+# full basis, not min(32, ...): S9b measured that truncating it zero-pads
+# 14.2% of real speaker variance and costs ~4 effective voices in 80 mints.
+mapper = RetrievalMapper(space, TextEncoder(),
+                         pca_dims=space.components.shape[0],
                          retrieval=args.retrieval).fit(
     caps, Z, anchor_bins=bins[:n] if args.retrieval == "hybrid" else None)
 print(f"      {space}")

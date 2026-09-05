@@ -76,6 +76,13 @@ ap.add_argument("--lm", default="SPRINGLab/Indic-Mio")
 ap.add_argument("--retrieval", default="hybrid", choices=["text", "hybrid"])
 ap.add_argument("--novelty", type=float, default=0.0)
 ap.add_argument("--seed", type=int, default=0)
+# S9b: these two ARE the diversity knobs. Truncating the basis makes every
+# minted voice identical on the discarded components; blending k anchors
+# lands nearer the centroid the larger k is. Defaults are the measured best.
+ap.add_argument("--pca-dims", type=int, default=0,
+                help="0 = the full space, which is what S9b measured as best")
+ap.add_argument("--top-k", type=int, default=2,
+                help="anchors blended per mint; 1 is pure retrieval")
 ap.add_argument("--keep-audio", type=int, default=8,
                 help="write wavs for the first K accepted voices only; "
                      "N x L 44.1 kHz wavs is a lot of disk for no extra evidence")
@@ -155,11 +162,12 @@ bins = [binner.bin_one(a) for a in attrs]
 caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
 
 space = SpeakerSpace.fit(Z, n_components=min(64, n - 1))
-mapper = RetrievalMapper(space, TextEncoder(),
-                         pca_dims=min(32, space.components.shape[0]),
+PCA_DIMS = args.pca_dims or space.components.shape[0]
+mapper = RetrievalMapper(space, TextEncoder(), pca_dims=PCA_DIMS,
                          retrieval=args.retrieval).fit(
     caps, Z, anchor_bins=bins if args.retrieval == "hybrid" else None)
 print(f"      {space}")
+print(f"      pca_dims {PCA_DIMS} | top_k {args.top_k}")
 
 # --------------------------------------------------------- 2. descriptions
 cells = sample_cells(args.n, args.seed)
@@ -229,7 +237,7 @@ def cos(a, b):
 print(f"[4/5] minting and auditing {len(descs)} voices")
 rows, accepted_E, t0 = [], [], time.time()
 for i, (cid, desc, cell) in enumerate(descs):
-    m = mapper.mint(desc, novelty=args.novelty, seed=i)
+    m = mapper.mint(desc, novelty=args.novelty, seed=i, top_k=args.top_k)
     e = space.encode(m.vector)[0]
 
     # uniqueness against ACCEPTED voices only -- a rejected voice is not in the

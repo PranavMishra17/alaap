@@ -96,11 +96,37 @@ diversity in the abstract, and it is not the corpus. It is that minting with
 `novelty=0.0` interpolates inside the convex region its anchors span, and that region is
 about a third of the space. See `S9` for the three fixes, cheapest first.
 
+## The fix — 14 → 22 effective voices, and nothing traded away
+
+`S9b` found the mechanism: minting blends `top_k` anchors in a `pca_dims`-truncated
+basis. Both are already parameters; both were set badly.
+
+| | old (`pca_dims 32, top_k 4`) | **fixed (`64, 2`)** |
+|---|---|---|
+| accepted | 38/80 (47.5%) | **50/80 (62.5%)** |
+| normalised Vendi | 0.362 | **0.431** |
+| **effective voices** | **~14** | **~22** |
+| share of the ~38 bound | 37% | **58%** |
+| nn distance, median | 0.159 | **0.471** |
+| drift, mean | 0.720 | **0.753** |
+| consistency, mean | 0.722 | **0.740** |
+
+**Drift and consistency went UP.** The fix is not a diversity-for-quality trade — the
+old setting was leaving both on the table. Acceptance rose 15 points because fewer mints
+collided with voices already in the catalog.
+
+What did **not** work, tested before this was written: rescaling minted vectors back to
+the real-speaker radius. That moved Vendi 0.161 → 0.161. The radial contraction is a
+*symptom* of blending, not the mechanism.
+
+`S10` finds the same defect in the English pipeline, worse: 11% of its bound, fixed to
+20%, +81%.
+
 ## What this means for the product
 
 A catalog of 500 voices where 300 are audibly the same voice is a catalog of 200 voices
-and a support problem. On this corpus the honest number is **~14 effective Indic
-voices**, against ~38 available. That is a cast, not a catalog — and the shortfall is
+and a support problem. On this corpus the honest number is **~22 effective Indic
+voices** after the `S9b` fix, against ~38 available. That is a cast, not a catalog — and the shortfall is
 the method's, not the corpus's.
 
 The constraint is not the renderer. Three candidate causes, in order of how cheaply
@@ -108,10 +134,11 @@ they can be tested:
 
 1. ~~**The corpus.**~~ **Tested and ruled out** — see the section above. 432 speakers
    gave exactly the same ~14.
-2. **The described space.** Five axes × five bins, and `speaking_rate` carries a
+2. ~~**Blending settings.**~~ **Found and fixed** — see above, 14 → 22.
+3. **The described space.** Five axes × five bins, and `speaking_rate` carries a
    measured weight of 0.10 — nearly worthless for identity. Four useful axes cannot
    separate very many people.
-3. **MioCodec's global embedding itself.** 128-d, and by its own card it mixes speaker
+4. **MioCodec's global embedding itself.** 128-d, and by its own card it mixes speaker
    with recording environment and microphone.
 
 `S8` tests a fourth possibility that turns out to matter more than any of these: not

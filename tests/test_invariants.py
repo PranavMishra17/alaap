@@ -1448,3 +1448,104 @@ class TestAnchorScoreIsNotAlwaysASimilarity:
         assert r.score_kind == "hybrid_z"
         with pytest.raises(AttributeError, match="not a similarity"):
             r.anchor_similarity
+
+
+class TestBlendingCostsDiversity:
+    """
+    S9b's finding, locked as a property rather than a number.
+
+    Minting SLERPs the top-k retrieved anchors. Blending k points on a shell
+    lands nearer the centroid the larger k is, so every extra anchor costs
+    catalog diversity. That relationship was invisible for the whole project
+    because `mint` floored top_k at 2, making pure retrieval (k=1)
+    inexpressible -- so the S7-vs-S8 gap read as two competing methods when it
+    was one method at two settings.
+
+    Measured on 80 Indic mints against a bound of ~38: k=4 gave 13 effective
+    voices, k=2 gave 20, k=1 (retrieval) gave 33.
+    """
+
+    def _mapper(self, pca_dims):
+        from alaap.acoustics import Attributes, Binner
+        from alaap.captions import caption_from_bins
+        from alaap.geometry import SpeakerSpace
+        from alaap.mapper import RetrievalMapper, TextEncoder
+        rng = np.random.default_rng(0)
+        n = 80
+        f0 = rng.uniform(80, 260, n)
+        attrs = [Attributes(f0_mean=f, f0_std=f * 0.2, f0_range=f * 0.5, f0_cv=0.2,
+                            speaking_rate=4.0, hnr_db=15.0, spectral_tilt=-10.0,
+                            jitter=0.01, shimmer=0.05, snr_db=30.0,
+                            duration_s=5.0, voiced_frac=0.6) for f in f0]
+        binner = Binner.fit(attrs)
+        bins = [binner.bin_one(a) for a in attrs]
+        caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
+        Z = np.hstack([f0[:, None] / 100.0, rng.standard_normal((n, 15))])
+        space = SpeakerSpace.fit(Z, n_components=12)
+        m = RetrievalMapper(space, TextEncoder(), pca_dims=pca_dims,
+                            retrieval="text").fit(caps, Z)
+        return m, space, bins, binner
+
+    def test_top_k_1_is_reachable_and_returns_its_anchor(self):
+        """
+        k=1 must reduce to retrieval. Not bit-exact: mint decodes through
+        `project_to_shell=True`, which rescales per-dimension in RAW space --
+        not a rotation, so it does not preserve the working-space basis
+        exactly. The invariant is that k=1 lands ON its anchor's direction
+        while k=4 does not.
+        """
+        m, space, _, _ = self._mapper(12)
+        r1 = m.mint("a very deep voice", novelty=0.0, seed=0, top_k=1)
+        r4 = m.mint("a very deep voice", novelty=0.0, seed=0, top_k=4)
+
+        def cos_to_anchor(res):
+            a = space.from_pca(np.pad(m.P[res.anchors[0]][None, :],
+                                      ((0, 0), (0, space.components.shape[0] - m.k))))[0]
+            w = space.encode(res.vector)[0]
+            return float(a @ w / max(np.linalg.norm(a) * np.linalg.norm(w), 1e-12))
+
+        c1, c4 = cos_to_anchor(r1), cos_to_anchor(r4)
+        assert c1 > 0.99, f"top_k=1 did not return its anchor: cos {c1:.4f}"
+        assert c1 > c4, f"blending 4 anchors was not further from the top anchor: {c1:.4f} vs {c4:.4f}"
+
+    def test_more_anchors_contracts_toward_the_centroid(self):
+        from alaap.captions import caption_from_bins
+        from alaap.catalog import sample_cells
+        m, space, _, _ = self._mapper(12)
+        cells = sample_cells(24, 0)
+        descs = [caption_from_bins(c, seed=i) for i, c in enumerate(cells)]
+        rad = {}
+        for tk in (1, 4):
+            M = np.vstack([space.encode(m.mint(x, novelty=0.0, seed=i,
+                                               top_k=tk).vector)[0]
+                           for i, x in enumerate(descs)])
+            rad[tk] = float(np.linalg.norm(M - M.mean(0), axis=1).mean())
+        assert rad[4] < rad[1], (
+            f"blending 4 anchors did not contract against 1: {rad}")
+
+    def test_truncating_the_basis_starves_the_discarded_components(self):
+        """
+        The other half of the mechanism: mint zero-pads beyond pca_dims, so
+        minted voices barely differ there while real speakers differ a lot. On
+        the Indic corpus the measured ratio was 0.0069 against 17.23.
+
+        Not exactly zero, for the same reason as above: the shell projection
+        leaks a little energy back. The invariant is the RATIO.
+        """
+        from alaap.captions import caption_from_bins
+        from alaap.catalog import sample_cells
+        m, space, _, _ = self._mapper(6)
+        cells = sample_cells(12, 0)
+        M = np.vstack([space.encode(m.mint(caption_from_bins(c, seed=i),
+                                           novelty=0.0, seed=i).vector)[0]
+                       for i, c in enumerate(cells)])
+        real = space.encode(m.Z_fit) if hasattr(m, "Z_fit") else None
+        tail_mint = (M @ space.components.T)[:, 6:].var(0).sum()
+        # real speakers' tail variance, from the same fitted space
+        rng = np.random.default_rng(0)
+        f0 = rng.uniform(80, 260, 80)
+        Z = np.hstack([f0[:, None] / 100.0, rng.standard_normal((80, 15))])
+        tail_real = (space.encode(Z) @ space.components.T)[:, 6:].var(0).sum()
+        assert tail_mint < 0.25 * tail_real, (
+            "minted voices should be starved of variance beyond pca_dims; "
+            f"mint {tail_mint:.4f} vs real {tail_real:.4f}")
