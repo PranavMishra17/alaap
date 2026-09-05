@@ -79,3 +79,6 @@ experiments/*/out/*.db
 # every commit while the arm was still writing to them.
 experiments/**/out_*/
 experiments/**/*run*.log
+
+# Subagent worktrees -- git repos in their own right, never part of this one
+.claude/worktrees/
