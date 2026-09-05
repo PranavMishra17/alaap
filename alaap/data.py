@@ -117,7 +117,8 @@ def stream_clips(corpus: str = "globe_v2",
         clips.append(Clip(
             wav=wav.astype(np.float32), speaker_id=spk, duration=round(dur, 3),
             accent=r.get("accent"), age=r.get("age"), gender=r.get("gender"),
-            text=r.get("transcript") or r.get("text"),
+            text=(r.get("transcript") or r.get("text") or r.get("text_normalized")
+                  or r.get("text_original")),
         ))
         per_spk[spk] += 1
 
