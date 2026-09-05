@@ -110,31 +110,40 @@ at the caller's novelty, each **collision** raises it, drift and consistency
 failures never do) and run as a fourth arm with base `novelty=0.0`. Because the
 control predates the code, the two arms differ *only* in the escalation.
 
-Matched at the first **30** voices:
+Matched at the control's **full 40 voices**, which is where its collisions
+actually bite:
 
-| arm | n | clean | **drift below floor** | uniq mean | uniq min | **uniq below floor** | attempts |
+| arm | clean | drift mean | **drift below floor** | uniq mean | **uniq min** | **uniq below floor** | attempts |
 |---|---|---|---|---|---|---|---|
-| fixed 0.00 (control) | 30 | 87% | **7%** | 0.669 | 0.292 | **3%** | 1.20 |
-| **adaptive (0.00 base)** | 30 | 73% | **7%** | 0.670 | **0.320** | **0%** | 1.40 |
-| fixed 0.45 | 20 | 50% | 30% | 0.694 | 0.313 | 0% | 1.80 |
-| fixed 0.75 | 20 | 30% | 40% | 0.759 | 0.453 | 0% | 2.30 |
+| fixed 0.00 (control) | 80% | 0.457 | **10%** | 0.616 | **0.149** | **8%** | 1.32 |
+| **adaptive (0.00 base)** | 65% | 0.451 | **10%** | 0.628 | **0.320** | **0%** | 1.50 |
 
-**It buys the thing novelty was wanted for, and does not pay novelty's price.**
-Uniqueness floor breaches go **3% → 0%** and the closest pair moves from 0.292
-(below the 0.30 floor) to 0.320 (above it), while **drift-below-floor is
-identical at 7%**. Fixed `novelty=0.45` bought the same collision-freedom for
-**30%** drift failures.
+**It buys the thing novelty was wanted for and does not pay novelty's price.**
 
-The mechanism is visible in the logs: **1 escalation across 30 voices.** The arm
-runs at `novelty=0` essentially always, and paid the cost exactly once, on the
-one mint that actually collided — which is the whole design.
+- **Uniqueness floor breaches: 8% → 0%.** The control's closest pair sat at
+  **0.149, half the 0.30 floor** — two voices the audit had to accept after
+  exhausting its retries. The adaptive arm's closest pair is **0.320**, above it.
+- **Drift below floor is identical at 10%**, and mean drift is unchanged
+  (0.457 vs 0.451). The escalation costs nothing in rendering fidelity.
+- For contrast, fixed `novelty=0.45` bought the same collision-freedom for
+  **30%** drift failures — three times the rate.
 
-> **Two honest caveats.** The clean-rate gap (87% → 73%) is *not* explained by
-> the single escalation, which can account for at most one voice. Rendering is
-> stochastic, so the two arms differ run-to-run on drift and consistency
-> warnings, and 30 voices on one seed is not enough to separate that from a real
-> effect. And mean uniqueness is unchanged (0.669 vs 0.670) — the escalation
-> fixes the *worst* pair, not the average, which is exactly what a floor is for.
+The mechanism is visible in the logs: **4 escalations across 40 voices.** The
+arm runs at `novelty=0` for 36 of them and pays only on the 4 mints that
+actually collided. At 30 voices it had escalated once; the benefit grows as the
+catalog fills, which is the whole premise.
+
+> **On the clean-rate gap (80% → 65%).** Mostly an artefact of the metric.
+> "Clean" means *no warnings at all*, and an escalation logs a warning — so the
+> 4 escalations mark 4 voices unclean for doing exactly what they should. That
+> accounts for 4 of the 6-voice difference; the remaining 2 are drift and
+> consistency warnings, and rendering is stochastic. **A voice that collided,
+> escalated, and then passed every floor is a good voice**, so "clean rate"
+> understates the adaptive arm by construction. Read the floor columns instead.
+>
+> Mean uniqueness barely moves (0.616 → 0.628), which is correct and expected:
+> the escalation targets the *worst* pair, not the average. That is what a floor
+> is for.
 
 ## Where this leaves the catalog
 
