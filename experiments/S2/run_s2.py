@@ -99,18 +99,42 @@ stage("2. binning, captioning, fitting the speaker space")
 binner = Binner.fit(attrs)
 binner.save(os.path.join(OUT, f"binner_{args.corpus}.json"))
 
-# speaker-level: average the attributes and vectors per speaker
+# Build (caption, vector) pairs.
+#
+# Two modes, and the choice matters:
+#
+#   per-speaker averaging  needs TRUSTWORTHY speaker labels. Good on
+#                          LibriTTS-R; E4 showed GLOBE_V2's labels are not
+#                          reliable enough (ECAPA EER 20% vs 2.46%).
+#   per-CLIP               needs no labels at all. Each clip is its own
+#                          (caption, vector) pair.
+#
+# The mapper only ever needs pairs, never speaker identity -- so per-clip
+# sidesteps the label problem entirely and unlocks GLOBE_V2's 23,519 voices
+# for VOCAL RANGE, which is what LibriTTS-R actually lacks (S2 RESULTS
+# section 2, point 4: clean audiobook read speech has no gravelly or aged
+# voices to retrieve, and percentile binning HIDES that).
 uniq = sorted(set(ids)); idsa = np.asarray(ids)
+PER_CLIP = args.per_speaker == 1 or len(uniq) > 0.8 * len(ids)
 spk_vec, spk_cap, spk_bins = [], [], []
-for s in uniq:
-    m = idsa == s
-    v = Z[m].mean(0)
-    sub = [attrs[i] for i in np.where(m)[0]]
-    avg = Attributes(**{f: float(np.mean([getattr(a, f) for a in sub]))
-                        for f in attrs[0].to_dict()})
-    b = binner.bin_one(avg)
-    spk_vec.append(v); spk_bins.append(b)
-    spk_cap.append(caption_from_bins(b, seed=abs(hash(s)) % 10000))
+if PER_CLIP:
+    print(f"      per-CLIP pairs ({len(uniq)} distinct ids / {len(ids)} clips) "
+          f"-- no speaker labels needed")
+    for i in range(len(ids)):
+        b = binner.bin_one(attrs[i])
+        spk_vec.append(Z[i]); spk_bins.append(b)
+        spk_cap.append(caption_from_bins(b, seed=i))
+else:
+    print(f"      per-SPEAKER pairs ({len(uniq)} speakers)")
+    for s in uniq:
+        m = idsa == s
+        v = Z[m].mean(0)
+        sub = [attrs[i] for i in np.where(m)[0]]
+        avg = Attributes(**{f: float(np.mean([getattr(a, f) for a in sub]))
+                            for f in attrs[0].to_dict()})
+        b = binner.bin_one(avg)
+        spk_vec.append(v); spk_bins.append(b)
+        spk_cap.append(caption_from_bins(b, seed=abs(hash(s)) % 10000))
 spk_vec = np.stack(spk_vec)
 print(f"      {len(spk_vec)} speaker identities with grounded captions")
 print(f"      e.g. {spk_cap[0]}")
