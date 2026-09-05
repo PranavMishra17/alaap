@@ -77,3 +77,23 @@ Fixed by reaping the orphans; RTF returned to 4.3–5.5 and temperature to 67 °
 
 **If you see renders crawl, check `nvidia-smi` before debugging the code.**
 Worth considering a laptop cooling pad if this box is going to do long training runs.
+
+---
+
+## Appended 2026-09-05 (end of overnight run)
+
+### 🟢 Where the numbers actually stand
+
+**Quote `exact match 0.306` (chance 0.200) as the adherence figure — nothing higher.**
+Earlier runs reported up to 0.403, but those were measured on axes entangled with pitch
+(`f0_mean` vs `hnr_db` r = +0.62; 39.9% of the HNR estimate was pitch, not voice quality).
+Decorrelating cost ~25% of the score, which is the correct direction — an inflated metric
+would have been optimised against.
+
+### 🟡 Decisions worth your input, none blocking
+
+| # | Question | My call, and why |
+|---|---|---|
+| 7 | **Default model is now 1.7B** | E10: better on every identity metric, fits your 6 GB card at 4.09 GB peak, RTF unchanged. Reversible — pass `--model`. |
+| 8 | **The τ emotion vectors are research-lane** | Derived from CREMA-D (ODbL upstream, mirror declares nothing). Fine to develop against; **needs settling before shipping a Direction channel.** |
+| 9 | **A generative mapper (S3) is now motivated by evidence, not theory** | Retrieval can only offer attribute combinations that co-occur in the corpus. That is a real ceiling, and the first measured reason to want a generative head. |
