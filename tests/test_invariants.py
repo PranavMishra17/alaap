@@ -1077,3 +1077,171 @@ class TestShippedScriptsLoadTheirArtefacts:
                         Attributes.from_dict(a)        # must tolerate old caches
         assert checked, ("no artefacts were actually loaded -- the guard would "
                          "pass on a repo where every path is broken")
+
+
+class TestHybridRetrieval:
+    """
+    E15/E15d: the text path is barely better than chance at picking the right
+    anchor (rank 129.7 of 350, chance 175), and weighted bin retrieval improves
+    cos-to-true-voice by 55-66% across two corpora and two encoders.
+
+    The blend is proportional to how much of the description parsed, because
+    E15b measured that generated captions yield 5 of 6 axes while realistic
+    user text yields 1.29 and character prose yields 0.50. These pin the
+    properties that make it safe to enable.
+    """
+
+    _last_Z = None
+
+    @staticmethod
+    def _mapper(retrieval="hybrid", seed=0, n=120):
+        from alaap.acoustics import Attributes, Binner
+        from alaap.captions import caption_from_bins
+        from alaap.geometry import SpeakerSpace
+        from alaap.mapper import RetrievalMapper
+
+        class _FakeText:
+            model_id = "fake"
+
+            def encode(self, x):
+                xs = [x] if isinstance(x, str) else list(x)
+                out = np.zeros((len(xs), 8))
+                for i, t in enumerate(xs):
+                    r = np.random.default_rng(abs(hash(t)) % (2 ** 31))
+                    v = r.standard_normal(8)
+                    out[i] = v / np.linalg.norm(v)
+                return out
+
+        # The vectors must actually DEPEND on the attributes, or no axis
+        # predicts voice distance, the measured weights are noise, and these
+        # tests assert nothing. An earlier version of this fixture drew Z
+        # independently of attrs and duly failed for that reason.
+        #
+        # Ground truth built in here: f0_mean drives the voice strongly,
+        # spectral_tilt weakly, and speaking_rate not at all -- which is the
+        # ordering E15/E15d measured on real corpora.
+        rng = np.random.default_rng(seed)
+        f0 = 80 + 200 * rng.random(n)
+        tilt = -9 + 4 * rng.random(n)
+        rate = 8 + 12 * rng.random(n)
+        basis = rng.standard_normal((3, 64))
+        Z = (np.outer((f0 - f0.mean()) / f0.std(), basis[0]) * 3.0
+             + np.outer((tilt - tilt.mean()) / tilt.std(), basis[1]) * 0.8
+             + rng.standard_normal((n, 64)) * 0.6 + 1.5)
+        space = SpeakerSpace.fit(Z, n_components=16)
+        attrs = [Attributes(
+            f0_mean=float(f0[i]), f0_std=20.0,
+            f0_cv=float(0.05 + 0.3 * rng.random()), f0_range=80.0,
+            speaking_rate=float(rate[i]),
+            hnr_db=float(rng.standard_normal() * 4),
+            jitter=0.01, shimmer=0.05,
+            spectral_tilt=float(tilt[i]),
+            snr_db=30.0, duration_s=4.0, voiced_frac=0.6) for i in range(n)]
+        binner = Binner.fit(attrs)
+        bins = [binner.bin_one(a) for a in attrs]
+        caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
+        m = RetrievalMapper(space, _FakeText(), pca_dims=8,
+                            retrieval=retrieval).fit(caps, Z, anchor_bins=bins)
+        TestHybridRetrieval._last_Z = Z
+        return m, caps, bins
+
+    @classmethod
+    def _mapper_with_holdout(cls, retrieval="hybrid", seed=0, n=160, n_held=30):
+        """Same construction, but the last n_held speakers are never fitted."""
+        from alaap.acoustics import Binner
+        from alaap.captions import caption_from_bins
+        from alaap.geometry import SpeakerSpace
+        from alaap.mapper import RetrievalMapper
+
+        m_full, caps, bins = cls._mapper(retrieval=retrieval, seed=seed, n=n)
+        Z = cls._last_Z
+        keep = slice(0, n - n_held)
+        space = SpeakerSpace.fit(Z[keep], n_components=16)
+        m = RetrievalMapper(space, m_full.text, pca_dims=8,
+                            retrieval=retrieval).fit(
+            caps[keep], Z[keep], anchor_bins=bins[keep])
+        held = [(caps[i], Z[i:i + 1]) for i in range(n - n_held, n)]
+        return m, held
+
+    def test_hybrid_requires_anchor_bins(self):
+        """Failing closed beats silently behaving like the text path."""
+        from alaap.mapper import RetrievalMapper
+        from alaap.geometry import SpeakerSpace
+
+        class _T:
+            model_id = "f"
+
+            def encode(self, x):
+                xs = [x] if isinstance(x, str) else list(x)
+                return np.ones((len(xs), 4)) / 2.0
+
+        rng = np.random.default_rng(0)
+        Z = rng.standard_normal((40, 16)) + 2.0
+        sp = SpeakerSpace.fit(Z, n_components=4)
+        m = RetrievalMapper(sp, _T(), pca_dims=4, retrieval="hybrid")
+        with pytest.raises(ValueError, match="anchor_bins"):
+            m.fit([f"caption {i}" for i in range(40)], Z)
+
+    def test_an_unknown_retrieval_mode_is_refused(self):
+        from alaap.mapper import RetrievalMapper
+        with pytest.raises(ValueError, match="retrieval must be"):
+            RetrievalMapper(None, None, retrieval="bins")
+
+    def test_weights_rank_pitch_above_rate(self):
+        """
+        The measured ordering, reproduced end to end. f0_mean carries identity;
+        speaking_rate is behaviour and should not.
+        """
+        m, _, _ = self._mapper()
+        w = dict(zip(m.axes, m.axis_weights))
+        assert "f0_mean" in w and "speaking_rate" in w
+        assert w["f0_mean"] > w["speaking_rate"]
+
+    def test_description_with_no_acoustic_words_falls_back_exactly(self):
+        """
+        alpha = 0 must return the text scores UNTOUCHED, so the hybrid can
+        never be worse than the text path on prose it cannot parse.
+        """
+        m, _, _ = self._mapper()
+        sims = np.linspace(-1, 1, len(m.captions))
+        out = m._hybrid_scores("the protagonist's best friend", sims)
+        assert np.allclose(out, sims)
+
+    def test_parsed_description_changes_the_ranking(self):
+        m, _, _ = self._mapper()
+        sims = np.zeros(len(m.captions))       # text says everything is equal
+        out = m._hybrid_scores("a very deep voice, very rough and gravelly", sims)
+        assert out.std() > 0, "bins had no effect on an all-ties text score"
+
+    def test_hybrid_lands_nearer_the_true_held_out_voice(self):
+        """
+        The end-to-end claim, mirroring how E15 measured it: mint from a
+        HELD-OUT speaker's caption and see which method lands nearer that
+        speaker's real voice.
+
+        Held-out matters. This fixture's fake text encoder hashes the caption
+        string, so querying with an ANCHOR's own caption hands the text path an
+        exact-match oracle that real MiniLM does not have -- an earlier version
+        of this test did exactly that and measured the oracle, not the method.
+        E15 avoided it the same way, by testing on speakers the mapper never saw.
+
+        The margin here is much larger than the real one (about +0.69 mean
+        cosine, 5/5 seeds, against E15's +55-66% relative on real corpora),
+        because this fixture builds the vectors AS a function of the binned
+        axes. That makes it a good regression guard and a bad effect-size
+        estimate -- read E15/E15d for the size, this for the direction.
+        """
+        mh, held = self._mapper_with_holdout(retrieval="hybrid")
+        mt, _ = self._mapper_with_holdout(retrieval="text")
+
+        def mean_cos_to_true(m):
+            out = []
+            for cap, z_true in held:
+                v = m.mint(cap, novelty=0.0, seed=0).vector
+                a = m.space.encode(v)[0]
+                b = m.space.encode(np.asarray(z_true, float))[0]
+                out.append(float(a @ b /
+                                 max(np.linalg.norm(a) * np.linalg.norm(b), 1e-12)))
+            return float(np.mean(out))
+
+        assert mean_cos_to_true(mh) > mean_cos_to_true(mt)

@@ -91,19 +91,58 @@ class RetrievalMapper:
     """
 
     def __init__(self, space: SpeakerSpace, text_encoder: TextEncoder,
-                 pca_dims: int = 50, gmm_components: int = 5):
+                 pca_dims: int = 50, gmm_components: int = 5,
+                 retrieval: str = "text"):
+        """
+        `retrieval` selects how a description is matched against the anchors:
+
+          "text"    cosine over MiniLM sentence embeddings. The default, and
+                    the only one with a rendering history behind it.
+          "hybrid"  parse the description into target bins, score the parsed
+                    axes by WEIGHTED bin distance, and fall back to the text
+                    cosine in proportion to how little parsed.
+
+        E15 measured why "hybrid" exists. Scored against true held-out voices,
+        the text path is barely better than chance (rank 129.7 of 350 anchors,
+        where chance is 175); weighted bin retrieval reaches 96.3 and improves
+        cos-to-true-voice by 66%. E15d replicated it on a second corpus and a
+        second encoder (+55%).
+
+        It is NOT the default because all of those are retrieval quality in
+        embedding space. Nothing has been rendered through this path, so its
+        drift, consistency and adherence are unmeasured -- and E11 already
+        caught one geometrically-better setting that rendered worse. Flip the
+        default after a rendering arm, not before.
+        """
+        if retrieval not in ("text", "hybrid"):
+            raise ValueError(
+                f"retrieval must be 'text' or 'hybrid', got {retrieval!r}")
         self.space = space
         self.text = text_encoder
         self.pca_dims = pca_dims
         self.gmm_components = gmm_components
+        self.retrieval = retrieval
         self.T: Optional[np.ndarray] = None      # (N, dt) caption embeddings
         self.P: Optional[np.ndarray] = None      # (N, k)  speaker PCA coords
         self.captions: list[str] = []
         self.gmm = None
+        self.anchor_bins: Optional[np.ndarray] = None   # (N, A) bin indices
+        self.axis_weights: Optional[np.ndarray] = None  # (A,) measured
+        self.axes: list[str] = []
 
     # ---------------------------------------------------------------- fit
-    def fit(self, captions: list[str], vectors: np.ndarray) -> "RetrievalMapper":
+    def fit(self, captions: list[str], vectors: np.ndarray,
+            anchor_bins: Optional[list[dict]] = None) -> "RetrievalMapper":
+        """
+        `anchor_bins` is each anchor's bin dict, i.e. what Binner.bin_one
+        returns. Required for retrieval="hybrid", ignored otherwise.
+        """
         assert len(captions) == len(vectors), "captions and vectors must align"
+        if self.retrieval == "hybrid" and anchor_bins is None:
+            raise ValueError(
+                "retrieval='hybrid' needs anchor_bins -- pass "
+                "[binner.bin_one(a) for a in attrs] alongside the captions. "
+                "Without them there is nothing to measure a bin distance against.")
         self.captions = list(captions)
         self.T = self.text.encode(self.captions)
         W = self.space.encode(np.asarray(vectors, dtype=np.float64))
@@ -129,7 +168,55 @@ class RetrievalMapper:
         # point. Storing the band lets mint() aim at it directly.
         _ll = self.gmm.score_samples(self.P)
         self._ll_median = float(np.median(_ll))
+        if anchor_bins is not None:
+            self._fit_bin_index(anchor_bins)
         return self
+
+    def _fit_bin_index(self, anchor_bins: list[dict]) -> None:
+        """
+        Build the anchor bin matrix and MEASURE each axis's weight.
+
+        The weight is that axis's rank correlation between its own bin distance
+        and voice distance -- how much it actually says about identity. E15 and
+        E15d measured the same ordering independently on two corpora and two
+        encoders: f0_mean 2.71/3.49, vtl_cm 1.44, spectral_tilt 0.66/0.69,
+        hnr_db 0.56/0.43, f0_cv 0.33/0.23, speaking_rate 0.31/0.17, against a
+        mean of 1.0.
+
+        Pitch and vocal-tract length are anatomy. Rate and expressiveness are
+        behaviour a speaker varies at will, and should not identify anyone --
+        yet an equal-weight treatment, which is what the text path implicitly
+        applies, gives rate the same say as pitch.
+        """
+        from .acoustics import BIN_LABELS
+        axes = [a for a in BIN_LABELS if all(a in b for b in anchor_bins)]
+        if not axes:
+            return
+        idx = {a: {lbl: i for i, lbl in enumerate(BIN_LABELS[a])} for a in axes}
+        B = np.array([[idx[a][b[a]] for a in axes] for b in anchor_bins], float)
+
+        rng = np.random.default_rng(0)
+        iu, ju = np.triu_indices(len(B), k=1)
+        if len(iu) > 40000:
+            sel = rng.choice(len(iu), 40000, replace=False)
+            iu, ju = iu[sel], ju[sel]
+        U = self.P / (np.linalg.norm(self.P, axis=1, keepdims=True) + 1e-12)
+        dv = (1.0 - U @ U.T)[iu, ju]
+
+        def _rho(x, y):
+            rx = np.argsort(np.argsort(x)).astype(float)
+            ry = np.argsort(np.argsort(y)).astype(float)
+            if rx.std() < 1e-12 or ry.std() < 1e-12:
+                return 0.0
+            return float(np.corrcoef(rx, ry)[0, 1])
+
+        w = np.array([max(_rho(np.abs(B[iu, k] - B[ju, k]), dv), 0.0)
+                      for k in range(len(axes))])
+        if w.sum() <= 0:
+            w = np.ones(len(axes))
+        self.axes = axes
+        self.anchor_bins = B
+        self.axis_weights = w / w.sum() * len(w)
 
     def _sample_gmm(self, rng, n: int) -> np.ndarray:
         """
@@ -192,6 +279,10 @@ class RetrievalMapper:
 
         q = self.text.encode(description)[0]
         sims = self.T @ q
+
+        if self.retrieval == "hybrid" and self.anchor_bins is not None:
+            sims = self._hybrid_scores(description, sims)
+
         order = np.argsort(-sims)[:max(top_k, 2)]
         anchor_sim = float(sims[order[0]])
 
@@ -232,6 +323,42 @@ class RetrievalMapper:
                           anchors=[int(i) for i in order],
                           anchor_similarity=anchor_sim,
                           strategy=strategy)
+
+    def _hybrid_scores(self, description: str,
+                       text_sims: np.ndarray) -> np.ndarray:
+        """
+        Blend the text cosine with a weighted bin distance, trusting the bins
+        exactly as far as the description actually parsed.
+
+        E15b measured why the blend has to be proportional rather than fixed:
+        generated captions yield 5 of 6 axes, realistic user text yields 1.29
+        (22%), and character-sheet prose -- "a gravelly old sailor,
+        world-weary" -- yields 0.50. A fixed blend would be wrong in both
+        directions.
+
+        `alpha` is the parsed fraction. For a description carrying no acoustic
+        words at all it is 0, and this returns the text scores untouched, so
+        the caller can never be worse off than the text path.
+        """
+        from .acoustics import BIN_LABELS
+        from .captions import target_bins_from_text
+        want = target_bins_from_text(description)
+        cols = [(i, a) for i, a in enumerate(self.axes) if a in want]
+        if not cols:
+            return text_sims
+        alpha = len(cols) / max(len(self.axes), 1)
+
+        idx = {a: {lbl: i for i, lbl in enumerate(BIN_LABELS[a])} for _, a in cols}
+        take = [i for i, _ in cols]
+        tgt = np.array([idx[a][want[a]] for _, a in cols], float)
+        dist = (np.abs(self.anchor_bins[:, take] - tgt) *
+                self.axis_weights[take]).sum(1)
+
+        def _z(v):
+            sd = v.std()
+            return (v - v.mean()) / sd if sd > 1e-12 else np.zeros_like(v)
+
+        return (1.0 - alpha) * _z(text_sims) + alpha * _z(-dist)
 
     def mint_many(self, description: str, n: int = 5, **kw) -> list[MintResult]:
         """
