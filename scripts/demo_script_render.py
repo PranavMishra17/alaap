@@ -13,9 +13,8 @@ every invariant at once:
     I5  Direction is per line; identities are minted neutral
     I7  every render watermarked and provenance-logged
 
-Runs on 0.6B for corpus-consistency with the cached GLOBE mapper (E10 made
-1.7B the default, but the cached embeddings are 0.6B and mixing encoders
-would be wrong).
+Runs on 1.7B with the v2 (decorrelated) binner -- the only corpus/binner
+pair whose numbers the project still believes.
 
     envs/qwen3/Scripts/python.exe scripts/demo_script_render.py
 """
@@ -34,7 +33,7 @@ from alaap.renderer import Qwen3BaseRenderer, Direction
 from alaap.watermark import Watermarker
 from alaap.service import VoiceService
 
-MODEL = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 OUT = os.path.abspath("demo_out")
 os.makedirs(OUT, exist_ok=True)
 
@@ -59,10 +58,19 @@ SCRIPT = [
 
 # ------------------------------------------------------------ 1. the mapper
 print("[1/5] loading the mapper (cached GLOBE_V2 corpus)")
-d = np.load("experiments/S2/out/corpus_globe_v2_2500_1.npz", allow_pickle=True)
+# 1.7B corpus + the v2 (decorrelated) binner. The 0.6B artefacts next to
+# these are stale in two ways that both surfaced as hard errors: their
+# cached attributes predate f0_cv, so Attributes(**a) raises, and their
+# binner is v1, which Binner.load refuses because it bins raw f0_std and
+# uncorrected hnr_db -- the entangled axes S2 run 3 got wrong.
+d = np.load("experiments/S2/out/"
+            "corpus_globe_v2_2500_1_Qwen3-TTS-12Hz-17B-Base.npz", allow_pickle=True)
 Z = d["Z"].astype(np.float64)
-attrs = [Attributes(**a) for a in json.loads(str(d["attrs"]))]
-binner = Binner.load("experiments/S2/out/binner_globe_v2.json")
+# from_dict, not Attributes(**a): it derives fields added after a corpus was
+# measured instead of raising on them.
+attrs = [Attributes.from_dict(a) for a in json.loads(str(d["attrs"]))]
+binner = Binner.load("experiments/S2/out/"
+                     "binner_globe_v2_Qwen3-TTS-12Hz-17B-Base.json")
 caps = [caption_from_bins(binner.bin_one(a), seed=i) for i, a in enumerate(attrs)]
 space = SpeakerSpace.fit(Z, n_components=150)
 mapper = RetrievalMapper(space, TextEncoder(), pca_dims=50).fit(caps, Z)
@@ -80,7 +88,7 @@ print(f"      tau available: {sorted(svc.r.tau)}")
 
 # --------------------------------------------------------------- 3. mint
 print(f"[3/5] minting {len(CAST)} characters "
-      f"(novelty 0.0 -- S2/GLOBE found retrieval best on a dense corpus)")
+      f"(novelty 0.0; service.mint escalates it only on a collision -- E11)")
 ids = {}
 for name, desc in CAST:
     t0 = time.time()

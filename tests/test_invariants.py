@@ -1020,3 +1020,52 @@ class TestAdaptiveNovelty:
         before_drift = src.split("drift_ok")[0]
         assert before_drift.count("collisions += 1") == 1
         assert "collisions += 1" not in src.split("drift_ok", 1)[1]
+
+
+class TestShippedScriptsLoadTheirArtefacts:
+    """
+    `demo_script_render.py` is the first thing HANDOFF tells a reader to run,
+    and it was broken in two ways at once, both silently accumulated:
+
+      * it loaded the 0.6B cached corpus with `Attributes(**a)`, and those
+        attributes predate `f0_cv`, so construction raised TypeError;
+      * it loaded a **v1** binner, which `Binner.load` now refuses because v1
+        bins raw f0_std and uncorrected hnr_db -- the entangled axes S2 run 3
+        got wrong.
+
+    Neither is caught by any experiment, because experiments carry their own
+    paths. This walks the artefact paths that shipped scripts actually name.
+    """
+
+    @staticmethod
+    def _referenced_paths(path):
+        import re
+        src = open(path, encoding="utf-8").read()
+        # string literals that look like artefact paths, including ones split
+        # across adjacent literals by the formatter
+        joined = re.sub(r'"\s*\n\s*"', "", src)
+        return re.findall(r'"(experiments/[^"]+\.(?:npz|json))"', joined)
+
+    def test_demo_script_artefacts_are_loadable(self):
+        import os
+        from alaap.acoustics import Attributes, Binner
+        import json as _json
+        script = os.path.join(os.path.dirname(__file__), "..", "scripts",
+                              "demo_script_render.py")
+        script = os.path.abspath(script)
+        if not os.path.exists(script):
+            pytest.skip("demo script not present")
+        root = os.path.dirname(os.path.dirname(script))
+        refs = self._referenced_paths(script)
+        assert refs, "no artefact paths found in the demo -- did it get rewritten?"
+        for rel in refs:
+            full = os.path.join(root, rel)
+            if not os.path.exists(full):
+                pytest.skip(f"{rel} not built in this checkout")
+            if rel.endswith(".json") and "binner" in rel:
+                Binner.load(full)                      # raises on a v1 binner
+            elif rel.endswith(".npz"):
+                d = np.load(full, allow_pickle=True)
+                if "attrs" in d:
+                    for a in _json.loads(str(d["attrs"]))[:5]:
+                        Attributes.from_dict(a)        # must tolerate old caches
