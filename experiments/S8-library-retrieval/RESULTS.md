@@ -1,6 +1,6 @@
 # S8 — description → nearest voice in a fixed library
 
-**Run:** 2026-09-05 · 141-voice library from IndicVoices-R Hindi · 200 descriptions
+**Run:** 2026-09-05 · 141-voice Hindi and 138-voice Bengali libraries from IndicVoices-R · 200 descriptions each
 **Question:** can you skip minting entirely and just *retrieve* the closest voice a TTS already has?
 
 ---
@@ -114,6 +114,28 @@ lands near an existing one, whereas retrieval just returns the neighbour it foun
 That reframes S7's result. The Indic catalog is not small because minting is weak. It is
 small because 128-d MioCodec identity space, described through five acoustic axes, holds
 about a third of its nominal diversity — and minting then reaches less of that third.
+
+## It replicates on a second language and a disjoint set of speakers
+
+Bengali: 138 library voices, none of them the same people, a different binner fitted on
+different audio, the same 200 stratified descriptions.
+
+| | Hindi (141 voices) | Bengali (138 voices) |
+|---|---|---|
+| exact bin match, hybrid | 65.6% | **66.5%** |
+| within one bin, hybrid | 87.3% | **89.8%** |
+| sparse two-axis query, hybrid | 53.8% | **53.8%** |
+| random control | 20.3% | 22.1% |
+| voices reached | 82 / 141 | 91 / 138 |
+| normalised Vendi | 0.405 | 0.379 |
+| **effective voices** | **~33** | **~34** |
+
+Every number lands within a point or two, and the sparse figure is identical to three
+significant figures on 400 independent decisions each. **This is a property of the
+method, not of the Hindi corpus.**
+
+That also makes the ~14 from `S7` look less like an Indic-Mio quirk and more like a
+real gap between selecting and synthesising.
 
 ## What retrieval cannot do
 
