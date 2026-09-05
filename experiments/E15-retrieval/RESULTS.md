@@ -126,11 +126,32 @@ The measured weights are the same shape, and more extreme:
 
 Everything also scores higher on LibriTTS-R (cos 0.31 vs 0.16), consistent with **E14c** — GLOBE_V2's speaker labels are the weaker ones (E4: EER 20.0% vs 2.46%), which depresses every correlation measured against them.
 
+---
+
+# E15e — the payoff: VTL in captions lifts both paths
+
+E14 ordered the work as *re-weight, retrieve on bins, change the anchor corpus, add axes*. Two of those have now landed together — `vtl_cm` written into `captions.ORDER` (weight-ordered, `max_attrs` 5→6 so it does not evict speaking rate), and the mapper's `retrieval="hybrid"` path. Measured end to end through the **shipped** mapper on the same held-out protocol (`check_shipped_path.py`):
+
+| | cos to true voice | rank of true (chance 175) |
+|---|---|---|
+| text, before VTL in captions | 0.0958 | 129.7 |
+| **text, after** | **0.1085** | **120.6** |
+| hybrid, before VTL in captions | 0.1523 | 100.1 |
+| **hybrid, after** | **0.1814** | **86.7** |
+
+**Both paths improved, which is the right shape.** The captions now *contain* vocal-tract information, so even MiniLM picks some of it up (+13%); the bin path, which knows what the axis is and how much it weighs, picks up much more (+19% on top of an already-better baseline).
+
+Against the text path as it stands today, **hybrid retrieval is +67%** and moves the true anchor from rank 120.6 to **86.7 of 350**, where chance is 175.
+
+**Ordering the caption by measured weight is part of this.** `ORDER` now leads with `f0_mean` and `vtl_cm` — the two axes that carry identity — rather than an arbitrary sequence, so the five or six clauses a caption spends are spent on what distinguishes a voice.
+
+*(`max_attrs` went to 6 deliberately rather than letting VTL evict speaking rate. Rate carries almost no identity information — weight 0.39 — but it is perceptually salient, and a caption is read by a person as well as matched by a mapper. Those are different jobs, and the identity weighting should not decide the first one on its own.)*
+
 ## Not established
 
 - **Two** corpora as of E15d, English only, one backend, `top_k=4`, one SLERP blending scheme. The two corpora differ in encoder as well, so corpus and encoder are not separated.
 - The GLOBE weights are measured on 350 speakers; E15d re-measures them independently on 733 LibriTTS-R anchors and gets the same ordering.
-- No rendering: no drift, consistency, or adherence, and no listening.
+- No rendering anywhere in E15: no drift, consistency, adherence, or listening. E15e's gains are retrieval quality in embedding space, and E11 has already shown once that a geometric improvement can render worse. `retrieval` stays defaulted to `"text"` until a rendering arm.
 - The hybrid design above is **proposed, not tested**.
 - E15b's descriptions are **my own**, written by someone who had just read the parser. That biases coverage upward, so 22% is more likely an over-estimate than an under-estimate.
 - Parse coverage is measured on 24 descriptions across four styles, which is a sketch, not a survey of how people actually write character briefs.
