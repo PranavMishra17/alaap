@@ -1,21 +1,15 @@
-# E12 — novelty, the GMM defect, and why "more spread" was the wrong target
+# E12 — novelty, prior size, and two metrics that were wrong before one was right
 
-**Run:** 2026-09-05 · 300 vectors per setting · GLOBE_V2 / 1.7B mapper · **CPU only, nothing rendered**
-**Question:** which `novelty` setting gives the largest catalog of genuinely distinct voices?
+**Run:** 2026-09-05 · 300 vectors per setting · GLOBE_V2 / 1.7B · **CPU only, nothing rendered**
+**Question:** which `novelty` and `gmm_components` give the largest catalog of *plausible* distinct voices?
 
----
-
-## Why
-
-E11 found a catalog saturating fast at the default `novelty=0.0` — mean uniqueness fell 0.803 → 0.592 inside twenty voices. `novelty` is the one knob that plausibly changes that, and its endpoints were last measured by E1 **on the old, entangled acoustic axes**, before S2 run 4 decorrelated them. The knob was set by an invalidated number.
-
-Minting a vector is linear algebra over cached embeddings — only *rendering* needs the GPU — so this ran on CPU while E11 held the card.
+> **This experiment reversed itself twice.** The reversals are the most useful thing in it, so they are kept in order rather than tidied away. If you only read one section, read *The metric that was broken*.
 
 ---
 
-## Finding 1 — the generative branch could only ever make 64 voices
+## Finding 1 — the generative branch could only ever make 64 voices *(stands)*
 
-The first sweep said novelty made everything **monotonically worse**, ending at a nearest-neighbour distance of **exactly 0.000**. That means the median minted voice had an *exact duplicate*. 300 different descriptions cannot do that by chance; it is a defect, not a curve.
+The first sweep said novelty made everything monotonically worse, ending at a nearest-neighbour distance of **exactly 0.000** between 300 minted voices. That means the median minted voice had an *exact duplicate*, which 300 different descriptions cannot produce by chance.
 
 ```python
 self.gmm = GaussianMixture(..., random_state=0, ...).fit(self.P)
@@ -23,86 +17,106 @@ self.gmm = GaussianMixture(..., random_state=0, ...).fit(self.P)
 cand = self.gmm.sample(64)[0]     # identical 64 points on EVERY call
 ```
 
-`GaussianMixture.sample()` calls `check_random_state(self.random_state)` each time, and `random_state` was a fixed int. **The generative branch had at most 64 possible outcomes for the entire life of a mapper**, however many descriptions it was given. Invisible at `novelty=0.0`, where that branch carries zero weight.
+`GaussianMixture.sample()` re-derives its RNG from `self.random_state` on every call. **The generative branch had at most 64 possible outcomes for the life of a mapper**, however many descriptions it was given — invisible at the default `novelty=0.0`, where that branch has zero weight.
 
-Fixed: `_sample_gmm(rng, n)` draws from the fitted mixture using the *caller's* rng via precomputed Cholesky factors — reproducible per seed, different across descriptions. Three regression tests pin it.
+Fixed via `_sample_gmm(rng, n)`, drawing from the fitted mixture with the *caller's* rng through precomputed Cholesky factors. Three regression tests. **This finding is mechanical and stands.**
 
-**E1's "novelty 1.0 collapsed to 0.097" was, on this evidence, reading this bug.** Treat E1's novelty endpoints as withdrawn until re-run.
+It also means **E1's "novelty 1.0 collapsed to 0.097" was reading this bug.** Treat E1's novelty endpoints as withdrawn.
 
 ---
 
-## Finding 2 — spread was the wrong target, and it nearly fooled me
+## The metric that was broken *(read this one)*
 
-After the fix, spread rose monotonically with novelty and I wrote up `novelty=1.0` as the winner. **That conclusion was wrong**, and the thing that caught it was the component sweep (E12b), where a *single* Gaussian — the crudest possible prior — scored best on every diversity metric at once. A prior that cannot represent the data should not win. That is not a result, it is a warning.
+After the fix, spread rose monotonically with novelty, and "use `novelty=1.0`" was nearly the conclusion. It is wrong, because **spread cannot distinguish "novel" from "implausible"** — a point far from every real speaker is also far from every other sample, so a degenerate sampler wins on spread. That is the sparse region `RESEARCH/12` measured at **+60% relative WER**.
 
-The reason is that **"far from the data" and "novel" produce identical spread numbers.** A sampler placing points out in the tails gets high nearest-neighbour distance, high Vendi, and high distance-to-corpus, all while generating voices no real speaker resembles — precisely the sparse regions RESEARCH/12 measured at **+60% relative WER**.
+So a plausibility column was added: log-likelihood of minted voices against real speakers, under a 24-component full-covariance GMM.
 
-So both sweeps gained a column that separates them:
+**It reported that a *single* Gaussian — the crudest prior available — was the worst possible choice (0%), and that `novelty=0.60` peaked at 35%.** A write-up saying exactly that was committed.
 
-> **`on_manifold_pct`** — where the median minted voice's log-likelihood falls within the distribution of *real speaker* log-likelihoods, under an **independent** reference mixture (24 components, fit once on the corpus, never on the samples — scoring samples under the model that generated them is circular).
->
-> **50% = as typical as the median real speaker. 0% = less likely than every real speaker in the corpus.**
+Then it got the control it should have had first:
 
-### Novelty, with the column that matters
+| scored set | likelihood metric says |
+|---|---|
+| **real held-out speakers** | **0–1%** |
+| Gaussian noise | 0% |
 
-Real speakers, same space and metric: **Vendi 0.397, nn median 0.660.**
+**The metric could not tell a real human voice from noise.** A full-covariance GMM over 50 dimensions fitted to ~1,250 points measures proximity to its own training set, not plausibility. Every number it produced was invalid, including the ones already written up — and worse, because the reference had been fitted on the *same* speakers the mapper's anchors came from, retrieval-heavy settings scored well for a reason that had nothing to do with plausibility.
 
-| novelty | Vendi | nn median | vs real | below uniqueness floor | **on-manifold** |
-|---|---|---|---|---|---|
-| **0.00** ← *current default* | 0.102 | 0.413 | 0.63× | 17.3% | **0%** |
-| 0.15 | 0.098 | 0.402 | 0.61× | 17.3% | 1% |
-| 0.30 | 0.096 | 0.393 | 0.60× | 17.7% | 9% |
-| 0.45 | 0.098 | 0.411 | 0.62× | 7.0% | 25% |
-| **0.60** | 0.103 | 0.434 | 0.66× | 2.7% | **35%** ← best |
-| 0.75 | 0.112 | 0.458 | 0.69× | **0.0%** | 28% |
-| 0.90 | 0.121 | 0.482 | 0.73× | 0.0% | 14% |
-| 1.00 | 0.126 | **0.496** | **0.75×** | 0.0% | 4% |
+Everything that metric justified was reverted, including a `typicality` selection mode added to `mint()` on its evidence.
 
-**On-manifold is unimodal and peaks at `novelty=0.60`, while spread rises monotonically.** Optimising spread alone would have selected 1.00, which sits at 4% — nearly as far off-manifold as the default.
+### The replacement, and its control
 
-**The most consequential line is the first one.** The current default, `novelty=0.0`, scores **0%**: the median minted voice is less likely than *every* one of 2,500 real speakers. Pure retrieval SLERP interpolates *between* anchors, and the midpoint between two real speakers is not generally a plausible speaker — which is exactly RESEARCH/12's finding about averaging in speaker space, showing up here as a property of the default setting.
+`metrics.isolation_pct` — non-parametric, no density model, only a metric: the percentile of a sample's median k-NN radius within the reference's own k-NN radii. **Validated before use**, on a reference of held-out speakers the mapper never saw:
 
-So both ends fail, for opposite reasons: **0.0 lands in the gaps between real speakers, 1.0 lands outside them all.**
+| scored set | isolation | required |
+|---|---|---|
+| **real held-out speakers** | **54%** | near 50 ✅ |
+| Gaussian noise | 100% | near 100 ✅ |
+| dimension-shuffled real speakers | 100% | near 100 ✅ |
 
-### Components (E12b), same lesson
+The control is now a unit test, so a future change breaks there rather than inside an experiment.
 
-At `novelty=1.0`, sweeping `gmm_components`:
+**Reading it:** 50 = as typical as a median real speaker. **Above 50** = out in the tails. **Below 50** = crowded into denser regions than real speakers occupy — the opposite failure, and a real one.
 
-| k | nn median | vs real | to-corpus | **on-manifold** |
+---
+
+## Finding 2 — the corrected results
+
+Corpus split in half: mapper, prior and PCA space fitted on one half; plausibility measured against the other. Control: held-out real speakers **54%**, nn median **0.653**.
+
+### Novelty (`gmm_components=5`)
+
+| novelty | nn median | vs real | below floor | **isolation** |
 |---|---|---|---|---|
-| 1 | **0.543** | **0.82×** | **0.599** | **0%** |
-| 3 | 0.517 | 0.78× | 0.573 | 2% |
-| 5 ← current | 0.496 | 0.75× | 0.551 | 4% |
-| 12 | 0.475 | 0.72× | 0.538 | 9% |
-| 20 | 0.470 | 0.71× | 0.528 | 16% |
-| 32 | 0.461 | 0.70× | 0.522 | 20% |
-| 48 | 0.433 | 0.66× | 0.511 | **27%** |
+| 0.00 ← default | 0.412 | 0.63× | 19.0% | 25% |
+| 0.30 | 0.398 | 0.61× | 19.7% | 24% |
+| 0.45 | 0.422 | 0.65× | 12.7% | 23% |
+| 0.60 | 0.437 | 0.67× | 5.7% | 23% |
+| 0.75 | 0.457 | 0.70× | 2.3% | 25% |
+| 0.90 | 0.476 | 0.73× | 0.7% | 26% |
+| 1.00 | 0.487 | 0.75× | **0.7%** | 28% |
 
-**Perfectly anti-correlated.** Every diversity metric prefers k=1; the likelihood test says k=1 is the worst possible choice, generating below every real speaker. Note BIC prefers k=3 (290.3/sample) and also disagrees with on-manifold — BIC scores *fit to the anchors*, not plausibility of *samples*.
+**Novelty barely affects plausibility at all** — isolation is flat at 23–28% across the entire range. The earlier "peak at 0.60" was an artefact of the broken metric. What novelty *does* buy is real and worth having: **collisions under the uniqueness floor fall from 19.0% to 0.7%**, and spread rises from 0.63× to 0.75× of real speaker spacing.
 
-`to-corpus` did its narrower job: it falls monotonically as k rises, catching memorisation at high k. It simply cannot see the opposite failure, which is why the likelihood column was needed.
+### Prior size (`novelty=1.0`)
+
+| k | nn median | vs real | below floor | **isolation** |
+|---|---|---|---|---|
+| **1** | **0.546** | **0.84×** | **0.0%** | **45%** |
+| 3 | 0.500 | 0.77× | 0.0% | 29% |
+| 5 ← current | 0.487 | 0.75× | 0.7% | 28% |
+| 12 | 0.473 | 0.72× | 3.3% | 27% |
+| 24 | 0.444 | 0.68× | 10.0% | 26% |
+| 48 | 0.403 | 0.62× | 24.0% | 24% |
+
+**`gmm_components` is the lever, not novelty — and k=1 wins on every column at once**, including the one that was supposed to catch it. At 45% isolation it is the only setting that comes near real speakers' 54%; everything else sits at 24–29%, i.e. **crowded into denser regions than real people occupy.**
+
+That is the honest reading of the whole experiment: the sampler's problem was never that it wandered into the tails. It is that **it huddles in the middle of the population and avoids the edges** — and more mixture components make that worse, because samples concentrate at mixture modes.
+
+Note this contradicts E1's warning that a full-covariance Gaussian "overshoots to 1.29× and lands off-manifold". Measured here it *under*-shoots at 0.84×. E1's numbers came from the same code path as the 64-sample bug and should be re-run before either is trusted.
 
 ---
 
-## What to change, and what to wait for
+## What to change
 
-**Candidate, not a decision: `novelty≈0.60`, `gmm_components` higher than 5.** Both are geometry-only findings. Nothing here was rendered, so drift, consistency and adherence are unmeasured, and it remains possible that a more on-manifold vector renders no better.
+**Nothing yet.** Every number here is geometry. Drift, consistency and adherence are unmeasured, and the confirming run — E11's `novelty=0.75` arm rendering against the `novelty=0.0` control — has not finished.
 
-The confirming run is **E11's `novelty=0.75` arm**, rendering against the 41-voice `novelty=0.0` control in `out/`. It is deliberately the *harder* case: 0.75 is further out than 0.60, so if drift and consistency hold there they hold at 0.60 too.
+Candidates, in order of evidence:
 
-**Do not raise `gmm_components` on this evidence alone.** Even k=48 reaches only 27% on-manifold, so no setting tested makes the sampler typical — the ceiling may be the 50-dimensional PCA truncation or the mixture family itself, neither of which was swept.
+1. **`gmm_components=1`, `novelty≈1.0`** — best on spread, collisions and plausibility simultaneously. Needs rendering confirmation most of all, because it is the setting E1 explicitly warned about.
+2. **Raise `novelty` from 0.0 regardless** — the collision reduction (19.0% → 0.7%) is large and the plausibility cost is nil.
 
 ## Not established
 
-- One corpus (GLOBE_V2), English only, one `pca_dims=50`.
-- `on_manifold_pct` depends on the reference mixture's own choice of 24 components. It was not sensitivity-tested; the *ordering* across settings is the claim, not the absolute percentages.
-- No rendering, therefore no drift, consistency, adherence or listening evidence anywhere in this document.
+- One corpus, English only, `pca_dims=50` never swept.
+- `isolation_pct` depends on k=5; the *ordering* across settings is the claim, not the absolute percentages.
+- No rendering anywhere in this document. No drift, consistency, adherence, or listening evidence.
+- k=1 winning on every axis is the pattern that should trigger suspicion, and it has now survived one metric replacement. It has not survived a rendering test.
 
 ## Reproduce
 
 ```bash
-envs/qwen3/Scripts/python.exe experiments/E12-novelty/run_novelty_sweep.py --n 300
-envs/qwen3/Scripts/python.exe experiments/E12-novelty/run_components_sweep.py --n 300
+envs/qwen3/Scripts/python.exe experiments/E12-novelty/run_sweeps.py
 ```
 
-About 90 seconds each on CPU. Results in `out/results.json` and `out/results_components.json`.
+~4 minutes on CPU. Prints its own control first — **if held-out real speakers are not near 50%, stop and fix the metric before reading anything below it.**

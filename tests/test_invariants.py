@@ -738,3 +738,56 @@ class TestMapperGenerativeBranchDoesNotCollapse:
         d = np.linalg.norm(V[:, None, :] - V[None, :, :], axis=-1)
         np.fill_diagonal(d, np.inf)
         assert d.min() > 1e-6, "minted duplicate voices at novelty=1.0"
+
+
+class TestIsolationMetricPassesItsOwnControl:
+    """
+    This metric exists because its predecessor failed silently.
+
+    The first version compared log-likelihoods under a full-covariance GMM
+    fitted to the reference speakers. On GLOBE_V2 that scored REAL held-out
+    speakers at 0-1% -- the same as Gaussian noise -- because a 24-component
+    full-covariance mixture over 50 dimensions fitted to ~1,250 points models
+    proximity to its own training set, not plausibility. Every conclusion
+    drawn from it was invalid.
+
+    So the control is the test: a usable typicality metric MUST place real
+    unseen speakers near the middle and noise at the extreme. If a future
+    change breaks that, it breaks here rather than in an experiment.
+    """
+
+    @staticmethod
+    def _split(seed=0, n=600, dim=32):
+        """Two disjoint halves of a correlated, clustered population."""
+        rng = np.random.default_rng(seed)
+        centres = rng.standard_normal((4, dim)) * 4.0
+        A = np.linalg.qr(rng.standard_normal((dim, dim)))[0][:, :8]
+        X = np.vstack([centres[rng.integers(4)] + (A @ rng.standard_normal(8)) * 2.0
+                       for _ in range(n)])
+        return X[: n // 2], X[n // 2:]
+
+    def test_real_unseen_speakers_land_near_the_middle(self):
+        from alaap.metrics import isolation_pct
+        held_out, reference = self._split()
+        p = isolation_pct(held_out, reference)
+        assert 25 <= p <= 75, f"real unseen speakers scored {p:.0f}%, expected ~50"
+
+    def test_noise_is_maximally_isolated(self):
+        from alaap.metrics import isolation_pct
+        held_out, reference = self._split()
+        rng = np.random.default_rng(1)
+        noise = rng.standard_normal(held_out.shape) * reference.std()
+        assert isolation_pct(noise, reference) >= 90
+
+    def test_shuffling_the_dimensions_is_detected(self):
+        """
+        Destroying the correlation structure while keeping every marginal
+        identical. A metric that only looks at per-dimension ranges misses this.
+        """
+        from alaap.metrics import isolation_pct
+        held_out, reference = self._split()
+        rng = np.random.default_rng(2)
+        shuf = held_out.copy()
+        for j in range(shuf.shape[1]):
+            shuf[:, j] = shuf[rng.permutation(len(shuf)), j]
+        assert isolation_pct(shuf, reference) > isolation_pct(held_out, reference) + 15

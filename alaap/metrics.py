@@ -191,3 +191,47 @@ def cluster_separability(Z: np.ndarray, labels: list[str]) -> float:
         b = min(D[i, lab == u].mean() for u in np.unique(lab) if u != lab[i])
         sil.append((b - a) / max(a, b, 1e-12))
     return float(np.mean(sil)) if sil else 0.0
+
+
+# ------------------------------------------------------- typicality / manifold
+def knn_radius(X: np.ndarray, R: np.ndarray, k: int = 5,
+               self_exclude: bool = False) -> np.ndarray:
+    """Cosine distance from each row of X to its k-th nearest row of R."""
+    A = np.asarray(X, dtype=np.float64)
+    B = np.asarray(R, dtype=np.float64)
+    A = A / (np.linalg.norm(A, axis=1, keepdims=True) + 1e-12)
+    B = B / (np.linalg.norm(B, axis=1, keepdims=True) + 1e-12)
+    D = 1.0 - A @ B.T
+    if self_exclude:
+        np.fill_diagonal(D, np.inf)
+    return np.sort(D, axis=1)[:, k - 1]
+
+
+def isolation_pct(X: np.ndarray, R: np.ndarray, k: int = 5) -> float:
+    """
+    How isolated X is relative to how isolated REAL speakers are.
+
+    Returns the percentile of X's median k-NN radius within the distribution
+    of R's own k-NN radii. **50 = as typical as a median real speaker.
+    100 = further from the data than any real speaker is.**
+
+    WHY NOT A LIKELIHOOD. The obvious version of this test -- fit a
+    full-covariance GMM to the reference and compare log-likelihoods -- does
+    not work in this space and fails silently. Measured on GLOBE_V2: a
+    24-component GMM fitted to 1,250 speakers in 50 PCA dimensions scores
+    REAL held-out speakers at 0-1%, indistinguishable from Gaussian noise.
+    With a few thousand points in 50 dimensions it is measuring proximity to
+    its own training set, not plausibility, so anything evaluated on the SAME
+    speakers the mapper was built from scores well for the wrong reason.
+
+    A k-NN radius needs no density model, only a metric. Validated against the
+    control that broke the likelihood version:
+
+        held-out REAL speakers            54%      (must be near 50)
+        gaussian noise                   100%      (must be near 100)
+        dimension-shuffled speakers      100%      (must be near 100)
+
+    The reference R must be speakers the thing under test was NOT built from.
+    """
+    r_self = knn_radius(R, R, k=k, self_exclude=True)
+    return float((r_self < np.median(knn_radius(X, R, k=k))).mean() * 100.0)

@@ -120,6 +120,15 @@ class RetrievalMapper:
         # SAME points every time. See _sample_gmm.
         self._chol = [np.linalg.cholesky(
             c + 1e-9 * np.eye(c.shape[0])) for c in self.gmm.covariances_]
+        # The typicality band of REAL speakers under this prior. E12 found that
+        # both ends of the novelty range leave it: novelty 0 interpolates
+        # BETWEEN anchors and lands in the gaps, novelty 1 lands out in the
+        # tails, and both score 0-4% on a likelihood comparison against real
+        # speakers. Distance metrics cannot tell those apart from novelty,
+        # because a point far from all the data is also far from every other
+        # point. Storing the band lets mint() aim at it directly.
+        _ll = self.gmm.score_samples(self.P)
+        self._ll_median = float(np.median(_ll))
         return self
 
     def _sample_gmm(self, rng, n: int) -> np.ndarray:
@@ -154,7 +163,7 @@ class RetrievalMapper:
         return v * ((1 - t) * na + t * nb)
 
     def mint(self, description: str, novelty: float = 0.5, top_k: int = 4,
-             seed: int | None = None) -> MintResult:
+             seed: int | None = None, typicality: bool = False) -> MintResult:
         """
         novelty 0.0  pure retrieval/SLERP -- safest, near-duplicate of catalog
                      (E1: 0.20x natural speaker spacing)
@@ -163,6 +172,18 @@ class RetrievalMapper:
 
         Values above 1.0 are NOT exposed: E1 showed the next step up
         (full-covariance Gaussian) overshoots to 1.29x and lands off-manifold.
+
+        `typicality` selects, among several candidate blends, the one whose
+        density under the speaker prior is closest to a real speaker's.
+
+        DEFAULT OFF, and the reason is worth keeping. It was added on the
+        strength of an on-manifold likelihood metric that turned out to be
+        broken: a full-covariance GMM over 50 dimensions, fitted to ~1,250
+        speakers, scores REAL held-out speakers no higher than Gaussian noise
+        (both ~0-1%). It measures proximity to its own training points, not
+        plausibility. Every number that justified turning this on was
+        therefore invalid, and this stays off until a density estimator that
+        passes that control says otherwise. See experiments/E12-novelty.
         """
         if self.T is None:
             raise RuntimeError("mapper not fitted")
@@ -188,9 +209,21 @@ class RetrievalMapper:
         cand = self._sample_gmm(rng, 64)
         d = cand - retrieval
         pick = cand[np.argsort((d * d).sum(1))[:8]]
-        generative = pick[rng.integers(len(pick))]
 
-        P_out = (1 - novelty) * retrieval + novelty * generative
+        if typicality and novelty > 0.0:
+            # Blend against SEVERAL generative draws and keep the blend whose
+            # density under the speaker prior best matches a real speaker's.
+            # Taking one draw and hoping (the previous behaviour) is what put
+            # novelty=1.0 at 4% on-manifold: nothing in the blend was aiming
+            # at plausibility, so it drifted into the tails as novelty rose.
+            C = (1 - novelty) * retrieval + novelty * pick
+            P_out = C[int(np.argmin(np.abs(
+                self.gmm.score_samples(C) - self._ll_median)))]
+            strategy = f"retrieval({1-novelty:.2f})+gmm({novelty:.2f})+typical"
+        else:
+            generative = pick[rng.integers(len(pick))]
+            P_out = (1 - novelty) * retrieval + novelty * generative
+            strategy = f"retrieval({1-novelty:.2f})+gmm({novelty:.2f})"
 
         W = self.space.from_pca(
             np.pad(P_out[None, :], ((0, 0), (0, self.space.components.shape[0] - self.k))))
@@ -198,7 +231,7 @@ class RetrievalMapper:
         return MintResult(vector=vec, working=W[0], novelty=novelty,
                           anchors=[int(i) for i in order],
                           anchor_similarity=anchor_sim,
-                          strategy=f"retrieval({1-novelty:.2f})+gmm({novelty:.2f})")
+                          strategy=strategy)
 
     def mint_many(self, description: str, n: int = 5, **kw) -> list[MintResult]:
         """
