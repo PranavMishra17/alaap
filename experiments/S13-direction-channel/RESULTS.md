@@ -1,4 +1,4 @@
-# S13 — the direction channel is real, safe, and weaker than I predicted
+# S13 — identity is safe from the text channel; the emotion tags do nothing
 
 **Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` + `MioCodec-25Hz-44.1kHz-v2` · 78 renders · 3 voices × 2 Hindi lines
 **Question:** can a text tag move delivery without moving who is speaking?
@@ -51,7 +51,12 @@ were almost certainly performed with pitch changes, and `S12` put that axis at a
 1.04. **That did not happen.** The structural separation holds precisely where it mattered
 most.
 
-## Result 2 — delivery does move, but two measures disagree and both are needed
+## Result 2 — the small movement is sampling noise, not steering
+
+*(Read this section knowing how it ends: a listener heard no emotion at all, and
+the tokenizer shows why. The analysis below is kept because it is what the
+measurements said before the listener was asked, and because the two statistics
+disagreeing is a lesson worth keeping.)*
 
 | axis | S12 | `<happy>` | `<sad>` | `<angry>` | `<surprise>` |
 |---|---|---|---|---|---|
@@ -109,24 +114,90 @@ numerator is large. The honest summary is two separate statements:
 Half right. The safety properties came in better than expected; the magnitude came in
 worse.
 
+## ⚠️ A listener says the tags do nothing at all, and the tokenizer says why
+
+The measured 1.08 noise-floor units said "weak". A fluent Hindi speaker, given the four
+tagged renders of one sentence in one voice, said something stronger:
+
+> *"NO — they are all the same speaker, all warm but no distinct feeling at all, in any
+> of the 4. No emotion — just slight variations of the same voice."*
+
+That is the drive half of `ADR-012` failing outright, and it confirms the identity half
+by the same sentence: *all the same speaker* is exactly what the ECAPA numbers claimed.
+
+### The cause: the tags are not tokens
+
+None of the nine documented tags is a single token, and none is in the added vocabulary —
+in **Indic-Mio or in its base `Aratako/MioTTS-0.6B`** (both vocab 164469):
+
+```
+<happy>      3 tokens  ['<h', 'appy', '>']
+<sad>        3 tokens  ['<s', 'ad', '>']
+<angry>      4 tokens  ['<', 'ang', 'ry', '>']
+<whisper>    4 tokens  ['<', 'wh', 'isper', '>']
+...
+single-token tags: 0/9      in added_vocab: 0/9
+added tokens that look like tags: </think>, <tool_call>, ... (Qwen's chat vocabulary)
+```
+
+The tags reach the model as ordinary subword text. No formatting variant changes this:
+`<happy>`, ` <happy>`, `<happy>.`, `[happy]` and `(happy)` all tokenize to 3 pieces.
+
+### `<whisper>` is the probe that settles it
+
+Whispering is unmistakable acoustically — voicing collapses. English line, same speaker
+embedding, 3 seeds averaged:
+
+| variant | tokens | hnr_db | f0_mean | **voiced_frac** | speaking_rate |
+|---|---|---|---|---|---|
+| neutral | 84 | 4.82 | 215.5 | 0.583 | 24.32 |
+| `<whisper>` | 119 | 3.97 | 216.7 | **0.555** | 17.97 |
+| `<angry>` | 124 | 5.08 | 215.0 | 0.573 | 16.68 |
+| `<enunciated>` | 158 | 5.83 | 215.3 | 0.576 | 13.08 |
+
+**It is not whispering.** `f0_mean` is unchanged to within 1.5 Hz on every tag.
+
+At a fixed seed, adding a tag changes the generated token stream almost completely
+(prefix agreement 0–2.9%) — consistent with the tag text perturbing the sample rather
+than conditioning anything.
+
+### A hypothesis of mine, refuted by its own check
+
+Token counts grow with tag length (84 → 119 → 124 → 158), so I proposed the model was
+**speaking the tag aloud**. `whisper-small` transcribes all four tagged English renders
+as exactly the reference sentence, no tag words present. **Refuted.** It would have gone
+into an upstream report as a confident claim; the check cost two minutes.
+
+This is filed upstream as Report 4 in `UPSTREAM-REPORTS.md`, with what could *not* be
+ruled out stated: that the tags need a prompt format `MioTTS-Inference` uses and I did
+not replicate.
+
 ## What this means for the direction channel
 
-**It is buildable and it is safe, but tags alone are not enough of a lever.** A 1.08-unit
-mean effect will not reliably render "authoritative versus asking for forgiveness" — the
-distinctions in the original product question are finer than a discrete six-tag vocabulary
-delivering roughly one noise-unit of movement.
+**The safe half is proven; the drive half does not exist on this backend.** Tags are not
+a weak lever, they are not a lever — a listener hears nothing, and the tokenizer explains
+why. Any plan that stacks something *onto* the tag is building on nothing.
 
-Three routes, in order of what the evidence supports:
+What survives is the more valuable half: **identity is provably robust to whatever is
+appended to the text.** That is the hard property, and it means a direction channel can be
+built here as soon as there is anything that actually drives.
 
-1. **Stack the tag with explicit prosody control.** `speaking_rate` responds *consistently*
+Three routes, now re-ordered by what the evidence supports:
+
+1. ~~**Stack the tag with explicit prosody control.**~~ Dead as stated — there is no tag
+   effect to stack onto. What survives is the second half of it: **explicit prosody
+   control alone.** `speaking_rate` responds *consistently*
    (z=6.7) but *weakly*. It is also the axis a caller can set directly rather than
    requesting — resample or re-time the render to a target rate, and the tag supplies the
    rest. This is the only route the measurements actively endorse.
-2. **Word-level emphasis (`*word*`).** Documented by Indic-Mio and **not tested here** —
-   `RESEARCH/10` calls it the only backend with word-level emphasis by default. A local
-   lever may do what a sentence-level tag cannot.
-3. **Larger intensity via repetition or tag stacking.** Untested and the most likely to
-   break intelligibility; would need `S6b`'s CER check run alongside.
+2. **Word-level emphasis (`*word*`).** Documented by Indic-Mio and **not tested here**.
+   Worth testing *first now*, and worth checking its tokenization before rendering
+   anything: `*` may or may not survive the tokenizer any better than `<happy>` did.
+   Two minutes of tokenizer inspection decides whether the render is worth running.
+3. **Direct signal-level control of `speaking_rate`.** Not a model capability at all —
+   re-time the render. `S12` says rate is a real delivery axis and `S13` says identity
+   survives text changes; nothing says the *model* has to be the one moving it.
+4. ~~Larger intensity via tag stacking.~~ Dead for the same reason as route 1.
 
 ## Not established
 

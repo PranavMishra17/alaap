@@ -341,10 +341,22 @@ noise-floor units on every tag. The *drive* half did not: the mean delivery effe
 `speaking_rate` move reliably (z up to 6.7) but weakly; `f0_cv` moves largely but
 inconsistently; `jitter` not at all.
 
-**Consequence for the build: tags are a safe lever, not yet a sufficient one.** The
-channel needs a second, directly-settable control alongside the tag — `speaking_rate` is
-the candidate the measurements endorse, because it responds consistently and a caller can
-set it rather than request it. *(S12, S13)*
+**A listener then falsified the drive half outright** — four tagged renders of one
+sentence in one voice were reported as *"all the same speaker … no distinct feeling at
+all"*. The cause is mechanical: **none of the nine documented tags is a token**, in
+Indic-Mio or in its base `MioTTS-0.6B`, and none is in the added vocabulary. They reach
+the model as ordinary subword text. `<whisper>` does not whisper — `voiced_frac` 0.583 →
+0.555.
+
+**Consequence for the build: the text tag is not a lever at all on this backend.** Anything that
+stacks *onto* the tag is building on nothing.
+
+What survives is the harder property: **identity is provably robust to whatever is
+appended to the text**, so a direction channel can be built here the moment there is
+something that actually drives. The candidates are word-level emphasis (`*word*`,
+untested, and its tokenization should be checked before rendering anything) and
+signal-level re-timing of `speaking_rate` — which is not a model capability at all.
+*(S12, S13)*
 
 ---
 

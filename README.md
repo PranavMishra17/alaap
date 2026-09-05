@@ -49,11 +49,13 @@ both *improving* (`S9b`, `S10`).
 exact adherence over 141 Indic voices and **88.5% over 2500 English voices** — no code
 change, just a bigger library (`S8`, `S10`).
 
-**A text tag directs delivery without changing who is speaking — but only just.** Tags
-cost 0.02 of ECAPA similarity against a 0.90 self-similarity ceiling and move `f0_mean`
-by ≤0.21 noise-floor units, so the structural separation is real. The movement they buy
-is small: 1.08 noise-floor units on average, about the size of re-rolling the sampling
-seed. `shimmer` and `speaking_rate` respond reliably but weakly (`S13`).
+**Identity is provably robust to the text channel — and the documented emotion tags do
+nothing.** Appending a tag costs 0.02 of ECAPA similarity against a 0.90 self-similarity
+ceiling and moves `f0_mean` by ≤0.21 noise-floor units, so whatever you write in the text
+cannot change who is speaking. But a fluent listener heard no emotion in any of
+`<happy>`, `<sad>`, `<angry>`, `<surprise>`, and the reason is mechanical: **none of the
+nine documented tags is a token** in Indic-Mio or its base model, and none is in the
+added vocabulary. `<whisper>` does not whisper. Filed upstream (`S13`).
 
 **Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
 worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)

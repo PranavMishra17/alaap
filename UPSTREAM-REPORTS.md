@@ -1,6 +1,9 @@
 # Upstream reports — ready to post
 
-Three issues for **`SPRINGLab/Indic-Mio`**, one optional nit for **`Aratako/MioCodec`**.
+Four issues for **`SPRINGLab/Indic-Mio`**, one optional nit for **`Aratako/MioCodec`**.
+
+**Report 4 is the important one** and was found after the others: the documented emotion
+tags appear not to function at all.
 
 Everything below was **adversarially re-verified** before being written. My first draft
 had three claims; one was refuted and one was my own mistake, and both are excluded.
@@ -29,9 +32,10 @@ releases**, so cite the commit: **`77473544375d57e96cbdfd5d7d257e8f280fa8e3`**
 `MioCodec-25Hz-24kHz` @ `3a737f0d`, `MioCodec-25Hz-44.1kHz-v2` @ `67faba34`.
 torch 2.5.1+cu121, transformers 4.57.3, Windows.
 
-**Suggested order.** Post Report 2 first if you only post one — it is the one that cost
-the most time and is most likely to catch someone else. Report 1 is the biggest but is a
-documentation fix. Report 3 is optional.
+**Suggested order.** **Report 4 first** — it says a documented feature does not work, and
+it is the one a maintainer most needs to see. Then Report 2 (cost the most time, most
+likely to catch someone else), then Report 1 (biggest, but a documentation fix). Report 3
+is optional.
 
 ---
 
@@ -48,8 +52,8 @@ Transformers example in the model card is not runnable (shapes, argument binding
 **Body** — copy everything between the four-backtick fences:
 
 ````markdown
-Thanks for Indic-Mio — the 22-language coverage and the emotion tags are genuinely
-useful, and the model itself works well once driven correctly.
+Thanks for Indic-Mio — the 22-language coverage is genuinely useful and the model
+works well once driven correctly.
 
 The **Approach 2: Directly with Transformers** snippet on the card cannot run as
 written. Four separate problems, smallest first. All reproduced against `miocodec`
@@ -281,6 +285,110 @@ m.decode(global_embedding=torch.randn(128),
 
 ---
 
+## Report 4 — the emotion/style tags appear to have no effect
+
+**Post to:** <https://huggingface.co/SPRINGLab/Indic-Mio/discussions/new>
+
+**Title** — copy this line:
+
+```text
+Emotion tags (<happy>, <whisper>, ...) appear to have no effect — they are not tokens in the tokenizer
+```
+
+**Body** — copy everything between the four-backtick fences:
+
+````markdown
+Thank you for Indic-Mio — the two-tower behaviour is excellent and I have been using it
+successfully for Hindi, Bengali and Tamil.
+
+I cannot get the documented emotion and style tags to do anything, and I think the
+tokenizer explains why. Reporting it with what I measured, in case I am driving it wrong.
+
+### What the card says
+
+> Tags for Indian languages: `<happy>`, `<sad>`, `<angry>`, `<disgust>`, `<fear>`, `<surprise>`
+> Tags for English: `<happy>`, `<sad>`, `<enunciated>`, `<confused>`, `<angry>`, `<whisper>`
+
+placed at the end of the sentence. That is exactly how I used them.
+
+### The tags are not tokens
+
+None of the nine documented tags is a single token, and none is in the added vocabulary —
+in **Indic-Mio or in the base `Aratako/MioTTS-0.6B`** (both vocab size 164469):
+
+```
+tag             n tokens  pieces
+<happy>                3  ['<h', 'appy', '>']
+<sad>                  3  ['<s', 'ad', '>']
+<angry>                4  ['<', 'ang', 'ry', '>']
+<disgust>              5  ['<', 'dis', 'g', 'ust', '>']
+<fear>                 3  ['<f', 'ear', '>']
+<surprise>             4  ['<', 'sur', 'prise', '>']
+<enunciated>           5  ['<', 'en', 'unc', 'iated', '>']
+<confused>             4  ['<', 'conf', 'used', '>']
+<whisper>              4  ['<', 'wh', 'isper', '>']
+
+single-token tags:  0/9
+in added_vocab:     0/9
+added tokens that look like tags: ['</think>', '</tool_call>', '</tool_response>',
+                                   '<think>', '<tool_call>', '<tool_response>']
+```
+
+The added vocabulary is Qwen's chat/tool tokens; no emotion tag was ever added.
+
+### And behaviourally they do nothing
+
+`<whisper>` is the clearest probe, because whispering is unmistakable acoustically —
+voicing should collapse. English line, same speaker embedding, 3 seeds averaged:
+
+```
+variant         tokens   hnr_db   f0_mean   voiced_frac   speaking_rate
+neutral             84     4.82     215.5         0.583           24.32
+<whisper>          119     3.97     216.7         0.555           17.97
+<angry>            124     5.08     215.0         0.573           16.68
+<enunciated>       158     5.83     215.3         0.576           13.08
+```
+
+`voiced_frac` barely moves — it is not whispering. `f0_mean` is unchanged to within
+1.5 Hz across every tag.
+
+On Hindi, across 78 renders (3 voices x 2 lines, with 30 untagged renders establishing
+the sampling noise floor at temperature 0.9), the mean effect of a tag on the acoustic
+axes that carry delivery was **1.08 noise-floor units** — i.e. about the same as
+re-rolling the sampling seed. A fluent Hindi speaker listened to `<happy>`, `<sad>`,
+`<angry>` and `<surprise>` renders of one sentence in one voice and reported them as the
+same voice with no distinguishable emotion.
+
+At a fixed seed, adding a tag changes the generated token stream almost completely
+(prefix agreement with the untagged generation: 0–2.9%), which is consistent with the
+tag text perturbing sampling rather than conditioning anything.
+
+### Two things I checked so they are not confounders
+
+- **The tag is not being spoken aloud.** `whisper-small` transcribes all four tagged
+  English renders as exactly the reference sentence, with no "whisper"/"enunciated"
+  appearing. Intelligibility is unaffected.
+- **Formatting does not change the tokenization**: `<happy>`, ` <happy>`, `<happy>.`,
+  `[happy]` and `(happy)` all tokenize to 3 pieces.
+
+### What I could not rule out
+
+- That the tags require a prompt format other than plain inline text — something
+  `MioTTS-Inference` does that I have not replicated. If so, a card example showing the
+  correct call would fix this entirely.
+- That they work in a language or on a checkpoint I did not test. I used Hindi and
+  English on `SPRINGLab/Indic-Mio` @ `25feace0` with `MioCodec-25Hz-44.1kHz-v2`.
+
+If the tags are meant to work as plain text, adding them as special tokens and
+fine-tuning briefly on tagged data would likely be needed. If they were never trained in
+the Indic finetune, saying so on the card would save people the search — the Rasa corpus
+is expressive, so it is a reasonable thing for a reader to assume works.
+
+Happy to run any check that would help.
+````
+
+---
+
 ## What I checked and am NOT reporting
 
 Not for posting — recorded so the same ground is not re-covered.
@@ -292,4 +400,5 @@ Not for posting — recorded so the same ground is not re-covered.
 | `SPEECH_OFFSET = 151669` | **Correct**, and derivable from the tokenizer. |
 | tokens dropped by the offset filter | Only a trailing `<\|im_end\|>`. No content lost. |
 | `int32` / `float32` code tensors | Bit-identical output to `long`. `float64` raises cleanly. No silent degradation. |
+| "the model speaks the tag text aloud" | **Refuted by my own check.** Token counts grow with tag length (84 → 158), which looked like it. `whisper-small` transcribes every tagged render as exactly the reference sentence. |
 | `config.vocab_size` (164480) vs `len(tokenizer)` (164469) | 11 untrained padding rows, samplable in principle, decode to nothing. Worth knowing, not worth reporting. |
