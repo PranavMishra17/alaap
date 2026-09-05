@@ -265,7 +265,12 @@ print("[5/5] verifying captions round-trip back to the bins that made them")
 # and shimmer never appear in the text and can never be parsed back out. An
 # earlier version of this check required every binned axis to round-trip and
 # duly reported 0.0% exact, which measured the scorer, not the captions.
-EXPRESSED = [f for f in CAPTION_ORDER[:5] if f in BIN_LABELS]
+# ORDER is weight-ordered and caption_from_bins writes ORDER[:max_attrs].
+# Hardcoding 5 silently stopped scoring an axis when max_attrs became 6.
+from alaap.captions import caption_from_bins as _cfb
+import inspect as _insp
+_MAXA = _insp.signature(_cfb).parameters["max_attrs"].default
+EXPRESSED = [f for f in CAPTION_ORDER[:_MAXA] if f in BIN_LABELS]
 OMITTED = [f for f in BIN_LABELS if f not in EXPRESSED]
 
 exact, per_axis_hits, per_axis_tot = 0, {}, {}

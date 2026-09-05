@@ -62,6 +62,26 @@ PHRASES = {
         "highly animated":     ["highly animated", "with dramatic pitch swings",
                                 "extremely expressive in pitch"],
     },
+    # E14b: vocal-tract length carries identity information the other axes do
+    # not (+15% on the reference), and E15 ranks it SECOND after pitch. The
+    # phrasings describe what the measurement means for the VOICE -- how large
+    # the resonating space sounds -- and never the speaker's body or age.
+    # "a giant of a man" is an inference about a person; "a cavernous vocal
+    # resonance" is a description of a sound.
+    "vtl_cm": {
+        "very small-throated":  ["with a very compact vocal resonance",
+                                 "with a notably small resonant space",
+                                 "slight in vocal body"],
+        "small-throated":       ["with a compact vocal resonance",
+                                 "with a small resonant space"],
+        "medium-throated":      ["with an average vocal resonance",
+                                 "with a typical resonant space"],
+        "large-throated":       ["with a full-bodied vocal resonance",
+                                 "with a large resonant space"],
+        "very large-throated":  ["with a cavernous vocal resonance",
+                                 "with a very large resonant space",
+                                 "vast in vocal body"],
+    },
     "speaking_rate": {
         "very slow":  ["speaking very slowly", "with a very deliberate pace",
                        "unhurried almost to the point of stillness"],
@@ -121,11 +141,16 @@ OPENERS = [
 ]
 
 # Which attributes to include, in the order they read most naturally.
-ORDER = ["f0_mean", "hnr_db", "spectral_tilt", "f0_cv", "speaking_rate", "shimmer"]
+# Ordered by MEASURED identity weight (E15/E15d, two corpora and two encoders):
+# f0_mean 3.13, vtl_cm 1.66, spectral_tilt 0.80, hnr_db 0.67, f0_cv 0.41,
+# speaking_rate 0.39. A caption should lead with what actually distinguishes a
+# voice. shimmer stays last and is normally dropped.
+ORDER = ["f0_mean", "vtl_cm", "spectral_tilt", "hnr_db", "f0_cv",
+         "speaking_rate", "shimmer"]
 
 
 def caption_from_bins(bins: dict[str, str], subject: str = "This speaker",
-                      max_attrs: int = 5, seed: int | None = None,
+                      max_attrs: int = 6, seed: int | None = None,
                       impressions: Optional[list[str]] = None) -> str:
     """
     Deterministic, grounded caption. Every clause traces to a measured bin.
@@ -266,6 +291,9 @@ def target_bins_from_text(text: str) -> dict[str, str]:
                    ("deadpan", "monotone"), ("flat and dull", "monotone"),
                    ("droning", "monotone"), ("unvarying", "monotone"),
                    ("emotive", "expressive")],
+        "vtl_cm": [("cavernous", "very large-throated"),
+                   ("full-bodied", "large-throated"),
+                   ("compact", "small-throated")],
         "spectral_tilt": [("very bright", "very bright"), ("very dark", "very dark"),
                           ("dark-timbred", "dark"), ("shrill", "very bright"),
                           ("piercing", "very bright"), ("warm", "dark"),
