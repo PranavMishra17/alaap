@@ -230,7 +230,13 @@ def target_bins_from_text(text: str) -> dict[str, str]:
                           ("hurried", "rapid"), ("quickly", "quick"),
                           ("quick", "quick"), ("brisk", "quick"),
                           ("fast", "quick")],
-        "f0_std": [("highly animated", "highly animated"), ("monotone", "monotone"),
+        # Was keyed "f0_std" until 2026-09-05. f0_std is a DEAD axis -- S2 run 4
+        # replaced it with f0_cv because f0_std in Hz correlates r=+0.72 with
+        # f0_mean. BIN_LABELS has no f0_std, and adherence_error skips any
+        # target bin it cannot find, so every natural synonym for
+        # expressiveness -- including the bare word "monotone" -- was parsed
+        # into an axis that was then silently dropped and never scored.
+        "f0_cv": [("highly animated", "highly animated"), ("monotone", "monotone"),
                    ("flat", "monotone"), ("gently inflected", "slightly varied"),
                    ("animated", "highly animated"), ("expressive", "expressive"),
                    ("lively", "expressive")],

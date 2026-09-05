@@ -881,3 +881,44 @@ class TestFormantsAndVTL:
             "shimmer": 0.05, "spectral_tilt": -6.0, "snr_db": 30.0,
             "duration_s": 4.0, "voiced_frac": 0.6})
         assert np.isnan(a.vtl_cm) and a.f0_cv > 0
+
+
+class TestCaptionAxesAreLive:
+    """
+    The synonym table was keyed `f0_std` for the whole life of the v2 binner.
+
+    f0_std is a DEAD axis: S2 run 4 replaced it with f0_cv because f0_std in Hz
+    correlates r=+0.72 with f0_mean. BIN_LABELS has no f0_std entry, and
+    `adherence_error` skips any target bin whose axis it cannot find -- so every
+    natural synonym for expressiveness, including the bare word "monotone",
+    was parsed into an axis that was then silently discarded and never scored.
+
+    Nothing failed. The score just quietly stopped covering that axis.
+    """
+
+    def test_every_parsed_axis_is_a_real_binned_axis(self):
+        """The guard that would have caught it, for any future axis rename."""
+        from alaap.captions import target_bins_from_text
+        probes = ["monotone", "flat and dull", "highly animated", "expressive",
+                  "lively", "a very deep gravelly voice speaking very slowly",
+                  "squeaky and shrill", "warm and mellow", "raspy", "brisk"]
+        seen = set()
+        for p in probes:
+            seen |= set(target_bins_from_text(p))
+        assert seen, "the probes parsed nothing at all"
+        unknown = seen - set(BIN_LABELS)
+        assert not unknown, f"parser emits axes that cannot be scored: {unknown}"
+
+    def test_bare_monotone_lands_on_the_live_axis(self):
+        from alaap.captions import target_bins_from_text
+        b = target_bins_from_text("calm and monotone")
+        assert b.get("f0_cv") == "monotone", b
+        assert "f0_std" not in b
+
+    def test_every_parsed_label_exists_in_its_axis(self):
+        """A label that is not in BIN_LABELS[axis] would raise in adherence."""
+        from alaap.captions import target_bins_from_text
+        for p in ["monotone", "very deep", "squeaky", "gravelly", "unhurried",
+                  "very bright", "crystalline", "racing", "mellow"]:
+            for axis, label in target_bins_from_text(p).items():
+                assert label in BIN_LABELS[axis], (p, axis, label)
