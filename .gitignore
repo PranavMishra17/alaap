@@ -72,3 +72,10 @@ demo_out_run.log
 experiments/S4-indic/out/measured_*.npz
 experiments/*/out/audio/
 experiments/*/out/*.db
+
+# Experiment arm outputs. The earlier rules only matched a directory named
+# exactly "out", so E11's per-arm directories (out_adaptive, out_nov0.45, ...)
+# slipped through and their live SQLite catalogs were being re-committed on
+# every commit while the arm was still writing to them.
+experiments/**/out_*/
+experiments/**/*_run.log
