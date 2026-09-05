@@ -109,11 +109,43 @@ That is a linguistically coherent pattern rather than noise, and it sharpens the
 >
 > Recorded because the discipline that catches this is the same one that caught the HNR/pitch artefact in S2 run 3 and the GLOBE_V2 speaker-label failure in E4: **a number that is suspiciously bad from a component that should work is a bug report about your setup.** It applies to 0.0% exactly as much as to 100%.
 
+## Result 4 — vocal-tract length does NOT survive on this corpus
+
+`vtl_cm` was built and validated on GLOBE_V2 (females 15.53 cm, males 16.37 cm, Cohen's d = 0.52, every formant sign correct) and E14b measured it worth **+15%** on the description's reference correlation. So all three Indic corpora were re-measured with formants to carry it too.
+
+It produced a finite number for **749 of 750 clips**. Those numbers are noise.
+
+| corpus | female | male | **Cohen's d** | F0 female | F0 male |
+|---|---|---|---|---|---|
+| Hindi | 15.37 cm | 15.57 cm | **+0.11** | 224.3 Hz | 142.9 Hz |
+| Tamil | 15.80 cm | 15.92 cm | **+0.06** | 218.3 Hz | 138.1 Hz |
+| Bengali | 16.16 cm | 15.85 cm | **−0.17** ← backwards | 236.4 Hz | 150.8 Hz |
+| *GLOBE_V2 (reference)* | *15.53 cm* | *16.37 cm* | ***+0.52*** | | |
+
+**Vocal-tract length is anatomy. If it cannot tell men from women, it is not measuring anatomy** — and F0 separates the very same speakers by 80+ Hz, so the gender labels are fine and the speakers are distinguishable. It is the formant estimate that fails here.
+
+The likely cause is the audio: IndicVoices-R is **extempore, field-recorded** speech (93% extempore, varied devices), against GLOBE's read speech. LPC formant tracking degrades badly on band-limited or noisy input. That is a hypothesis; what is *measured* is that the axis does not work here.
+
+**This also explains a number that looked encouraging.** VTL correlates with F0 at −0.415 on GLOBE but ≈0 on all three Indic corpora (+0.107, −0.047, +0.003). Read alone that says *"even more independent of pitch — an even better extra axis."* It says the opposite: the correlation is absent because the measurement is noise.
+
+### The guard
+
+`S4` now re-earns the axis per corpus rather than assuming the GLOBE validation transfers. Gender is the control, `d ≥ 0.30` the bar, and a corpus that fails has `vtl_cm` dropped from its binner — so it never reaches a caption:
+
+```
+[3b] vtl_cm control: female 15.37 cm, male 15.57 cm, Cohen d = +0.11 (need >= +0.3)
+     vtl_cm DROPPED for this corpus -- it does not separate gender here,
+     so it is not measuring vocal-tract length. Finite != meaningful.
+```
+
+**A validation is a property of a measurement *on a corpus*, not of the code.** The same estimator, unchanged, is sound on GLOBE and useless here. Nothing about running successfully on 749 of 750 clips indicated the difference.
+
 ## What this establishes
 
 1. **The Indic caption pipeline works end to end** — stream → measure → bin → caption → verify — on real Hindi, Tamil and Bengali, validated against an independent toolchain.
 2. **`count_phones_indic` is sound** (ρ = 0.966–0.981 across three scripts and both language families) with a known, quantified 0.833–0.866 scale bias from unmodelled medial schwa deletion.
 3. **Per-language binners are required**, and the code already does this.
+4. **`vtl_cm` is unusable on IndicVoices-R** and is dropped there by a measured control, so Indic captions carry five axes where English carries six.
 4. Route **C** in `ADR-006` (train our own Indic tower on IndicVoices-R) now has a working annotation pipeline in front of it. This is the piece that was missing.
 
 ## Caveats and what is not established

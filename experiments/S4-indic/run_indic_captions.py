@@ -203,7 +203,9 @@ if fatal:
     print("Captions built on a broken axis are worse than no captions, because")
     print("they look fine. Fix the measurement before generating anything.")
     print("!" * 78)
-    json.dump({"corpus": args.corpus, "n": n, "cross_check": cross,
+    json.dump({"corpus": args.corpus, "n": n,
+           "vtl_gender_cohen_d": vtl_d,
+           "vtl_used": bool(vtl_d is not None and vtl_d >= VTL_MIN_D), "cross_check": cross,
                "captions_generated": False},
               open(os.path.join(OUT, f"results_{args.corpus}.json"), "w"),
               indent=2)
@@ -251,8 +253,40 @@ else:
     print(f"      (no English reference at {EN_REF}; skipping)")
 
 # --------------------------------------------------- 4. fit bins and caption
+# ------------------------------------ 3b. does vtl_cm survive on THIS corpus?
+# The formant tracker was validated on GLOBE_V2 against gender: females
+# 15.53 cm, males 16.37 cm, Cohen's d = 0.52, all formant signs correct.
+# That validation does not transfer. On the IndicVoices-R mirrors it produces
+# a finite number for 749 of 750 clips and those numbers separate gender at
+# d = -0.17 / 0.11 / 0.06 -- one of them backwards -- while F0 separates the
+# same speakers by 80+ Hz. Finite is not the same as meaningful, and a bin
+# computed from noise is a fabricated target that would then be scored as if
+# it were real.
+#
+# So the axis has to re-earn its place per corpus. Gender is the control
+# because vocal-tract length is anatomy: if it cannot tell men from women it
+# is not measuring anatomy.
+VTL_MIN_D = 0.30
+vtl_d = None
+gv = {"Female": [], "Male": []}
+for a_, m_ in zip(attrs, metas):
+    if m_.get("gender") in gv and np.isfinite(a_.vtl_cm):
+        gv[m_["gender"]].append(a_.vtl_cm)
+if len(gv["Female"]) >= 20 and len(gv["Male"]) >= 20:
+    F, M = np.array(gv["Female"]), np.array(gv["Male"])
+    pooled = np.sqrt((F.var(ddof=1) + M.var(ddof=1)) / 2)
+    vtl_d = float((M.mean() - F.mean()) / max(pooled, 1e-9))
+    print(f"\n[3b] vtl_cm control: female {F.mean():.2f} cm, male {M.mean():.2f} cm, "
+          f"Cohen d = {vtl_d:+.2f} (need >= +{VTL_MIN_D})")
+
 print(f"\n[4/5] fitting {LANG} bins and writing captions")
 binner = Binner.fit(attrs)
+if vtl_d is None or vtl_d < VTL_MIN_D:
+    binner.edges.pop("vtl_cm", None)
+    print(f"     vtl_cm DROPPED for this corpus -- it does not separate gender "
+          f"here, so it is not measuring vocal-tract length. Finite != meaningful.")
+else:
+    print(f"     vtl_cm kept (d = {vtl_d:+.2f})")
 binner.save(os.path.join(OUT, f"binner_{args.corpus}.json"))
 bins = [binner.bin_one(a) for a in attrs]
 caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
@@ -270,7 +304,11 @@ print("[5/5] verifying captions round-trip back to the bins that made them")
 from alaap.captions import caption_from_bins as _cfb
 import inspect as _insp
 _MAXA = _insp.signature(_cfb).parameters["max_attrs"].default
-EXPRESSED = [f for f in CAPTION_ORDER[:_MAXA] if f in BIN_LABELS]
+# ...and only axes the binner actually kept. vtl_cm is dropped on a corpus
+# where it fails its gender control, so listing it as "expressed" would
+# overstate what was scored.
+EXPRESSED = [f for f in CAPTION_ORDER[:_MAXA]
+             if f in BIN_LABELS and f in binner.edges]
 OMITTED = [f for f in BIN_LABELS if f not in EXPRESSED]
 
 exact, per_axis_hits, per_axis_tot = 0, {}, {}
