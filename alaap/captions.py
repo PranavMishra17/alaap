@@ -165,36 +165,70 @@ def target_bins_from_text(text: str) -> dict[str, str]:
     with adherence_error(). Unmatched wording is silently ignored rather
     than guessed at -- inventing a target bin would fabricate a score.
     """
-    t = text.lower()
+    import re
+    t = " " + text.lower().strip() + " "
+
+    def has(phrase: str) -> bool:
+        """
+        Whole-word match. Substring matching is WRONG here and was a real bug:
+        'unhurried' contains 'hurried', so 'a low, smooth voice, unhurried'
+        was parsed as speaking_rate=rapid -- the exact opposite of what it
+        says. That corrupted S2's adherence scores before it was caught.
+        """
+        return re.search(r"(?<![a-z])" + re.escape(phrase.lower()) +
+                         r"(?![a-z])", t) is not None
+
     out: dict[str, str] = {}
     for field, by_label in PHRASES.items():
         best, best_len = None, 0
         for label, opts in by_label.items():
             for o in opts:
-                if o.lower() in t and len(o) > best_len:
+                if has(o) and len(o) > best_len:
                     best, best_len = label, len(o)
         if best:
             out[field] = best
-    # a few natural synonyms people actually type
+
+    # Natural synonyms people actually type. Ordered LONGEST-FIRST within each
+    # field so that "very deep" beats "deep" and "very clear" beats "clear".
     SYN = {
-        "f0_mean": [("deep", "low-pitched"), ("bass", "very low-pitched"),
-                    ("high", "high-pitched"), ("squeaky", "very high-pitched")],
-        "hnr_db": [("gravelly", "very rough"), ("raspy", "very rough"),
-                   ("rasp", "rough"), ("hoarse", "rough"), ("smooth", "clear"),
-                   ("clean", "very clear")],
-        "speaking_rate": [("slow", "slow"), ("deliberate", "slow"),
-                          ("fast", "quick"), ("rapid", "rapid"),
-                          ("hurried", "rapid")],
-        "f0_std": [("monotone", "monotone"), ("flat", "monotone"),
-                   ("animated", "highly animated"), ("expressive", "expressive")],
-        "spectral_tilt": [("warm", "dark"), ("dark", "dark"),
-                          ("bright", "bright"), ("shrill", "very bright")],
+        "f0_mean": [("very deep", "very low-pitched"), ("extremely low", "very low-pitched"),
+                    ("bass", "very low-pitched"), ("very high", "very high-pitched"),
+                    ("squeaky", "very high-pitched"), ("deep", "low-pitched"),
+                    ("low", "low-pitched"), ("high", "high-pitched"),
+                    ("mid-range", "moderately pitched")],
+        "hnr_db": [("very rough", "very rough"), ("very clear", "very clear"),
+                   ("crystalline", "very clear"), ("gravelly", "very rough"),
+                   ("raspy", "very rough"), ("harsh", "very rough"),
+                   ("rasping", "very rough"), ("faint rasp", "slightly rough"),
+                   ("slight rasp", "slightly rough"), ("rasp", "rough"),
+                   ("hoarse", "rough"), ("rough", "rough"),
+                   ("clean", "very clear"), ("smooth", "clear"),
+                   ("clear", "clear")],
+        "speaking_rate": [("very slow", "very slow"), ("very slowly", "very slow"),
+                          ("very rapidly", "rapid"), ("unhurried", "slow"),
+                          ("deliberate", "slow"), ("slowly", "slow"),
+                          ("slow", "slow"), ("measured", "measured"),
+                          ("steady pace", "measured"), ("racing", "rapid"),
+                          ("rapid", "rapid"), ("rapidly", "rapid"),
+                          ("hurried", "rapid"), ("quickly", "quick"),
+                          ("quick", "quick"), ("brisk", "quick"),
+                          ("fast", "quick")],
+        "f0_std": [("highly animated", "highly animated"), ("monotone", "monotone"),
+                   ("flat", "monotone"), ("gently inflected", "slightly varied"),
+                   ("animated", "highly animated"), ("expressive", "expressive"),
+                   ("lively", "expressive")],
+        "spectral_tilt": [("very bright", "very bright"), ("very dark", "very dark"),
+                          ("dark-timbred", "dark"), ("shrill", "very bright"),
+                          ("piercing", "very bright"), ("warm", "dark"),
+                          ("mellow", "dark"), ("dark", "dark"),
+                          ("bright", "bright"), ("crisp", "bright"),
+                          ("balanced", "balanced")],
     }
     for field, pairs in SYN.items():
         if field in out:
             continue
         for word, label in pairs:
-            if word in t:
+            if has(word):
                 out[field] = label
                 break
     return out
