@@ -332,7 +332,19 @@ signature of an axis belonging to the other channel, not a curiosity.
 about as much as different speakers differ in pitch, and pitch is what identity is mostly
 made of here. The naive "make it angry → raise the pitch" is the most damaging thing this
 channel could do. `hnr_db` and `spectral_tilt` are contested and may be used only with
-their identity cost measured. *(S12, verified against synthesis in S13)*
+their identity cost measured.
+
+**S13 verified this against synthesis, and the safety half held completely:** text tags
+cost ~0.02 ECAPA against a 0.90 self-similarity ceiling, and moved `f0_mean` by ≤0.21
+noise-floor units on every tag. The *drive* half did not: the mean delivery effect is
+1.08 noise-floor units, about the size of re-rolling the sampling seed. `shimmer` and
+`speaking_rate` move reliably (z up to 6.7) but weakly; `f0_cv` moves largely but
+inconsistently; `jitter` not at all.
+
+**Consequence for the build: tags are a safe lever, not yet a sufficient one.** The
+channel needs a second, directly-settable control alongside the tag — `speaking_rate` is
+the candidate the measurements endorse, because it responds consistently and a caller can
+set it rather than request it. *(S12, S13)*
 
 ---
 
