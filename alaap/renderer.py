@@ -336,9 +336,24 @@ class Qwen3BaseRenderer:
 SERVABLE = {
     "qwen3-tts-base": True, "qwen3-tts-voicedesign": True, "voxcpm2": True,
     "moss-voicegenerator": True, "kokoro": True, "chatterbox": True,
-    "parler-tts": True, "indic-parler-tts": True, "cosyvoice2": True,
+    "parler-tts": True, "cosyvoice2": True,
     "cosyvoice3": True,
     # NOT servable -- upstream chain fails
+    # This one is the painful entry. indic-parler-tts is the STRONGEST Indic
+    # candidate and the backend the Indic catalog plan depends on, and it is
+    # still False, because RESEARCH/08 section 4.7 returned CONDITIONAL:
+    #   (a) 382 of its 1,806 training hours are IITM IndicTTS, which AI4Bharat
+    #       relabels CC-BY-4.0 but whose recovered EULA section 2.2 forbids
+    #       onward sublicensing. If 2.2 binds, the Apache-2.0 weight release is
+    #       itself non-compliant and building on it inherits that.
+    #   (b) the repo is gated, and a gate is a click-through agreement whose
+    #       terms are not visible in public metadata. You cannot responsibly
+    #       host weights whose terms you have not read.
+    # It was previously True here, which contradicted the audit outright and
+    # would have let load_backend admit it to a public deployment.
+    # Two cheap actions flip it (see NEEDS-FROM-YOU): capture the gate text
+    # while logged in, and get IITM to confirm the CC-BY-4.0 re-designation.
+    "indic-parler-tts": False,
     "indicf5": False, "spring_f5": False, "indic-mio": False, "dhvaani": False,
     "voicesculptor": False, "llasa-3b": False, "xcodec2": False, "f5-tts": False,
     "xtts-v2": False, "indextts2": False, "vibevoice": False, "zonos-v0.1": False,

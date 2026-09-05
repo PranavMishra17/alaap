@@ -514,3 +514,57 @@ class TestIndicPhones:
         # give int(2.5 * 1) / voiced_s, i.e. under 2.5 -- so 4.0 separates them.
         assert r > 4.0, f"Indic branch not used, got {r:.2f} phones/s"
         assert abs(r * voiced_s - 10) < 1e-6, "phone count is not 10"
+
+
+class TestServableMatchesTheAudit:
+    """
+    Invariant I4, as a test rather than a promise.
+
+    SERVABLE in renderer.py is a RESTATEMENT of the audit in
+    RESEARCH/08 section 8.4. Two copies of the same fact drift, and this one
+    did: 'indic-parler-tts' shipped as True while the audit said False,
+    which would have let load_backend admit a CONDITIONAL backend into a
+    public deployment. This pins the entries the audit names.
+
+    The audit's keys are shorter than the code's ids, so map explicitly
+    rather than fuzzy-matching -- a fuzzy match is how the drift survived.
+    """
+
+    AUDIT = {                       # RESEARCH/08 section 8.4, verbatim verdicts
+        "voxcpm2": True, "chatterbox": True, "parler-tts": True,
+        "cosyvoice2": True, "qwen3-tts-base": True,
+        "qwen3-tts-voicedesign": True,
+        "indic-parler-tts": False, "indicf5": False, "spring_f5": False,
+        "indic-mio": False, "dhvaani": False, "f5-tts": False,
+        "voicesculptor": False, "llasa-3b": False, "xcodec2": False,
+        "xtts-v2": False, "indextts2": False, "vibevoice": False,
+        "zonos-v0.1": False,
+    }
+
+    def test_every_audited_backend_matches(self):
+        for bid, want in self.AUDIT.items():
+            assert bid in SERVABLE, f"{bid} missing from SERVABLE"
+            assert SERVABLE[bid] == want, (
+                f"{bid}: code says {SERVABLE[bid]}, RESEARCH/08 says {want}")
+
+    def test_indic_parler_is_blocked_from_public_serving(self):
+        """
+        The specific regression. It is the strongest Indic candidate, which is
+        exactly why it is tempting to flip without doing the two actions that
+        settle it.
+        """
+        assert SERVABLE["indic-parler-tts"] is False
+
+        class _R:
+            backend_id = "indic-parler-tts"
+            public_servable = False
+        with pytest.raises(LicenceGateError):
+            load_backend(_R(), is_public_deployment=True)
+
+    def test_a_backend_declaring_more_than_the_audit_allows_is_refused(self):
+        """Fail closed: an adapter cannot self-declare its way past the audit."""
+        class _Liar:
+            backend_id = "indic-parler-tts"
+            public_servable = True      # contradicts SERVABLE
+        with pytest.raises(LicenceGateError):
+            load_backend(_Liar(), is_public_deployment=False)
