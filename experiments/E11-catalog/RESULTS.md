@@ -44,11 +44,11 @@ Failure modes, by count: **9** uniqueness collisions, **8** drift-below-floor at
 
 ---
 
-## Arm 2 — `novelty=0.75`, preliminary (10 voices)
+## Arm 2 — `novelty=0.75` (first look, 10 voices)
 
 E12 found the mapper's generative branch had a defect capping it at 64 distinct outputs, and after fixing it, raising `novelty` cut geometric collisions dramatically. E12 was **geometry only** and said explicitly that a setting winning on geometry could still render badly. This arm is that test.
 
-> ⚠️ **10 voices. Preliminary.** Recorded because the effect is large and one-directional, not because it is settled.
+> ⚠️ **10 voices.** Kept as written because it was the first sight of the trade-off. The matched-n comparison below supersedes it.
 
 | | novelty 0.0 (n=40) | novelty 0.75 (n=10) |
 |---|---|---|
@@ -127,7 +127,7 @@ and re-weighting the description; see `experiments/E14-transport/RESULTS.md` and
 
 ## Not established
 
-- 40 voices in one arm, 10 in the other; a matched-n comparison at 40 is pending.
+- Matched comparison is at **n=20**, where every arm has data. The control runs to 40; the other two do not, and the control's collisions only became serious between 30 and 40 — so the arms are compared before novelty's main benefit would appear.
 - One backend, one corpus, English only, one mapper configuration.
 - **Nothing has been listened to.** Drift, consistency and uniqueness are all machine metrics against an ECAPA encoder. Whether these 40 voices *sound* distinct to a person is unmeasured and is the single highest-value unknown in the project.
 - The saturation curve is four blocks of ten. It is a direction, not a fitted trend.
