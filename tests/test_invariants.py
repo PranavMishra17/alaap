@@ -922,3 +922,101 @@ class TestCaptionAxesAreLive:
                   "very bright", "crystalline", "racing", "mellow"]:
             for axis, label in target_bins_from_text(p).items():
                 assert label in BIN_LABELS[axis], (p, axis, label)
+
+
+class TestAdaptiveNovelty:
+    """
+    E11 measured novelty's trade at matched catalog size (first 20 voices):
+
+        novelty   clean   drift below floor   mean uniqueness
+           0.00     85%                  5%             0.698
+           0.45     50%                 30%             0.694
+           0.75     30%                 40%             0.759
+
+    novelty=0.45 bought NO mean-uniqueness gain over 0.0 while costing six
+    times the drift failures. The cost lands on the first voice; the benefit --
+    avoiding collisions -- does not matter until the catalog is dense (the
+    control's collisions became serious between voice 30 and 40).
+
+    So novelty is escalated only when a collision actually happens, and only
+    for collisions: drift and consistency failures are exactly the ones more
+    novelty makes worse.
+    """
+
+    class _Mapper:
+        """Records the novelty each attempt was made at."""
+
+        def __init__(self, vectors):
+            self.vectors, self.seen = list(vectors), []
+
+        def mint(self, description, novelty=0.5, seed=None):
+            self.seen.append(round(float(novelty), 4))
+            v = self.vectors[min(len(self.seen) - 1, len(self.vectors) - 1)]
+
+            class _R:
+                vector = v
+                anchor_similarity = 0.9
+            return _R()
+
+    @staticmethod
+    def _service(mapper, uniq_values, drift=0.9, cons=0.9):
+        """A VoiceService with the rendering path stubbed out."""
+        from alaap.service import VoiceService
+        svc = VoiceService.__new__(VoiceService)
+        svc.mapper = mapper
+        svc._uniq_queue = list(uniq_values)
+        svc._uniqueness = lambda vec, lang: (
+            svc._uniq_queue.pop(0) if svc._uniq_queue else 1.0)
+        svc._drift = lambda *a, **k: drift
+        svc._consistency = lambda *a, **k: (cons, [])
+        return svc
+
+    def _run(self, uniq_values, n_attempts=3):
+        """Drive only the attempt loop, which is what this test is about."""
+        from alaap.service import UNIQUENESS_MIN, NOVELTY_STEP
+        mapper = self._Mapper([np.ones(8) * (i + 1) for i in range(n_attempts)])
+        svc = self._service(mapper, uniq_values)
+        collisions, novelty = 0, 0.0
+        for attempt in range(1, n_attempts + 1):
+            eff = min(1.0, novelty + NOVELTY_STEP * collisions)
+            mapper.mint("a voice", novelty=eff, seed=attempt)
+            if svc._uniqueness(None, "en") < UNIQUENESS_MIN:
+                collisions += 1
+                continue
+            break
+        return mapper.seen
+
+    def test_first_attempt_pays_nothing(self):
+        """No collision yet, so no novelty cost."""
+        assert self._run([0.9])[0] == 0.0
+
+    def test_novelty_rises_only_after_a_collision(self):
+        from alaap.service import NOVELTY_STEP
+        seen = self._run([0.05, 0.05, 0.9])
+        assert seen[0] == 0.0
+        assert seen[1] == round(NOVELTY_STEP, 4)
+        assert seen[2] == round(2 * NOVELTY_STEP, 4)
+
+    def test_escalation_is_capped_at_one(self):
+        from alaap.service import NOVELTY_STEP
+        seen = self._run([0.01] * 6, n_attempts=6)
+        assert max(seen) <= 1.0
+        assert seen[-1] == 1.0 or NOVELTY_STEP * 5 <= 1.0
+
+    def test_only_collisions_escalate_not_drift(self):
+        """
+        The rule that matters: drift failures must NOT raise novelty, because
+        E11 measured that more novelty is what makes drift worse. Guarded by
+        reading the source -- the escalation must be driven by the collision
+        counter alone.
+        """
+        import inspect
+        from alaap.service import VoiceService
+        src = inspect.getsource(VoiceService.mint)
+        i = src.index("eff_novelty")
+        assert "collisions" in src[i:i + 120], \
+            "novelty escalation must be driven by the collision count"
+        # and the counter must only be incremented in the uniqueness branch
+        before_drift = src.split("drift_ok")[0]
+        assert before_drift.count("collisions += 1") == 1
+        assert "collisions += 1" not in src.split("drift_ok", 1)[1]

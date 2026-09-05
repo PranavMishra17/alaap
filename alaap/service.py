@@ -54,6 +54,12 @@ UNIQUENESS_MIN = 0.30       # VoicePrivacy B3's threshold, applied in WORKING sp
 # different speaker to the same one -- deliberately permissive, because it
 # rejects only genuinely unstable identities.
 CONSISTENCY_FLOOR = 0.43
+
+# How much to raise novelty after each COLLISION (E11). Only collisions
+# escalate: drift and consistency failures are the ones extra novelty makes
+# worse, so retrying those at higher novelty would trade a fixable problem for
+# an unfixable one.
+NOVELTY_STEP = 0.35
 CONSISTENCY_PROBE_LINES = [
     "The mountains remember every footstep.",
     "It's cold today, colder than anyone promised.",
@@ -146,16 +152,31 @@ class VoiceService:
             raise RuntimeError("no mapper: cannot mint from a description")
         warnings: list[str] = []
         best = None
+        collisions = 0        # drives the novelty escalation below
 
         for attempt in range(1, max_attempts + 1):
-            m = self.mapper.mint(description, novelty=novelty, seed=attempt)
+            # ADAPTIVE NOVELTY (E11). Novelty's cost is immediate and its
+            # benefit is deferred: rendering measurements at matched catalog
+            # size put drift failures at 5% for novelty 0.0, 30% at 0.45 and
+            # 40% at 0.75, while mean uniqueness at 0.45 was no better than at
+            # 0.0 (0.694 vs 0.698). Its only immediate benefit is avoiding
+            # collisions -- which do not happen until the catalog is dense.
+            #
+            # So do not pay for it until a collision actually occurs. Escalate
+            # on COLLISIONS only, never on a drift or consistency failure: those
+            # are the failures more novelty makes worse.
+            eff_novelty = min(1.0, novelty + NOVELTY_STEP * collisions)
+            m = self.mapper.mint(description, novelty=eff_novelty, seed=attempt)
             vec = m.vector
 
             uniq = self._uniqueness(vec, language)
             if uniq < UNIQUENESS_MIN:
+                collisions += 1
                 warnings.append(
                     f"attempt {attempt}: too close to an existing identity "
-                    f"(working-space distance {uniq:.3f} < {UNIQUENESS_MIN})")
+                    f"(working-space distance {uniq:.3f} < {UNIQUENESS_MIN}); "
+                    f"retrying at novelty "
+                    f"{min(1.0, novelty + NOVELTY_STEP * collisions):.2f}")
                 if attempt < max_attempts:
                     continue
 
