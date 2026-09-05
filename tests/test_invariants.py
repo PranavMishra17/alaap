@@ -1549,3 +1549,83 @@ class TestBlendingCostsDiversity:
         assert tail_mint < 0.25 * tail_real, (
             "minted voices should be starved of variance beyond pca_dims; "
             f"mint {tail_mint:.4f} vs real {tail_real:.4f}")
+
+
+class TestRateDirection:
+    """
+    S14's rate control, and the properties that made it shippable.
+
+    Every one of these is a property stated before the experiment ran, which
+    is why they are worth locking: the measured numbers will move if the
+    backend changes, but a rate control that shifts pitch, or silently ignores
+    its own bound, is broken regardless of the numbers.
+    """
+
+    def _speech(self, sr=24000, secs=2.0, f0=140.0):
+        """A harmonic buzz -- enough structure for pitch to be measurable."""
+        t = np.arange(int(sr * secs)) / sr
+        w = sum(np.sin(2 * np.pi * f0 * k * t) / k for k in range(1, 12))
+        env = 0.5 + 0.5 * np.sin(2 * np.pi * 3.0 * t)     # syllable-ish envelope
+        return (w * env / np.abs(w * env).max()).astype(np.float32)
+
+    def test_duration_scales_with_the_requested_rate(self):
+        from alaap.timing import retime
+        w = self._speech()
+        for r in (0.7, 1.0, 1.43):
+            out = retime(w, r)
+            assert abs(len(out) / (len(w) / r) - 1.0) < 0.02, (
+                f"rate {r}: got {len(out)} samples, wanted ~{len(w)/r:.0f}")
+
+    def test_pitch_does_not_move(self):
+        """
+        The property ADR-012 requires: direction must not touch f0_mean, the
+        dominant identity axis. A phase vocoder preserves it; naive resampling
+        does not, and S14 used exactly that contrast as its negative control.
+        """
+        from alaap.acoustics import f0_track
+        from alaap.timing import retime
+        sr = 24000
+        w = self._speech(sr=sr)
+        base = float(np.nanmean(f0_track(w, sr)))
+        for r in (0.7, 1.43):
+            got = float(np.nanmean(f0_track(retime(w, r), sr)))
+            assert abs(got - base) < 0.06 * base, (
+                f"rate {r} moved f0 from {base:.1f} to {got:.1f} Hz")
+
+    def test_naive_resampling_would_fail_that_test(self):
+        """The negative control, as a test: proves the check above has teeth."""
+        import librosa
+        from alaap.acoustics import f0_track
+        sr = 24000
+        w = self._speech(sr=sr)
+        base = float(np.nanmean(f0_track(w, sr)))
+        naive = librosa.resample(w, orig_sr=int(sr * 1.43), target_sr=sr)
+        got = float(np.nanmean(f0_track(naive, sr)))
+        assert abs(got - base) > 0.2 * base, (
+            "resampling did not shift pitch, so the pitch check cannot "
+            f"distinguish the two methods: {base:.1f} -> {got:.1f}")
+
+    def test_out_of_bound_rates_clamp_and_report(self):
+        from alaap.timing import RATE_MAX, RATE_MIN, clamp_rate
+        r, notes = clamp_rate(3.0)
+        assert r == RATE_MAX and notes and "bound" in notes[0]
+        r, notes = clamp_rate(0.1)
+        assert r == RATE_MIN and notes
+        r, notes = clamp_rate(1.0)
+        assert r == 1.0 and notes == []
+
+    def test_a_bound_measured_elsewhere_is_reported_not_hidden(self):
+        """
+        ADR-011's rule, as a test. The rate bound was measured on the Indic
+        path; a Qwen3 render quoting it must say so, exactly as the emotion
+        bound already does.
+        """
+        from alaap.renderer import Qwen3BaseRenderer
+        b = Qwen3BaseRenderer.direction_bounds["rate"]
+        assert b["measured_on"] and "indic" in b["measured_on"].lower()
+
+    def test_rate_is_approximate_and_therefore_needs_its_bound(self):
+        """RESEARCH/10: 'approximate without a published bound is REJECT'."""
+        from alaap.renderer import Honouring, Qwen3BaseRenderer
+        assert Qwen3BaseRenderer.direction_support["rate"] is Honouring.APPROXIMATE
+        assert "rate" in Qwen3BaseRenderer.direction_bounds

@@ -105,6 +105,10 @@ class Renderer(Protocol):
                           direction: Direction | None = None) -> Audio: ...
 
 
+from .timing import (RATE_BOUND as _RATE_BOUND, RATE_MAX, RATE_MIN,
+                     clamp_rate, retime)
+
+
 # ---------------------------------------------------------------- Qwen3 Base
 class Qwen3BaseRenderer:
     """
@@ -134,7 +138,9 @@ class Qwen3BaseRenderer:
         # cost -- see direction_bounds.
         "emotion": Honouring.APPROXIMATE,
         "style": Honouring.REJECT,
-        "rate": Honouring.REJECT,
+        # Promoted from REJECT by S14: it is applied to the SIGNAL, not asked
+        # of the model, so it does not depend on the backend obeying anything.
+        "rate": Honouring.APPROXIMATE,
         "pitch_var": Honouring.REJECT,
         "loudness": Honouring.REJECT,
         "target_seconds": Honouring.REJECT,
@@ -145,6 +151,12 @@ class Qwen3BaseRenderer:
     # A bound is REQUIRED for anything marked APPROXIMATE. RESEARCH/10's rule:
     # "approximate without a published bound is REJECT".
     direction_bounds = {
+        # S14 measured this rather than choosing it: the range over which ECAPA
+        # identity stays >= 0.80 and English CER <= 0.10, with f0 moving at most
+        # 2.3 Hz. `measured_on` is load-bearing -- it was measured on the Indic
+        # path, and a Qwen3 render quotes an Indic number until someone re-runs
+        # it here. The same warning machinery as `emotion` reports that.
+        "rate": dict(_RATE_BOUND),
         "emotion": {
             "emotions": ["anger", "disgust", "fear", "happy", "sad"],
             "alpha_max": 1.0,
@@ -255,6 +267,30 @@ class Qwen3BaseRenderer:
                 degr.append(msg)
         return degr
 
+    def _retime(self, wav, direction) -> tuple[np.ndarray, list[str]]:
+        """
+        Apply `Direction.rate` to the rendered signal.
+
+        Deliberately post-render and backend-independent: S13 established that
+        asking this model for direction does not work, so this does not ask.
+
+        The bound is reported when it came from a different backend, mirroring
+        what `steer` does for emotion tau -- ADR-011's rule that a measured
+        bound may not be silently transferred between backends.
+        """
+        if direction is None or direction.rate is None:
+            return np.asarray(wav, dtype=np.float32), []
+        eff, notes = clamp_rate(direction.rate)
+        if notes and direction.strict:
+            raise NotImplementedError(notes[0])
+        on = self.direction_bounds.get("rate", {}).get("measured_on", "")
+        if on and on != getattr(self, "backend_version", on):
+            notes.append(
+                f"rate bound {RATE_MIN}-{RATE_MAX} was measured on {on}, not on "
+                f"{getattr(self, 'backend_version', self.backend_id)}; the "
+                "identity-retention figure is quoted from another backend")
+        return retime(wav, eff), notes
+
     # ---------------------------------------------------------------- render
     def steer(self, vec, direction):
         """
@@ -324,8 +360,9 @@ class Qwen3BaseRenderer:
         degr += notes
         item = self._prompt_from_vector(vec)
         wavs, sr = self.model_generate(text, self._lang(language), [item], **kw)
-        return Audio(wav=wavs[0], sample_rate=sr, backend_id=self.backend_id,
-                     backend_version=self.backend_version, degradations=degr)
+        wav, notes = self._retime(wavs[0], direction)
+        return Audio(wav=wav, sample_rate=sr, backend_id=self.backend_id,
+                     backend_version=self.backend_version, degradations=degr + notes)
 
     def render_from_audio(self, wav: np.ndarray, sr: int, text: str,
                           language: str = "en", ref_text: str | None = None,

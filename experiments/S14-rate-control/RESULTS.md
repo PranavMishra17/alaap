@@ -96,9 +96,16 @@ will not render the original product question.
 
 ## Not established
 
-- **Nobody has listened.** Renders at ×0.70, ×1.00 and ×1.50 are saved in `out/`. Whether
-  ×1.43 rate sounds *directed* rather than merely *fast* is exactly the question numbers
-  cannot answer, and `S11`/`S13` both turned on a listener contradicting the metrics.
+- **A listener has now heard it, and the verdict is partial.** On the slowest render
+  (0.67× rate): *"just slowed down — but not 100%. 60-40: 60% slowed down, 40% slow speech
+  effect."* So roughly **40% of it reads as genuine slow speech and 60% as an artefact**,
+  at the extreme end of the range. Identity was not questioned — it was described as the
+  same voice, slower — which is the ECAPA result confirmed by ear.
+
+  That is a real but partial pass, and it changes what the bound means: **×0.67–1.43 is
+  where identity and words survive, not where the output stops sounding processed.** A
+  caller wanting clean output should stay well inside it; `RATE_BOUND` now carries a
+  `listener_clean_range` of (0.8, 1.25) recording that, untested at its own edges.
 - **2 voices, 2 lines, one seed.** The ECAPA figures are means over 4 renders per factor.
 - **Phase vocoding is audible.** The metrics say identity and words survive; they say
   nothing about artefacts, and a vocoder at ×2.0 usually sounds like one. `RESEARCH/10`'s

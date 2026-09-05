@@ -370,7 +370,17 @@ ECAPA to 0.10, so the identity check is sensitive enough to be trusted.
 **Operating range, measured rather than chosen: ×0.70 to ×1.50 stretch = 0.67× to 1.43×
 normal speaking rate** (ECAPA ≥ 0.80, English CER ≤ 0.10). Bound of the same kind as
 `DRIFT_FLOOR`. Outside it, identity degrades gradually rather than failing, so this is a
-quality boundary, not a cliff. `Direction.rate` is the field it belongs on.
+quality boundary, not a cliff. `Direction.rate` is now wired to it: promoted from `REJECT` to `APPROXIMATE`
+in `Qwen3BaseRenderer.direction_support`, with the bound published in
+`direction_bounds["rate"]` as `RESEARCH/10` requires, applied post-render in `_retime`,
+and clamped-with-a-warning outside the range. The bound carries `measured_on` so a Qwen3
+render says out loud that it is quoting an Indic number — `ADR-011`'s rule that a measured
+bound may not be silently transferred between backends.
+
+**A listener then qualified it:** at the slow extreme, *"60% slowed down, 40% slow speech
+effect"*. So the bound is where identity and words survive, **not** where the output stops
+sounding processed. `RATE_BOUND["listener_clean_range"] = (0.8, 1.25)` records that, and is
+itself untested at its edges.
 
 **What it still does not give is emotion.** Rate is one delivery axis; pitch contour,
 emphasis placement and voice quality have no lever on this backend. *(S12, S13, S13b, S14)*

@@ -53,6 +53,7 @@ from alaap.captions import caption_from_bins
 from alaap.geometry import SpeakerSpace
 from alaap.mapper import RetrievalMapper, TextEncoder
 from alaap.metrics import CALIBRATION, cer, normalise_transcript
+from alaap.timing import retime
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 os.makedirs(OUT, exist_ok=True)
@@ -141,28 +142,12 @@ torch.cuda.empty_cache()
 print(f"[2/4] re-timing at {len(FACTORS)} factors, two methods")
 
 
+# The canonical implementation now lives in alaap.timing, so the experiment
+# and the shipped Direction channel cannot drift apart. `retime` takes a SPEED
+# multiplier; this experiment sweeps STRETCH factors, hence the reciprocal.
 def vocoder(w, f):
-    """
-    Phase vocoder: duration changes, pitch does not.
-
-    Padded before stretching and truncated to the exact expected length after.
-    librosa's phase_vocoder raises `t_out values must be in the range [0,
-    D.shape[-1])` when the resampled frame index lands exactly on the final
-    frame, which depends on signal length and bit one render in four here.
-    Truncating rather than keeping the padding matters: `speaking_rate` is
-    phones per second over the WHOLE clip, so trailing silence would depress
-    the very axis being measured.
-    """
-    w = np.asarray(w, np.float32)
-    pad = 4096
-    y = np.pad(w, (0, pad))
-    try:
-        out = librosa.effects.time_stretch(y=y, rate=1.0 / f)
-    except Exception:
-        # one more frame of headroom is enough whenever the guard above is not
-        out = librosa.effects.time_stretch(y=np.pad(y, (0, pad)), rate=1.0 / f)
-    want = int(round(len(w) * f))
-    return out[:want] if len(out) >= want else np.pad(out, (0, want - len(out)))
+    """Phase vocoder: duration changes, pitch does not."""
+    return retime(w, 1.0 / f)
 
 
 def naive(w, f):

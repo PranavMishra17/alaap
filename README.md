@@ -64,8 +64,11 @@ upstream (`S13`, `S13b`).
 speaking rate over a 3.3× range while shifting pitch by at most 2.3 Hz; identity holds
 at ECAPA 0.80–0.88 and English CER stays 0.000. Naive resampling — the negative control,
 which moves pitch too — collapses identity to 0.10, so the check is sensitive. Measured
-operating range: **0.67× to 1.43× normal speaking rate** (`S14`). One real delivery axis
-with a measured bound; emotion still has no lever here.
+operating range: **0.67× to 1.43× normal speaking rate** (`S14`), now wired to
+`Direction.rate` with the bound published and clamped. A listener qualified it at the
+slow extreme — *"60% slowed down, 40% slow speech effect"* — so the bound is where
+identity and words survive, not where the output stops sounding processed. One real
+delivery axis with a measured bound; emotion still has no lever here.
 
 **Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
 worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)
