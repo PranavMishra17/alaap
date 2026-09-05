@@ -188,8 +188,12 @@ class RetrievalMapper:
         yet an equal-weight treatment, which is what the text path implicitly
         applies, gives rate the same say as pitch.
         """
-        from .acoustics import BIN_LABELS
-        axes = [a for a in BIN_LABELS if all(a in b for b in anchor_bins)]
+        from .acoustics import BIN_LABELS, RECORDING_AXES
+        # RECORDING_AXES (snr_db) describe the take, not the person. Leaving
+        # them in cost 0.1493 cos-to-true against 0.1587 for the identity-only
+        # axis set, and they are wrong in principle regardless of the number.
+        axes = [a for a in BIN_LABELS
+                if a not in RECORDING_AXES and all(a in b for b in anchor_bins)]
         if not axes:
             return
         idx = {a: {lbl: i for i, lbl in enumerate(BIN_LABELS[a])} for a in axes}
@@ -346,7 +350,16 @@ class RetrievalMapper:
         cols = [(i, a) for i, a in enumerate(self.axes) if a in want]
         if not cols:
             return text_sims
-        alpha = len(cols) / max(len(self.axes), 1)
+        # alpha is the share of identity INFORMATION the description pinned
+        # down, not the share of axes it happened to name. Counting axes
+        # treats "very deep" (f0_mean, weight 3.28) as worth the same as
+        # "clean recording" (snr_db, 0.60), and it divides by every binned
+        # axis including the recording-quality ones the description would
+        # never mention -- which measured 0.1443 cos-to-true against 0.1587
+        # for the weighted version.
+        take0 = [i for i, _ in cols]
+        alpha = float(self.axis_weights[take0].sum() /
+                      max(self.axis_weights.sum(), 1e-12))
 
         idx = {a: {lbl: i for i, lbl in enumerate(BIN_LABELS[a])} for _, a in cols}
         take = [i for i, _ in cols]

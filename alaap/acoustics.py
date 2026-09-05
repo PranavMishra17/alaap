@@ -463,6 +463,15 @@ def measure(wav: np.ndarray, text: str = "", sr: int = SR,
 
 
 # -------------------------------------------------------------------- bins
+#
+# Axes that describe the RECORDING rather than the SPEAKER. They are measured
+# and binned like the rest -- a caption may legitimately say "clean" -- but they
+# must not enter an IDENTITY distance, because two takes of one person in
+# different rooms are still one person. Excluded from the mapper's retrieval
+# axes for that reason; E11's catalog sampler excludes them too, so that a
+# minted voice is never described as "very noisy" on purpose.
+RECORDING_AXES = {"snr_db"}
+
 BIN_LABELS = {
     "f0_mean": ["very low-pitched", "low-pitched", "moderately pitched",
                 "high-pitched", "very high-pitched"],
