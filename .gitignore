@@ -67,3 +67,8 @@ demo_out_run.log
 
 # HF access token — never commit
 .hf_token
+
+# S4 measurement caches - regenerable, tens of MB
+experiments/S4-indic/out/measured_*.npz
+experiments/*/out/audio/
+experiments/*/out/*.db

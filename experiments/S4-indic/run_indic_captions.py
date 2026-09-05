@@ -65,7 +65,8 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from alaap.acoustics import (Attributes, Binner, measure, count_phones_indic,
                              detect_script, voiced_mask, BIN_LABELS)
-from alaap.captions import caption_from_bins, target_bins_from_text
+from alaap.captions import (caption_from_bins, target_bins_from_text,
+                            ORDER as CAPTION_ORDER)
 from alaap.data import stream_clips
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -256,20 +257,31 @@ caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
 
 # ------------------------------------------------- 5. reversibility of caption
 print("[5/5] verifying captions round-trip back to the bins that made them")
+
+# Score ONLY the axes the caption actually renders into prose. caption_from_bins
+# writes ORDER[:max_attrs] -- five of the eight binned axes -- so jitter, snr_db
+# and shimmer never appear in the text and can never be parsed back out. An
+# earlier version of this check required every binned axis to round-trip and
+# duly reported 0.0% exact, which measured the scorer, not the captions.
+EXPRESSED = [f for f in CAPTION_ORDER[:5] if f in BIN_LABELS]
+OMITTED = [f for f in BIN_LABELS if f not in EXPRESSED]
+
 exact, per_axis_hits, per_axis_tot = 0, {}, {}
 for b, c in zip(bins, caps):
     parsed = target_bins_from_text(c)
     all_ok = True
-    for k, v in b.items():
-        if k not in BIN_LABELS:
+    for k in EXPRESSED:
+        if k not in b:
             continue
         per_axis_tot[k] = per_axis_tot.get(k, 0) + 1
-        if parsed.get(k) == v:
+        if parsed.get(k) == b[k]:
             per_axis_hits[k] = per_axis_hits.get(k, 0) + 1
         else:
             all_ok = False
     exact += all_ok
 rt = exact / max(len(caps), 1)
+print(f"      scoring {len(EXPRESSED)} expressed axes: {', '.join(EXPRESSED)}")
+print(f"      not written into prose, so not scorable: {', '.join(OMITTED)}")
 print(f"      {exact}/{len(caps)} captions round-trip exactly ({rt:.1%})")
 for k in sorted(per_axis_tot):
     print(f"        {k:<16} {per_axis_hits.get(k,0)/per_axis_tot[k]:.1%}")
@@ -290,6 +302,8 @@ json.dump({"corpus": args.corpus, "n": n,
            "caption_roundtrip_exact": rt,
            "caption_roundtrip_per_axis":
                {k: per_axis_hits.get(k, 0) / per_axis_tot[k] for k in per_axis_tot},
+           "caption_axes_expressed": EXPRESSED,
+           "caption_axes_not_expressed": OMITTED,
            "captions_generated": True},
           open(os.path.join(OUT, "results.json"), "w"), indent=2)
 
