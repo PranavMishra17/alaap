@@ -7,7 +7,42 @@
 
 ## 🔴 BLOCKING — a decision or credential only you can give
 
-*(nothing yet — I'll add here if I hit a real wall)*
+### 1. Hugging Face token + accept the IndicVoices-R terms  ⏱️ ~3 minutes
+
+**This is the one you flagged in advance** — "if you need API keys for indic languages, implement the code and keep everything you need from me in a file". Here it is.
+
+Every serious Indic speech corpus with real speaker diversity is **gated** on the Hub. I hit this wall on all three:
+
+```
+ai4bharat/indicvoices_r   DatasetNotFoundError: gated dataset. You must be authenticated.
+ai4bharat/IndicVoices     DatasetNotFoundError: gated dataset. You must be authenticated.
+ai4bharat/Rasa            DatasetNotFoundError: gated dataset. You must be authenticated.
+```
+
+Gating is not a licence problem — IndicVoices-R is **CC-BY-4.0**, which passes our audit (invariant I4). AI4Bharat just wants to know who is downloading it. So this is purely an access click.
+
+**What to do:**
+
+1. Sign in at <https://huggingface.co> (make an account if you have none — free).
+2. Open <https://huggingface.co/datasets/ai4bharat/indicvoices_r> and click **Agree and access repository**. Do the same for <https://huggingface.co/datasets/ai4bharat/Rasa> while you are there — it is the emotion corpus we want for Indic τ vectors later.
+3. Create a **read** token at <https://huggingface.co/settings/tokens>.
+4. Give it to me either way:
+
+```bash
+envs/qwen3/Scripts/huggingface-cli.exe login
+```
+
+or, if you would rather not run anything, paste the token into a file I will read and never commit:
+
+```bash
+echo "hf_xxxxxxxxxxxxxxxxxxxx" > .hf_token
+```
+
+*(`.hf_token` is already in `.gitignore`. I will not print it, commit it, or send it anywhere except huggingface.co.)*
+
+**What it unlocks:** IndicVoices-R is 1,899 speakers across 22 languages, 1,704 hours, studio-quality — it is the only corpus that can give Indic voices real speaker diversity. Without it the Indic catalog is built on ~2 speakers per language.
+
+**What I did instead:** built the entire Indic pipeline against ungated corpora so it runs the moment the token lands — see §🟡 below. Nothing is waiting on me.
 
 ---
 

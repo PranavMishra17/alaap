@@ -64,3 +64,6 @@ data/
 cache/
 demo_out/
 demo_out_run.log
+
+# HF access token — never commit
+.hf_token
