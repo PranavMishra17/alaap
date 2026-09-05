@@ -66,7 +66,9 @@ S6_OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--n", type=int, default=80)
-ap.add_argument("--corpus", default="indicvoices_r_hi")
+ap.add_argument("--corpus", default="indicvoices_r_hi",
+                help="comma-separated; multiple corpora are POOLED into one "
+                     "described space, which is what widening it means")
 ap.add_argument("--clips", type=int, default=250)
 ap.add_argument("--per-speaker", type=int, default=2)
 ap.add_argument("--codec", default="Aratako/MioCodec-25Hz-44.1kHz-v2")
@@ -82,10 +84,18 @@ args = ap.parse_args()
 CODEC_SR = 44100
 SPEECH_OFFSET = 151669
 CODEBOOK = 12800
-S4_CACHE = (f"experiments/S4-indic/out/"
-            f"measured_{args.corpus}_{args.clips}_{args.per_speaker}.npz")
-EMB_CACHE = os.path.join(S6_OUT,
-                         f"mio_emb_{args.corpus}_{args.clips}_{args.per_speaker}.npz")
+CORPORA = [c.strip() for c in args.corpus.split(",") if c.strip()]
+TAG = "+".join(c.replace("indicvoices_r_", "") for c in CORPORA)
+
+
+def _s4(c):
+    return (f"experiments/S4-indic/out/"
+            f"measured_{c}_{args.clips}_{args.per_speaker}.npz")
+
+
+def _emb(c):
+    return os.path.join(S6_OUT, f"mio_emb_{c}_{args.clips}_{args.per_speaker}.npz")
+
 
 SCRIPT_HI = [
     "नमस्ते, आप कैसे हैं? आज मौसम बहुत अच्छा है।",
@@ -97,29 +107,41 @@ import librosa
 import soundfile as sf
 
 # --------------------------------------------------- 1. rebuild S6's mapper
-print(f"[1/5] rebuilding the S6 mapper ({args.corpus})")
-if not os.path.exists(S4_CACHE):
-    sys.exit(f"missing {S4_CACHE} -- run experiments/S4-indic/run_indic_captions.py")
-if not os.path.exists(EMB_CACHE):
-    sys.exit(f"missing {EMB_CACHE} -- run experiments/S6-indic-mint/run_indic_mint.py "
-             "--skip-render once to build the MioCodec embedding cache")
-d4 = np.load(S4_CACHE, allow_pickle=True)
-attrs = [Attributes.from_dict(a) for a in json.loads(str(d4["attrs"]))]
-dz = np.load(EMB_CACHE, allow_pickle=True)
-Z, f0_fresh = dz["Z"].astype(np.float64), dz["f0"].astype(np.float64)
+print(f"[1/5] building the described space from {len(CORPORA)} corpus/corpora: {TAG}")
+attrs, metas, Z = [], [], []
+for c in CORPORA:
+    if not os.path.exists(_s4(c)):
+        sys.exit(f"missing {_s4(c)} -- run experiments/S4-indic/run_indic_captions.py")
+    if not os.path.exists(_emb(c)):
+        sys.exit(f"missing {_emb(c)} -- run:  experiments/S6-indic-mint/run_indic_mint.py "
+                 f"--corpus {c} --skip-render   (builds the MioCodec embedding cache)")
+    d4 = np.load(_s4(c), allow_pickle=True)
+    aa = [Attributes.from_dict(a) for a in json.loads(str(d4["attrs"]))]
+    mm = json.loads(str(d4["metas"]))
+    dz = np.load(_emb(c), allow_pickle=True)
+    zz, f0f = dz["Z"].astype(np.float64), dz["f0"].astype(np.float64)
+    k = min(len(zz), len(aa))
+    # The alignment check, PER CORPUS. E14b caught this assumption being false
+    # once at r = 0.011; pooling three corpora is three chances to hit it.
+    r = float(np.corrcoef(f0f[:k], np.array([a.f0_mean for a in aa[:k]]))[0, 1])
+    print(f"      {c:<22} {k:>4} clips | f0 alignment r = {r:.4f}")
+    if r < 0.99:
+        sys.exit(f"ABORT: {c}'s embedding cache is not aligned with its S4 measurements.")
+    # speaker ids are only unique WITHIN a corpus
+    for m in mm[:k]:
+        m["speaker_id"] = f"{c}:{m['speaker_id']}"
+    attrs += aa[:k]
+    metas += mm[:k]
+    Z.append(zz[:k])
+Z = np.vstack(Z)
+n = len(attrs)
+print(f"      pooled: {n} clips, {len({m['speaker_id'] for m in metas})} speakers")
 
-n = min(len(Z), len(attrs))
-Z, attrs, f0_fresh = Z[:n], attrs[:n], f0_fresh[:n]
-# S6's alignment check, repeated rather than trusted: the cache is a file on
-# disk and nothing stops it being regenerated from a different clip stream.
-r = float(np.corrcoef(f0_fresh, np.array([a.f0_mean for a in attrs]))[0, 1])
-print(f"      f0 cache vs S4-cached: r = {r:.4f}")
-if r < 0.99:
-    sys.exit("ABORT: the embedding cache is not aligned with the S4 measurements.")
-
+# One binner over the POOLED attributes. Percentile bins computed per corpus
+# would mean "high-pitched" denotes a different pitch in each language, and a
+# description could not address the pooled space at all.
 binner = Binner.fit(attrs)
 gv = {"Female": [], "Male": []}
-metas = json.loads(str(d4["metas"]))[:n]
 for a, m in zip(attrs, metas):
     if m.get("gender") in gv and np.isfinite(a.vtl_cm):
         gv[m["gender"]].append(a.vtl_cm)
@@ -128,6 +150,7 @@ if len(gv["Female"]) >= 20 and len(gv["Male"]) >= 20:
     dcoh = (M.mean() - F.mean()) / max(np.sqrt((F.var(ddof=1) + M.var(ddof=1)) / 2), 1e-9)
     if dcoh < 0.30:
         binner.edges.pop("vtl_cm", None)
+        print(f"      vtl_cm dropped (gender d = {dcoh:+.2f})")
 bins = [binner.bin_one(a) for a in attrs]
 caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
 
@@ -225,7 +248,7 @@ for i, (cid, desc, cell) in enumerate(descs):
         embs.append(sv.embed(librosa.resample(w, orig_sr=CODEC_SR, target_sr=16000),
                              sr=16000))
         if len([r for r in rows if r["accepted"]]) < args.keep_audio:
-            sf.write(os.path.join(OUT, f"{cid}_line{li}.wav"), w, CODEC_SR)
+            sf.write(os.path.join(OUT, f"{TAG}_{cid}_line{li}.wav"), w, CODEC_SR)
     drift = float(np.mean(drifts))
     cons = float(np.mean([cos(embs[a], embs[b])
                           for a in range(len(embs)) for b in range(a + 1, len(embs))]))
@@ -250,9 +273,9 @@ for i, (cid, desc, cell) in enumerate(descs):
               flush=True)
 
 json.dump([{k: v for k, v in r.items() if k != "e"} for r in rows],
-          io.open(os.path.join(OUT, "rows.json"), "w", encoding="utf-8"),
+          io.open(os.path.join(OUT, f"rows_{TAG}.json"), "w", encoding="utf-8"),
           ensure_ascii=False, indent=2)
-np.savez_compressed(os.path.join(OUT, "catalog_E.npz"),
+np.savez_compressed(os.path.join(OUT, f"catalog_E_{TAG}.npz"),
                     E=np.vstack([r["e"] for r in rows]),
                     accepted=np.array([r["accepted"] for r in rows]))
 
@@ -265,7 +288,7 @@ vendi = vendi_score(A) if len(A) > 1 else float("nan")
 
 print()
 print("=" * 78)
-print(f"S7 — Indic catalog saturation ({len(rows)} minted)")
+print(f"S7 — Indic catalog saturation ({len(rows)} minted, corpus {TAG})")
 print("=" * 78)
 print(f"  accepted            {sum(acc)}/{len(acc)}  ({sum(acc)/len(acc):.1%})")
 reasons = {}

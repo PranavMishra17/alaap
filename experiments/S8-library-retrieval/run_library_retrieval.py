@@ -52,7 +52,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from alaap.acoustics import Attributes, Binner, BIN_LABELS
 from alaap.captions import caption_from_bins
 from alaap.catalog import CATALOG_AXES, sample_cells
-from alaap.mapper import TextEncoder
+from alaap.geometry import SpeakerSpace
+from alaap.mapper import RetrievalMapper, TextEncoder
 from alaap.metrics import nn_distances, vendi_score
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -131,15 +132,31 @@ queries = [caption_from_bins(c, seed=10_000 + i) for i, c in enumerate(cells)]
 print(f"[2/4] {len(queries)} descriptions over a stratified cover of bin space")
 
 # -------------------------------------------------------- 3. retrieve
-print("[3/4] encoding captions and retrieving")
-enc = TextEncoder()
-L = enc.encode([v["caption"] for v in library])
-Q = enc.encode(queries)
-L = L / np.maximum(np.linalg.norm(L, axis=1, keepdims=True), 1e-12)
-Q = Q / np.maximum(np.linalg.norm(Q, axis=1, keepdims=True), 1e-12)
-sims = Q @ L.T
-picks = np.argmax(sims, axis=1)
+# Both arms go through RetrievalMapper.retrieve, the SAME ranking mint uses.
+# A retrieval experiment that reimplements the ranking measures its own
+# reimplementation, and E15's hybrid weights only exist inside the mapper.
+print("[3/4] retrieving: text cosine vs E15 hybrid (weighted bins)")
+if LIB_Z is None:
+    sys.exit("hybrid retrieval needs the MioCodec embedding cache -- the axis "
+             "weights are MEASURED against speaker vectors, not assumed.")
 
+lib_caps = [v["caption"] for v in library]
+lib_bins = [v["bins"] for v in library]
+enc = TextEncoder()
+lib_space = SpeakerSpace.fit(LIB_Z, n_components=min(64, len(library) - 1))
+
+arms = {}
+for mode in ("text", "hybrid"):
+    m = RetrievalMapper(lib_space, enc, pca_dims=min(32, lib_space.components.shape[0]),
+                        retrieval=mode).fit(
+        lib_caps, LIB_Z, anchor_bins=lib_bins if mode == "hybrid" else None)
+    arms[mode] = np.array([int(m.retrieve(q, top_k=1)[0][0]) for q in queries])
+    if mode == "hybrid" and m.axis_weights is not None:
+        print("      hybrid axis weights: " +
+              ", ".join(f"{a} {w:.2f}" for a, w in
+                        sorted(zip(m.axes, m.axis_weights), key=lambda t: -t[1])))
+
+picks = arms["hybrid"]
 rng = np.random.default_rng(args.seed)
 rand_picks = rng.integers(0, len(library), size=len(queries))
 
@@ -159,13 +176,14 @@ def adherence(cell, voice):
 
 rows = []
 for i, (cell, qi) in enumerate(zip(cells, queries)):
-    ex, nr = adherence(cell, library[picks[i]])
+    tex, tnr = adherence(cell, library[arms["text"][i]])
+    ex, nr = adherence(cell, library[arms["hybrid"][i]])
     rex, rnr = adherence(cell, library[rand_picks[i]])
     rows.append({"query": qi, "cell": cell,
                  "retrieved": library[picks[i]]["speaker_id"],
                  "retrieved_caption": library[picks[i]]["caption"],
-                 "sim": float(sims[i, picks[i]]),
                  "exact": ex, "near": nr,
+                 "text_exact": tex, "text_near": tnr,
                  "random_exact": rex, "random_near": rnr})
 
 json.dump(rows, io.open(os.path.join(OUT, "rows.json"), "w", encoding="utf-8"),
@@ -174,6 +192,8 @@ json.dump(rows, io.open(os.path.join(OUT, "rows.json"), "w", encoding="utf-8"),
 # ------------------------------------------------------------- 4. report
 ex = np.mean([r["exact"] for r in rows])
 nr = np.mean([r["near"] for r in rows])
+tex = np.mean([r["text_exact"] for r in rows])
+tnr = np.mean([r["text_near"] for r in rows])
 rex = np.mean([r["random_exact"] for r in rows])
 rnr = np.mean([r["random_near"] for r in rows])
 reached = len(set(int(p) for p in picks))
@@ -185,9 +205,11 @@ print("=" * 78)
 print(f"S8 — description -> nearest library voice ({len(library)} voices, "
       f"{len(queries)} queries)")
 print("=" * 78)
-print(f"  {'':22} {'retrieved':>10} {'random':>10} {'lift':>8}")
-print(f"  {'exact bin match':22} {ex:>10.1%} {rex:>10.1%} {ex-rex:>+8.1%}")
-print(f"  {'within one bin':22} {nr:>10.1%} {rnr:>10.1%} {nr-rnr:>+8.1%}")
+print(f"  {'':20} {'random':>9} {'text':>9} {'hybrid':>9} {'hyb-text':>10}")
+print(f"  {'exact bin match':20} {rex:>9.1%} {tex:>9.1%} {ex:>9.1%} {ex-tex:>+10.1%}")
+print(f"  {'within one bin':20} {rnr:>9.1%} {tnr:>9.1%} {nr:>9.1%} {nr-tnr:>+10.1%}")
+print()
+print(f"  text arm reached   {len(set(int(p) for p in arms['text']))}/{len(library)} voices")
 print()
 print("  THE CONTROL: random is what retrieval degenerates to if the captions")
 print("  carry no signal. Five axes x five bins gives 20% per-axis for free.")

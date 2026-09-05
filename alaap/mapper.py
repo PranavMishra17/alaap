@@ -268,6 +268,29 @@ class RetrievalMapper:
         v = (ua * np.sin((1 - t) * om) + ub * np.sin(t * om)) / np.sin(om)
         return v * ((1 - t) * na + t * nb)
 
+    def retrieve(self, description: str, top_k: int = 4
+                 ) -> tuple[np.ndarray, np.ndarray, str]:
+        """
+        Rank the fitted anchors against a description.
+
+        Split out of `mint` because retrieval is a useful operation on its own:
+        S8 answers a description by RETURNING a library voice rather than
+        synthesising a new vector, and it must score that the same way mint
+        scores its anchors -- a retrieval experiment that reimplements the
+        ranking is measuring its own reimplementation.
+
+        Returns (order, scores, score_kind). `score_kind` is "cosine" or
+        "hybrid_z"; the hybrid score is an unbounded z-blend, not a similarity.
+        """
+        if self.T is None:
+            raise RuntimeError("mapper not fitted")
+        sims = self.T @ self.text.encode(description)[0]
+        kind = "cosine"
+        if self.retrieval == "hybrid" and self.anchor_bins is not None:
+            sims = self._hybrid_scores(description, sims)
+            kind = "hybrid_z"
+        return np.argsort(-sims)[:max(top_k, 1)], sims, kind
+
     def mint(self, description: str, novelty: float = 0.5, top_k: int = 4,
              seed: int | None = None, typicality: bool = False) -> MintResult:
         """
@@ -296,16 +319,8 @@ class RetrievalMapper:
         novelty = float(np.clip(novelty, 0.0, 1.0))
         rng = np.random.default_rng(seed)
 
-        q = self.text.encode(description)[0]
-        sims = self.T @ q
-
-        if self.retrieval == "hybrid" and self.anchor_bins is not None:
-            sims = self._hybrid_scores(description, sims)
-
-        order = np.argsort(-sims)[:max(top_k, 2)]
+        order, sims, score_kind = self.retrieve(description, top_k=max(top_k, 2))
         anchor_score = float(sims[order[0]])
-        score_kind = "hybrid_z" if (self.retrieval == "hybrid"
-                                    and self.anchor_bins is not None) else "cosine"
 
         # retrieval end: SLERP among the top-k anchors, weighted by similarity
         w = sims[order]

@@ -18,17 +18,41 @@ measured in `S4` are exactly that — and a *harder* library than Sarvam's, sinc
 were recorded, not curated for coverage. **Swap in 39 Bulbul voices and not one line of
 the script changes.**
 
-## Result — it works, and against the control it works clearly
+## Result — it works, and E15's hybrid retrieval nearly doubles it
 
-| | retrieved | random control | lift |
-|---|---|---|---|
-| exact bin match | **39.0%** | 20.3% | **+18.7 pp** |
-| within one bin | **66.5%** | 53.0% | **+13.5 pp** |
+Three arms, same 200 queries, same library:
+
+| | random control | text cosine | **hybrid (weighted bins)** | hybrid − text |
+|---|---|---|---|---|
+| exact bin match | 20.3% | 39.0% | **65.6%** | **+26.6 pp** |
+| within one bin | 53.0% | 66.5% | **87.3%** | **+20.8 pp** |
 
 The control is not optional. Five axes × five bins gives a 20% per-axis hit rate for
-free, so 39% looks like a real number only once 20.3% is sitting next to it. Retrieval
-roughly **doubles** the exact-match rate over chance, and two thirds of retrieved
-voices land within one bin of what was asked for.
+free, so 39% reads as a real number only once 20.3% sits beside it.
+
+**Text cosine roughly doubles chance. Hybrid roughly doubles text.** Two thirds of
+queries retrieve a voice that matches the description **exactly on every axis**, and
+87% land within one bin — which is inside the width of the bins themselves.
+
+### Why the hybrid gap is this large
+
+`E15` found the same thing on English and it is worth restating, because it is the
+single highest-leverage line in the retrieval path. A sentence embedding treats
+"speaks quickly" and "very deep" as comparably informative English. They are not:
+
+```
+hybrid axis weights, measured on this library
+f0_mean 2.72 | spectral_tilt 1.11 | hnr_db 0.60 | f0_cv 0.31 | speaking_rate 0.26
+```
+
+Pitch carries **ten times** the identity information of speaking rate. The hybrid path
+blends the text cosine with a bin distance weighted by those measured values, and
+weights the blend by the *share of identity information the description actually
+pinned down* — so a description naming no acoustic words falls back to pure text and
+can never be worse off.
+
+Both arms go through `RetrievalMapper.retrieve`, the same ranking `mint` uses. A
+retrieval experiment that reimplements the ranking measures its own reimplementation.
 
 ## The number that actually decides library-vs-minting
 
@@ -37,21 +61,27 @@ Not adherence — **reach**. A library of 141 that answers every description wit
 
 | | |
 |---|---|
-| library voices ever reached, over 200 queries | **95 / 141 (67%)** |
-| most-returned single voice | 8 / 200 queries (4%) |
+| library voices ever reached, hybrid | **82 / 141 (58%)** |
+| library voices ever reached, text | 95 / 141 (67%) |
+| most-returned single voice | 9 / 200 queries (4%) |
 
 No collapse onto a handful of favourites. And measured **in the same MioCodec space S7
 used**, so the two are like for like rather than two different metrics compared as one:
 
 | | normalised Vendi | effective voices |
 |---|---|---|
-| **S8, library retrieval** | 0.361 | **~34** |
+| **S8, hybrid retrieval** | 0.405 | **~33** |
+| **S8, text retrieval** | 0.361 | ~34 |
 | **S7, minted catalog** | 0.362 | **~14** |
 
-**Retrieval reaches 2.4× the effective diversity of minting, on the same corpus, in the
+**Retrieval reaches ~2.4× the effective diversity of minting, on the same corpus, in the
 same space, scored by the same metric.**
 
-### And the Vendi scores are identical
+Note that hybrid reaches *fewer* voices (82 vs 95) but scores *higher* Vendi (0.405 vs
+0.361) and lands on the same effective count. It is not trading diversity for accuracy —
+it is discarding voices that were being returned for the wrong reasons.
+
+### And the text and minting Vendi scores are identical
 
 0.361 versus 0.362. That is the finding under the finding.
 
@@ -69,10 +99,10 @@ about a third of its nominal diversity — and minting then reaches less of that
 
 Set against the above, honestly:
 
-- **It cannot produce a voice the library does not contain.** 39% exact adherence means
-  three axes in five are wrong on average. Ask for a voice at a corner of bin space with
-  no library speaker near it and you get the nearest neighbour, not the voice you asked
-  for. Minting *interpolates*; retrieval only *selects*.
+- **It cannot produce a voice the library does not contain.** Even at 65.6% exact,
+  a third of queries get a voice wrong on at least one axis. Ask for a voice at a corner
+  of bin space with no library speaker near it and you get the nearest neighbour, not the
+  voice you asked for. Minting *interpolates*; retrieval only *selects*.
 - **It gives no uniqueness guarantee for a new character.** Two different descriptions
   can and do return the same voice. Minting rejects that; retrieval cannot.
 - **The library is someone else's.** No control over what is in it, and every character
@@ -83,9 +113,9 @@ Set against the above, honestly:
 - **The library here is corpus speakers, not TTS voices.** Real recordings carry channel
   and microphone variation a studio library would not. That likely *helps* diversity and
   *hurts* adherence, so the true Bulbul numbers could move either way.
-- **200 queries, one corpus, one seed, `TextEncoder` cosine only.** The hybrid
-  weighted-bin retrieval from `E15` was not used, and it beat plain text retrieval there
-   — these adherence numbers are a floor, not a ceiling.
+- **200 queries, one corpus, one seed.** Both retrieval arms were run; nothing else
+  was varied. `top_k=1` throughout — an interface that offered a shortlist of three
+  would score far higher and is arguably the honest product design.
 - **No audio was rendered or listened to.** Adherence is scored by re-binning already
   measured attributes, which is honest for "does the voice match the description" and
   says nothing about how it sounds in Bulbul's mouth.
