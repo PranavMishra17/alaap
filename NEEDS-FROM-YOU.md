@@ -42,7 +42,38 @@ echo "hf_xxxxxxxxxxxxxxxxxxxx" > .hf_token
 
 **What it unlocks:** IndicVoices-R is 1,899 speakers across 22 languages, 1,704 hours, studio-quality — it is the only corpus that can give Indic voices real speaker diversity. Without it the Indic catalog is built on ~2 speakers per language.
 
-**What I did instead:** built the entire Indic pipeline against ungated corpora so it runs the moment the token lands — see §🟡 below. Nothing is waiting on me.
+**While you are logged in, do one more thing —** it unblocks a *second*, bigger problem (below):
+
+5. Open <https://huggingface.co/ai4bharat/indic-parler-tts>, accept the gate, and **copy the gate agreement text into `GATE-TERMS-indic-parler.txt`**. Screenshot is fine. I need to read what you actually agreed to.
+
+**What I did instead:** built the entire Indic pipeline against ungated corpora so it runs the moment the token lands. Nothing is waiting on me.
+
+---
+
+### 2. Indic Parler-TTS is licence-blocked, and it is the backend the Indic plan runs on
+
+I found a real defect in our own code tonight and fixed it, but the fix has a strategic cost you should see.
+
+**The architecture problem first, since you asked it directly** ("is it just license or a backend two tower issue?"). It is **both, and the backend half is worse**:
+
+> `Qwen3-TTS` — our entire working backend, every experiment E0–E10, the whole two-tower loop — **supports 10 languages and not one of them is Indian.** en, zh, fr, de, it, ja, ko, pt, ru, es. There is no Hindi. There is no amount of speaker-vector work that fixes this; the frozen TTS tower physically cannot produce Hindi phonemes.
+
+So Indic needs a **different backend**, and the only clean-chain candidate is `ai4bharat/indic-parler-tts` — which is what ADR "ship Indic Parler catalog now" committed us to.
+
+**The defect:** our code had `indic-parler-tts: True` in the licence gate, while our own audit (`RESEARCH/08` §4.7, §8.4) says **False — CONDITIONAL**. The gate would have allowed it into a public deployment. I set it to `False` and added a test pinning code to audit, because two copies of one fact drift and this pair already had.
+
+**Why the audit blocks it** — two unsettled issues:
+
+| # | Issue | Who can settle it |
+|---|---|---|
+| a | 382 of its 1,806 training hours are IITM **IndicTTS**. AI4Bharat relabels that CC-BY-4.0; the actual IITM EULA §2.2 forbids onward sublicensing. If §2.2 binds, Parler's own Apache-2.0 weight release is non-compliant and we inherit that. | IIT Madras — an email asking them to confirm the CC-BY-4.0 re-designation |
+| b | The repo is **gated**, and a gate is a click-through whose terms are not in public metadata. We have not read them. | **You**, in 30 seconds — step 5 above |
+
+**(b) is free and you can do it tonight.** (a) is an email, and `RESEARCH/08` calls it "the one worth spending a lawyer hour on".
+
+**Until both clear:** Indic renders cannot be publicly served. Everything else Indic — corpus, captions, measurement, the mapper — is unaffected and I am building all of it. This blocks *shipping*, not *building*.
+
+**Decision I need from you eventually (not tonight):** if IITM never answers, do we (i) ship Indic anyway on our own read of the risk, (ii) ship Indic as non-commercial/research only, or (iii) train our own Indic tower on the corpora whose chain we control? I will keep building toward all three.
 
 ---
 
