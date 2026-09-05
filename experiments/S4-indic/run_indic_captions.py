@@ -205,19 +205,21 @@ if fatal:
     print("!" * 78)
     json.dump({"corpus": args.corpus, "n": n, "cross_check": cross,
                "captions_generated": False},
-              open(os.path.join(OUT, "results.json"), "w"), indent=2)
+              open(os.path.join(OUT, f"results_{args.corpus}.json"), "w"),
+              indent=2)
     sys.exit(1)
 
 # ------------------------------------------ 3. does Hindi need its own binner?
-print("\n[3/5] Hindi vs English attribute distributions")
+LANG = (args.corpus.rsplit("_", 1)[-1] or "??").upper()
+print(f"\n[3/5] {LANG} vs English attribute distributions")
 EN_REF = os.path.join("experiments", "S2", "out", "corpus_globe_v2_2500_1.npz")
 lang_cmp = {}
 if os.path.exists(EN_REF):
     de = np.load(EN_REF, allow_pickle=True)
     en_attrs = [Attributes.from_dict(a) for a in json.loads(str(de["attrs"]))]
     print(f"      English reference: {len(en_attrs)} GLOBE_V2 clips")
-    print(f"  {'attribute':<16} {'hindi med':>10} {'eng med':>10} "
-          f"{'shift':>8}  {'hindi pcts in eng bins':>24}")
+    print(f"  {'attribute':<16} {LANG.lower()+' med':>10} {'eng med':>10} "
+          f"{'shift':>8}  {LANG.lower()+' pcts in eng bins':>24}")
     print(f"  {'-'*16} {'-'*10} {'-'*10} {'-'*8}  {'-'*24}")
     en_binner = Binner.fit(en_attrs)
     for key in ("f0_mean", "f0_cv", "speaking_rate", "hnr_db", "spectral_tilt"):
@@ -234,7 +236,7 @@ if os.path.exists(EN_REF):
             idx = np.digitize(h, np.asarray(edges, float))
             occ = np.bincount(np.clip(idx, 0, 4), minlength=5) / max(len(h), 1)
         shift = (np.median(h) - np.median(e)) / max(e.std(), 1e-9)
-        lang_cmp[key] = {"hindi_median": float(np.median(h)),
+        lang_cmp[key] = {"target_median": float(np.median(h)),
                          "english_median": float(np.median(e)),
                          "shift_in_english_sd": float(shift),
                          "occupancy_in_english_bins":
@@ -243,13 +245,13 @@ if os.path.exists(EN_REF):
         print(f"  {key:<16} {np.median(h):>10.2f} {np.median(e):>10.2f} "
               f"{shift:>+8.2f}  {occs:>24}")
     print("\n  'shift' is in English standard deviations. Occupancy is the")
-    print("  fraction of Hindi clips falling in each of the five ENGLISH bins;")
-    print("  0.20 x5 would mean English bins happen to fit Hindi perfectly.")
+    print(f"  fraction of {LANG} clips in each of the five ENGLISH bins;")
+    print(f"  0.20 x5 would mean English bins happen to fit {LANG} perfectly.")
 else:
     print(f"      (no English reference at {EN_REF}; skipping)")
 
 # --------------------------------------------------- 4. fit bins and caption
-print("\n[4/5] fitting Hindi bins and writing captions")
+print(f"\n[4/5] fitting {LANG} bins and writing captions")
 binner = Binner.fit(attrs)
 binner.save(os.path.join(OUT, f"binner_{args.corpus}.json"))
 bins = [binner.bin_one(a) for a in attrs]
@@ -286,7 +288,7 @@ print(f"      {exact}/{len(caps)} captions round-trip exactly ({rt:.1%})")
 for k in sorted(per_axis_tot):
     print(f"        {k:<16} {per_axis_hits.get(k,0)/per_axis_tot[k]:.1%}")
 
-with io.open(os.path.join(OUT, "captions_sample.txt"), "w", encoding="utf-8") as f:
+with io.open(os.path.join(OUT, f"captions_{args.corpus}.txt"), "w", encoding="utf-8") as f:
     for i in range(min(25, len(caps))):
         f.write(f"[{i}] spk={metas[i]['speaker_id']} {metas[i]['gender']} "
                 f"{metas[i]['age']} {metas[i]['area']}\n")
@@ -305,7 +307,7 @@ json.dump({"corpus": args.corpus, "n": n,
            "caption_axes_expressed": EXPRESSED,
            "caption_axes_not_expressed": OMITTED,
            "captions_generated": True},
-          open(os.path.join(OUT, "results.json"), "w"), indent=2)
+          open(os.path.join(OUT, f"results_{args.corpus}.json"), "w"), indent=2)
 
 print("\n" + "=" * 78)
 print("S4 — Indic caption pipeline")
