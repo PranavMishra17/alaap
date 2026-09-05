@@ -591,3 +591,86 @@ class TestSchwaDeletionIsPerLanguage:
         from alaap import acoustics as A
         assert A._SCHWA_DELETING == {"devanagari", "bengali",
                                      "gurmukhi", "gujarati"}
+
+
+class TestTrainingDataGate:
+    """
+    RESEARCH/08 section 8.5: "public_servable guards Q2. NOTHING currently guards
+    Q3 -- and Q3 is the one that costs a retrain."
+
+    Q3 is whether weights trained on a corpus may be released. Unlike a
+    serving mistake, this one is baked into the parameters. ADR-006 makes it
+    live: route C (train our own Indic tower) is the only Indic route no
+    third party can veto, and this gate is what stands between it and an
+    unreleasable checkpoint.
+    """
+
+    def test_a_clean_mix_passes_and_resolves(self):
+        from alaap.provenance import assert_trainable
+        mix = assert_trainable(["indicvoices_r", "libritts_r", "globe_v2"])
+        assert len(mix) == 3
+        assert all(c.train_releasable for c in mix)
+
+    def test_a_noncommercial_corpus_blocks_the_mix(self):
+        """Expresso is the corpus that blocks Indic-Mio (RESEARCH/08 4.4)."""
+        from alaap.provenance import assert_trainable, TrainingLicenceError
+        with pytest.raises(TrainingLicenceError, match="Expresso"):
+            assert_trainable(["indicvoices_r", "expresso"])
+
+    def test_the_unresolved_iitm_eula_blocks_the_mix(self):
+        """
+        IITM IndicTTS is the open question behind indic-parler-tts being
+        CONDITIONAL. It must stay blocked until IITM confirms in writing.
+        """
+        from alaap.provenance import assert_trainable, TrainingLicenceError
+        with pytest.raises(TrainingLicenceError):
+            assert_trainable(["indictts_iitm"])
+
+    def test_an_unknown_corpus_fails_closed(self):
+        """An unknown artefact and an unlicensed one carry the same risk."""
+        from alaap.provenance import assert_trainable, TrainingLicenceError
+        with pytest.raises(TrainingLicenceError, match="not in the training-data"):
+            assert_trainable(["some_corpus_nobody_traced"])
+
+    def test_empty_mix_is_refused(self):
+        from alaap.provenance import assert_trainable, TrainingLicenceError
+        with pytest.raises(TrainingLicenceError):
+            assert_trainable([])
+
+    def test_cc_by_corpus_must_carry_an_attribution_line(self):
+        """
+        A CC-BY corpus with no NOTICE line would ship weights in breach of
+        section 3(a)(1), so the dataclass refuses to be constructed that way.
+        """
+        from alaap.provenance import Corpus
+        with pytest.raises(ValueError, match="attribution"):
+            Corpus(name="X", licence="CC-BY-4.0", train_releasable=True,
+                   source_url="https://example.invalid")
+
+    def test_attribution_is_generated_from_the_mix(self):
+        """
+        The file must be derived, not hand-written -- a hand-maintained NOTICE
+        is wrong the first time the mix changes and nothing catches it.
+        """
+        from alaap.provenance import emit_attribution
+        text = emit_attribution(["indicvoices_r", "libritts_r"])
+        assert "IndicVoices-R" in text and "LibriTTS-R" in text
+        assert "CC BY 4.0" in text
+        # CC-BY 3(a)(1)(B): modification must be indicated
+        assert "modified" in text.lower()
+        # and it must not silently emit for an unreleasable mix
+        import pytest as _p
+        from alaap.provenance import TrainingLicenceError
+        with _p.raises(TrainingLicenceError):
+            emit_attribution(["emilia"])
+
+    def test_checkpoint_metadata_pins_the_mix_to_the_weights(self):
+        """
+        Without this, a routine data change silently alters what the released
+        weights may be licensed under.
+        """
+        from alaap.provenance import checkpoint_metadata
+        m = checkpoint_metadata(["indicvoices_r"], backend_version="v0.1")
+        assert m["backend_version"] == "v0.1"
+        assert m["training_mix"][0]["name"] == "IndicVoices-R"
+        assert m["attribution_required"] and m["all_train_releasable"] is True
