@@ -25,7 +25,39 @@ from typing import Optional
 import numpy as np
 
 __all__ = ["verification_stats", "VerificationStats", "vendi_score",
-           "nn_distances", "cluster_separability"]
+           "nn_distances", "cluster_separability", "normalised_similarity",
+           "CALIBRATION"]
+
+# Measured on real human speech (LibriTTS-R, 400 clips / 21 speakers, E0).
+# A raw similarity number is MEANINGLESS without these -- see E0 RESULTS
+# section 2. WavLM x-vectors are so concentrated that two COMPLETELY
+# DIFFERENT speakers score 0.6632, so "SECS >= 0.88" occupies only the top
+# 0.29 of the scale, not the top 0.12 it appears to.
+CALIBRATION = {
+    #  encoder : (C_same, C_diff, EER)
+    "wavlm": (0.9538, 0.6632, 0.0534),
+    "ecapa": (0.6988, 0.2011, 0.0258),
+}
+
+
+def normalised_similarity(secs: float, encoder: str) -> float:
+    """
+    Put a raw cosine on a scale a human can read:
+
+        1.0  indistinguishable from the target speaker
+        0.0  indistinguishable from a DIFFERENT speaker
+
+    E0 measured the same audio at WavLM 0.921 ("preserved") and ECAPA 0.560
+    ("badly degraded"). Neither is wrong; they have different dynamic ranges.
+    Reporting the forgiving one alone overstates the result -- and the
+    forgiving one (WavLM) is also the WEAKER discriminator (EER 5.34% vs
+    2.58%). Always report the floor alongside the number.
+    """
+    if encoder not in CALIBRATION:
+        raise KeyError(f"no calibration for {encoder!r}; measure C_same/C_diff "
+                       f"on real speech first (RESEARCH/06)")
+    same, diff, _ = CALIBRATION[encoder]
+    return float((secs - diff) / (same - diff))
 
 
 @dataclass

@@ -211,3 +211,52 @@ class IndependentSV:
             if progress_every and (i + 1) % progress_every == 0:
                 print(f"      [SV] embedded {i+1}", flush=True)
         return np.stack(out).astype(np.float32)
+
+
+class WavLMSV:
+    """
+    WavLM-based speaker verification encoder.
+
+    Added because arXiv:2606.05367 measures identity preservation with
+    `microsoft/wavlm-base-plus-sv` specifically, and reproducing a paper's
+    number requires reproducing its instrument. ECAPA and WavLM do not share
+    an absolute scale, so a 0.88 threshold quoted for one is not a threshold
+    for the other.
+    """
+    # The upstream repo ships pytorch_model.bin only, and transformers 4.57
+    # refuses torch.load on torch < 2.6 (CVE-2025-32434). Upgrading torch would
+    # break qwen-tts, which pins transformers==4.57.3, so the checkpoint is
+    # converted to safetensors ONCE into cache/ instead -- no security check
+    # disabled, no torch upgrade. See scripts/convert_wavlm.py.
+    MODEL = "microsoft/wavlm-base-plus-sv"
+    LOCAL = "cache/wavlm-base-plus-sv"
+    SR = 16000
+
+    def __init__(self, device: str = "cuda"):
+        import torch
+        from transformers import AutoFeatureExtractor, WavLMForXVector
+        self._torch = torch
+        self.device = device
+        import os
+        src = self.LOCAL if os.path.exists(
+            os.path.join(self.LOCAL, "model.safetensors")) else self.MODEL
+        self.fe = AutoFeatureExtractor.from_pretrained(src)
+        self.m = WavLMForXVector.from_pretrained(src).to(device).eval()
+
+    def embed(self, wav: np.ndarray, sr: int = SR) -> np.ndarray:
+        import librosa
+        x = np.asarray(wav, dtype=np.float32).reshape(-1)
+        if sr != self.SR:
+            x = librosa.resample(y=x, orig_sr=sr, target_sr=self.SR)
+        inp = self.fe([x], sampling_rate=self.SR, return_tensors="pt", padding=True)
+        with self._torch.inference_mode():
+            e = self.m(**{k: v.to(self.device) for k, v in inp.items()}).embeddings
+        return e.squeeze().detach().float().cpu().numpy().reshape(-1)
+
+    def embed_many(self, wavs, sr: int = SR, progress_every: int = 200) -> np.ndarray:
+        out = []
+        for i, w in enumerate(wavs):
+            out.append(self.embed(w, sr=sr))
+            if progress_every and (i + 1) % progress_every == 0:
+                print(f"      [WavLM] embedded {i+1}", flush=True)
+        return np.stack(out).astype(np.float32)
