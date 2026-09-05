@@ -139,8 +139,27 @@ class Qwen3BaseRenderer:
         "emphasis": Honouring.REJECT,
     }
 
+    # Generation cap -- cheap insurance, NOT the fix for the stall below.
+    #
+    # E0 appeared to hang: one render sat for >8 minutes with the GPU busy.
+    # The first hypothesis was unbounded generation, so this cap was added.
+    # It was the WRONG diagnosis. A controlled test showed RTF was ~70 with
+    # the cap, without it, and at 500 -- i.e. the cap changed nothing.
+    #
+    # The real cause was environmental: five ORPHANED python processes from
+    # earlier background runs were holding 5,550 of 6,144 MiB of VRAM, and
+    # the laptop GPU was at 87 C with SW Thermal Slowdown ACTIVE (1740 vs
+    # 2100 MHz). Memory pressure plus throttling, not the model.
+    #
+    # The cap stays because an unbounded generation loop is still a real
+    # serving hazard, and at 12 Hz 2000 tokens far exceeds any dialogue line.
+    # But the operational lesson is the one that matters: REAP BACKGROUND
+    # PROCESSES, and check nvidia-smi before believing a performance number.
+    DEFAULT_MAX_NEW_TOKENS = 2000
+
     def __init__(self, model_id: str = "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
-                 device: str = "cuda", dtype: str = "bfloat16"):
+                 device: str = "cuda", dtype: str = "bfloat16",
+                 max_new_tokens: int | None = None):
         import torch
         from qwen_tts import Qwen3TTSModel
         self._torch = torch
@@ -153,6 +172,7 @@ class Qwen3BaseRenderer:
         self.model_id = model_id
         self.backend_version = model_id
         self.device = device
+        self.max_new_tokens = max_new_tokens or self.DEFAULT_MAX_NEW_TOKENS
 
     # ------------------------------------------------------------- direction
     def _lang(self, language: str) -> str:
@@ -206,6 +226,7 @@ class Qwen3BaseRenderer:
                      backend_version=self.backend_version, degradations=degr)
 
     def model_generate(self, text, language, items, **kw):
+        kw.setdefault("max_new_tokens", self.max_new_tokens)
         return self.wrapper.generate_voice_clone(
             text=text, language=language, voice_clone_prompt=items, **kw)
 

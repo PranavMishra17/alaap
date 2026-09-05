@@ -65,3 +65,15 @@ I had to pick to keep moving. All reversible; say the word and I'll change any o
 |---|---|---|
 | 5 | **GLOBE_V2 at per-clip pairing is the mapper corpus** | The mapper needs (caption, vector) pairs, never speaker identity — so per-clip sidesteps GLOBE_V2's unreliable labels entirely and unlocks its vocal RANGE. LibriTTS-R is clean audiobook read speech with no gravelly or aged voices, which S2 identified as the binding limit on adherence |
 | 6 | **Abandoned LibriTTS-R `train.clean.360`** | Streaming a 24 GB split stalled on shard fetch. GLOBE_V2 streams fine and gives more vocal range anyway |
+
+### ⚙️ OPERATIONAL NOTE — your GPU runs hot
+
+During the overnight run the RTX 3060 hit **87 °C with `SW Thermal Slowdown` active**
+(clocks 1740 vs 2100 MHz), and orphaned Python processes from background experiments
+accumulated until they held **5,550 of 6,144 MiB of VRAM**. Together those made
+rendering **~10× slower** (RTF 70 vs 4.4) and looked exactly like a model bug.
+
+Fixed by reaping the orphans; RTF returned to 4.3–5.5 and temperature to 67 °C.
+
+**If you see renders crawl, check `nvidia-smi` before debugging the code.**
+Worth considering a laptop cooling pad if this box is going to do long training runs.
