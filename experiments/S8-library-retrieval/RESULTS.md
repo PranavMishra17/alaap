@@ -90,9 +90,10 @@ used**, so the two are like for like rather than two different metrics compared 
 
 | | normalised Vendi | effective voices |
 |---|---|---|
-| **S8, hybrid retrieval** | 0.405 | **~33** |
+| **the bound** — 141 real speakers (`S9`) | 0.270 | **~38** |
+| **S8, hybrid retrieval** | 0.405 | **~33** (87% of the bound) |
 | **S8, text retrieval** | 0.361 | ~34 |
-| **S7, minted catalog** | 0.362 | **~14** |
+| **S7, minted catalog** | 0.362 | **~14** (37% of the bound) |
 
 **Retrieval reaches ~2.4× the effective diversity of minting, on the same corpus, in the
 same space, scored by the same metric.**
@@ -101,19 +102,21 @@ Note that hybrid reaches *fewer* voices (82 vs 95) but scores *higher* Vendi (0.
 0.361) and lands on the same effective count. It is not trading diversity for accuracy —
 it is discarding voices that were being returned for the wrong reasons.
 
-### And the text and minting Vendi scores are identical
+### ⚠️ A claim that used to be here has been retracted
 
-0.361 versus 0.362. That is the finding under the finding.
+This section previously argued that because text retrieval scored normalised Vendi
+**0.361** and minting scored **0.362**, "the ceiling is a property of the space, not of
+the method".
 
-Normalised Vendi measures how much of the *maximum possible* diversity a set achieves.
-Both methods land on the same fraction — so **the ceiling is a property of the space,
-not of the method**. Minting does not compress the space more than retrieval does; it
-simply reaches fewer of its points, because a uniqueness floor rejects a new voice that
-lands near an existing one, whereas retrieval just returns the neighbour it found.
+**That was wrong.** Normalised Vendi is a *fraction of the maximum diversity for a set
+of that size* — two sets with the same fraction and different n hold different numbers
+of voices. 0.361 over 95 retrieved is ~34 voices; 0.362 over 38 minted is ~14. Reading
+two normalised numbers as though they were counts is the same error `E11` made when it
+printed "0.7 voices from 16".
 
-That reframes S7's result. The Indic catalog is not small because minting is weak. It is
-small because 128-d MioCodec identity space, described through five acoustic axes, holds
-about a third of its nominal diversity — and minting then reaches less of that third.
+`S9` measures the bound the comparison actually needed: **141 real Hindi speakers hold
+~38 effective voices.** Against that, retrieval reaches **87%** of what is available and
+minting reaches **37%**. The gap is real, it is large, and it belongs to the method.
 
 ## It replicates on a second language and a disjoint set of speakers
 

@@ -1,6 +1,6 @@
 # S7 — where the Indic catalog saturates
 
-**Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` + `MioCodec-25Hz-44.1kHz-v2` · 80 descriptions
+**Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` + `MioCodec-25Hz-44.1kHz-v2` · 80 descriptions · hi, then hi+bn+ta
 **Question:** S6 minted four voices and all four passed. How many can it actually hold?
 
 ---
@@ -66,17 +66,48 @@ two-tower split being real — the same property that made S5's identity test va
 also makes the comparison between voices exact: every voice says the identical
 utterance, so a drift or consistency difference **cannot** be a content difference.
 
+## Widening the corpus does not help — measured, not assumed
+
+Pooling Bengali and Tamil into one described space (`--corpus hi,bn,ta`): 432 speakers
+instead of 141, one binner over the pooled attributes.
+
+| | hi only | **hi+bn+ta** |
+|---|---|---|
+| speakers | 141 | **432** |
+| accepted | 38/80 (47.5%) | **55/80 (68.8%)** |
+| rejected, all uniqueness | 42 | 25 |
+| normalised Vendi | 0.362 | 0.257 |
+| **effective voices** | **~14** | **~14** |
+| drift / consistency | 0.720 / 0.722 | 0.723 / 0.720 |
+
+**Three times the speakers. Acceptance up 21 points. Effective voices unchanged.**
+
+`S9` explains why, by measuring the ceiling nobody had: 141 real Hindi speakers hold
+**~38** effective voices and all 432 pooled hold **~48** — tripling the corpus bought
+26% more diversity, not 200%, because Hindi, Bengali and Tamil speakers occupy heavily
+overlapping regions of MioCodec's identity space.
+
+And minting was never near that ceiling. It reaches **37%** of the 38 available, where
+`S8`'s retrieval over the same speakers reaches **87%**. More anchors gave minting more
+to retrieve *from* — hence the acceptance jump — without moving what it *spans*.
+
+**So the diagnosis in the section above needs sharpening.** The Indic ceiling is not
+diversity in the abstract, and it is not the corpus. It is that minting with
+`novelty=0.0` interpolates inside the convex region its anchors span, and that region is
+about a third of the space. See `S9` for the three fixes, cheapest first.
+
 ## What this means for the product
 
 A catalog of 500 voices where 300 are audibly the same voice is a catalog of 200 voices
 and a support problem. On this corpus the honest number is **~14 effective Indic
-voices**. That is a cast, not a catalog.
+voices**, against ~38 available. That is a cast, not a catalog — and the shortfall is
+the method's, not the corpus's.
 
 The constraint is not the renderer. Three candidate causes, in order of how cheaply
 they can be tested:
 
-1. **The corpus.** 141 speakers of read Hindi. A mapper cannot describe a region no
-   speaker occupies. → widen to bn/ta (already measured in S4) and re-run.
+1. ~~**The corpus.**~~ **Tested and ruled out** — see the section above. 432 speakers
+   gave exactly the same ~14.
 2. **The described space.** Five axes × five bins, and `speaking_rate` carries a
    measured weight of 0.10 — nearly worthless for identity. Four useful axes cannot
    separate very many people.
