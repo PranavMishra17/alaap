@@ -95,6 +95,10 @@ ap.add_argument("--n", type=int, default=300)
 ap.add_argument("--novelty", type=float, default=0.0)
 ap.add_argument("--seed", type=int, default=0)
 ap.add_argument("--resume", action="store_true")
+ap.add_argument("--pca-dims", type=int, default=0,
+                help="0 = the full basis; S10 measured that as best")
+ap.add_argument("--top-k", type=int, default=2,
+                help="anchors blended per mint; 1 is pure retrieval")
 args = ap.parse_args()
 OUT = args.out
 AUD = os.path.join(OUT, "audio")
@@ -113,7 +117,13 @@ attrs = [Attributes.from_dict(a) for a in json.loads(str(d["attrs"]))]
 binner = Binner.load(args.binner)
 caps = [caption_from_bins(binner.bin_one(a), seed=i) for i, a in enumerate(attrs)]
 space = SpeakerSpace.fit(Z, n_components=150)
-mapper = RetrievalMapper(space, TextEncoder(), pca_dims=50).fit(caps, Z)
+# S9b/S10: pca_dims=50 of 150 zero-pads the discarded components, so every
+# minted voice is near-identical there. At these settings this catalog reached
+# 11% of the diversity GLOBE_V2's own speakers hold (S10). The full basis plus
+# top_k=2 reaches 20% -- +81% -- with drift and consistency both improving.
+PCA_DIMS = args.pca_dims or space.components.shape[0]
+mapper = RetrievalMapper(space, TextEncoder(), pca_dims=PCA_DIMS).fit(caps, Z)
+print(f"      pca_dims {PCA_DIMS} | top_k {args.top_k}")
 print(f"      {len(caps)} pairs | {space}")
 
 # ------------------------------------------------------------ 2. the service
@@ -155,7 +165,7 @@ for i, (cid, desc, cell) in enumerate(descs):
     if cid in done:
         continue
     try:
-        out = svc.mint(desc, character_id=cid, language="en",
+        out = svc.mint(desc, character_id=cid, language="en", top_k=args.top_k,
                        novelty=args.novelty, verify=True, tags=["catalog"])
     except Exception as e:
         print(f"      !! {cid}: {type(e).__name__}: {str(e)[:90]}")

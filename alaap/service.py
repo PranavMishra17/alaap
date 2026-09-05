@@ -139,7 +139,7 @@ class VoiceService:
     def mint(self, description: str, character_id: str, language: str = "en",
              novelty: float = 0.5, verify: bool = True, max_attempts: int = 3,
              seed_line: str = "This is how I sound when I speak.",
-             tags: list[str] | None = None) -> MintOutcome:
+             tags: list[str] | None = None, top_k: int = 2) -> MintOutcome:
         """
         description -> identity, stored in BOTH tiers.
 
@@ -166,7 +166,10 @@ class VoiceService:
             # on COLLISIONS only, never on a drift or consistency failure: those
             # are the failures more novelty makes worse.
             eff_novelty = min(1.0, novelty + NOVELTY_STEP * collisions)
-            m = self.mapper.mint(description, novelty=eff_novelty, seed=attempt)
+            # top_k is the diversity knob S9b/S10 found mis-set; it reaches the
+            # mapper from here so a catalog run can sweep it.
+            m = self.mapper.mint(description, novelty=eff_novelty,
+                                 seed=attempt, top_k=top_k)
             vec = m.vector
 
             uniq = self._uniqueness(vec, language)

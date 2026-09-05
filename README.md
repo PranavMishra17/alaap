@@ -6,41 +6,79 @@
 
 ---
 
-## ⚠️ Status: research phase. There is no code yet.
+## Status: it works, end to end, in English and Hindi
 
-**This repository currently contains research and planning only.** Nothing here has been built, run, or benchmarked by us.
+**Built and measured.** Every number below is from a run in this repo, on one 6 GB laptop GPU.
 
 | | |
 |---|---|
-| **What exists** | ~11,500 lines of primary-source technical research, a phased build plan, and a decision log |
-| **What does not exist** | Any code. Any model. Any dataset. Any running system. Any measured result of our own |
-| **Where we are** | About to start **Phase 00** — the first experiment is a 20-minute CPU script |
-| **Confidence** | Every claim is tagged HIGH / MEDIUM / LOW / **UNVERIFIED**. Ten open questions are explicitly unresolved and carry the experiment that would settle each |
+| **Working system** | description → voice identity → arbitrary dialogue, watermarked, with a game-engine manifest |
+| **Languages proven** | English (Qwen3-TTS) and **Hindi / Bengali / Tamil** (Indic-Mio + MioCodec) |
+| **Experiments** | E0–E5, E9–E15 and S2, S4–S12 — each with a `RESULTS.md` stating what was *not* established |
+| **Tests** | 114 invariant tests |
+| **Licence posture** | research-only (`ADR-009`) — the Indic chain includes NC data, so no weights ship |
 
-If you found this looking for a working text-to-voice system: **it is not built yet.** If you found it looking for a survey of the open TTV/voice-design landscape as of September 2026, with licences traced to primary sources, that part is real and may be useful to you.
+```bash
+envs/qwen3/Scripts/python.exe scripts/demo_script_render.py   # ~4 min, end to end
+```
+
+Mints three characters from text descriptions, renders a five-line scene with per-line
+emotion, watermarks everything, writes a manifest.
+
+### What was measured
+
+**The two-tower split is real in Indic.** The same content tokens carried through two
+speaker vectors give two different people saying identical words — ECAPA-TDNN, which has
+never seen MioCodec, puts the render 61.5% of the way from "different person" to "same
+person" against its donor and *negative* against the other (`S5`). CER spread between
+identities is **0.000** on every line: who speaks has no effect on what is said (`S5b`).
+
+**Minting a voice from a description costs no intelligibility.** CER 0.069 for minted
+vectors against 0.081 for real donor vectors through identical content tokens — a
+difference of **−0.012**, where two *real* speakers differ by 0.077 on a single line
+(`S6b`).
+
+**Retrieval beats minting, and both were mis-tuned.** Answering a description by
+retrieving the nearest voice in a library reaches **87%** of the diversity a corpus
+actually holds; minting reached **37%** (`S9`). The cause was two parameters — blending
+`top_k` anchors in a `pca_dims`-truncated basis — and fixing them moved Indic from 14 to
+**22 effective voices** and English from 23 to **41 (+81%)**, with drift and consistency
+both *improving* (`S9b`, `S10`).
+
+**Catalog search scales better than synthesis.** The same retrieval method scores 65.6%
+exact adherence over 141 Indic voices and **88.5% over 2500 English voices** — no code
+change, just a bigger library (`S8`, `S10`).
+
+**Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
+worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)
+and is a **top delivery axis** (ratio 2.01 across emotions within a speaker). The axes
+identity discards are the ones delivery uses — so a direction channel need not disturb
+who is speaking. The exception is `f0_mean`, which is contested at 1.04 and must be
+explicitly protected (`S12`).
+
+### What is not established
+
+- **Almost nothing has been listened to.** The metrics are geometry and ASR. A blind
+  listening set with positive and negative controls exists (`S11`) and has not been scored.
+- One fluent Hindi speaker has confirmed one render says its target sentence. That is the
+  entire human validation so far.
+- Catalog sizes are small (38–55 voices), single-seed, and Vendi-based — "effective
+  voices" is a metric artefact until a listener confirms it.
+- No commercial TTS has been measured; `S8`'s library is corpus speakers standing in for
+  a studio voice library.
+
+### A methodological note
+
+Roughly twenty findings in this repo were **wrong on the first run and caught by a
+control**, including one where an entire experiment decoded through the wrong codec and
+produced fluent Hindi saying different words, with nothing raising. Each `RESULTS.md`
+records the failure alongside the result. The recurring rule:
+
+> **A suspiciously good or suspiciously bad number is a bug report about your setup.**
+> Where a measurement has a property you can state in advance, assert it before reading
+> the result.
 
 ---
-
-## What the research found
-
-The project verifies a prior scoping document against primary sources. The headline result:
-
-> **The two-tower architecture survives — but every component the original scope named turned out to be the wrong choice.**
-
-```
-description ──[frozen text encoder + TRAINED mapper]──► voice identity ──[FROZEN TTS]──► audio
-      A                    ~10-30M params                      B              C, swappable
-```
-
-Only the mapper is trained. The renderer is frozen and sits behind an adapter, so a better TTS is a swap rather than a rewrite.
-
-A few findings that may be useful independently of this project:
-
-- **Synthesizing a speaker vector works, and has since 2018.** Random unit-hypersphere vectors give naturalness MOS 3.65; WGAN-sampled embeddings are an official VoicePrivacy 2026 baseline. The commonly-assumed "off-manifold" risk is not borne out.
-- **The classic mode-collapse failure is misdescribed almost everywhere.** Averaging speaker embeddings does not produce a "bland average voice" — it collapses *every* identity onto **one** voice, because zero-centred dimensions shrink toward the origin. The fix is per-dimension rescaling, and it is nearly free.
-- **MOS predictors are strongly anti-correlated with pitch** (DNSMOS r ≈ −0.79) where humans are ≈ −0.06. Using them as a quality gate systematically penalises high-pitched voices.
-- **Five open models declare a permissive licence that their upstream chain does not support.** Details, with quotes, in [`RESEARCH/08`](RESEARCH/08-licensing-propagation.md).
-- **No commercial voice-design API is "Tier 1."** Cartesia shipped caller-manipulable 192-d voice embeddings with weighted mixing, then withdrew the capability entirely on 2026-06-01.
 
 ## Read it in this order
 
@@ -52,20 +90,20 @@ A few findings that may be useful independently of this project:
 | 4 | [`RESEARCH/`](RESEARCH/README.md) `01`–`13` — the evidence, one file per domain |
 | 5 | [`DECISIONS.md`](DECISIONS.md) — locked decisions with reasoning |
 
-## The planned stack
-
-Everything below is a *plan*, not a running system.
+## The stack, as built
 
 | Layer | Choice | Licence |
 |---|---|---|
-| Tier-1 renderer | `Qwen3-TTS-12Hz-1.7B-Base` | Apache-2.0 |
-| Voice designer | `Qwen3-TTS-1.7B-VoiceDesign` · `MOSS-VoiceGenerator` | Apache-2.0 |
-| Mapper reference | `line/promptttspp` (MDN head, 256-d) | Apache-2.0 |
-| Indic (v1) | `ai4bharat/indic-parler-tts` | Apache-2.0 |
+| English renderer | `Qwen3-TTS-12Hz-1.7B-Base` | Apache-2.0 |
+| **Indic renderer** | `SPRINGLab/Indic-Mio` + `Aratako/MioCodec-25Hz-44.1kHz-v2` | research-only, `ADR-009` |
+| Mapper | retrieval + calibrated interpolation, hybrid weighted-bin scoring | this repo |
+| Independent verifier | ECAPA-TDNN (never sees the synthesis space) | Apache-2.0 |
 | Watermark | `facebook/audioseal` | MIT |
 | Corpora | LibriTTS-P · GLOBE · IndicVoices-R | CC-BY-4.0 / CC0 |
 
-**Languages planned for v1:** English + Hindi, Telugu, Bengali, Marathi, Kannada, Malayalam, Odia, Assamese.
+**Languages proven so far:** English, Hindi, Bengali, Tamil. `Indic-Mio` covers 22 Indian languages; the pipeline is language-agnostic given a measured corpus.
+
+> ⚠️ **`ai4bharat/indic-parler-tts` is NOT servable** despite its Apache-2.0 tag — see `ADR-006` and `RESEARCH/08`. This is enforced in code, not documentation.
 
 ## The rules that matter
 
@@ -92,8 +130,10 @@ Full text and evidence: [`RESEARCH/GRAND-PLAN.md`](RESEARCH/GRAND-PLAN.md) §1.
 
 ## Licence
 
-Research and documentation: **[CC-BY-4.0](LICENSE)**. Code added later will be MIT, noted at the time.
+Research and documentation: **[CC-BY-4.0](LICENSE)**. Code: MIT.
+
+**Generated audio and model weights ship nowhere.** The Indic chain includes non-commercial data (`RESEARCH/08` §4.4), so this is research-only under `ADR-009`.
 
 ---
 
-*Research pass 1 · 2026-09-02 · primary sources only.*
+*Research pass 1 · 2026-09-02. Implementation and measurement · 2026-09-05.*
