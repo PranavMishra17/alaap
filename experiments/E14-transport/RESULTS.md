@@ -75,20 +75,42 @@ That is not a bug, it is the distance metric. Bin-space L1 weights every axis eq
 
 This also puts the earlier numbers in perspective: the "reference" of 0.260 in E14 is a property of *equal-weight five-axis L1*, not of the information the captions contain. A weighted distance would raise it without measuring anything new.
 
+---
+
+# E14c — it replicates, but the ceiling was depressed by the corpus
+
+E14 and E14b both ran on GLOBE_V2. "One corpus" was listed as unestablished, so this repeats the reference measurement on **LibriTTS-R train.clean.360** — a different corpus *and* a different encoder (0.6B, 1024-dim, against GLOBE's 1.7B/2048-dim). LibriTTS-R was cached at `per_speaker=2`, so it is deduplicated to one clip per speaker first; leaving the repeats in would have inflated ρ, since two clips of one speaker are close in both bin space and voice space.
+
+| corpus / encoder | speakers | 5-axis ρ | `f0` alone ρ |
+|---|---|---|---|
+| GLOBE_V2 / 1.7B | 2,500 | 0.278 | **0.386** |
+| **LibriTTS-R / 0.6B** | 883 | **0.374** | **0.616** |
+
+**The qualitative finding replicates and is robust: `f0` alone beats the five-axis equal-weight sum on both corpora, across two different encoders.** The weighting defect is real and is not a GLOBE artefact.
+
+**The quantitative ceiling does not replicate — it is far higher on the clean corpus**, and there is an already-documented reason. `data.py` records E4's measurement: ECAPA-TDNN scores **EER 20.0% on GLOBE_V2 against 2.46% on LibriTTS-R** through the identical code path — an 8× difference that isolates the corpus. GLOBE's speaker labels and/or its enhancement processing do not preserve identity reliably. Noisier speaker geometry means anything correlated *against* it reads lower.
+
+So **E14's ρ = 0.260 should not be quoted as "the" limit of a five-axis description.** On a corpus whose speaker labels we trust, the same five axes reach 0.374 and pitch alone reaches 0.616. The description is still badly weighted — that is the robust part — but how much of a bottleneck it is depends on the corpus, and E14 measured it on the corpus the project already knows is the weaker one.
+
+**A consequence worth acting on:** the mapper's anchors come from GLOBE_V2. If GLOBE's speaker geometry is the noisier one, then **the anchor corpus itself is a candidate for the next improvement**, alongside re-weighting. `libritts_r_360` is already wired in `data.py` and S2 already has a cached corpus for it.
+
 ## What this changes
 
 **The roadmap item is a better description, not better sampling** — and E14b splits that into two jobs, the cheaper one first.
 
 1. **Weight the axes.** `f0` alone (0.394) beats all five equally-weighted axes (0.281). Nothing needs to be measured to fix this — the retrieval distance and the caption's emphasis should reflect how much each axis actually carries. This is the largest available gain and it costs no new measurement.
 2. **Put VTL into captions.** Built and validated; worth **+15% relative** on the six-axis reference. The `vtl_cm` bin axis exists (`very small-throated` … `very large-throated`); it is measured but **not yet written into `captions.ORDER`**, which is deliberate — adding an axis to captions invalidates every cached caption and mapper, so it should land together with the re-weighting and a full re-run.
-3. **Then re-run E11** and see whether catalog capacity moved.
-4. Only then revisit sampling.
+3. **Consider moving the anchor corpus to LibriTTS-R** (E14c): the same five "
+axes score 0.374 there against 0.278 on GLOBE_V2, and E4 already measured GLOBE's "
+speaker labels as unreliable (EER 20.0% vs 2.46%).
+4. **Then re-run E11** and see whether catalog capacity moved.
+5. Only then revisit sampling.
 
 **And leave `novelty` low.** Three experiments now agree: E14 (transport 0.90× → 0.35×), E11 (drift below floor 10% → 40%), and E1's original off-manifold warning. E12's geometric case for raising it is outvoted by everything that measured what the voice actually does.
 
 ## Not established
 
-- One corpus, English, one backend, one mapper configuration.
+- English only, one backend, one mapper configuration. **Two** corpora as of E14c, but the two differ in encoder as well, so corpus and encoder are not separated.
 - E14b answers the "richer description" hypothesis for exactly one new axis (VTL, +15% relative). It says nothing about the others `RESEARCH/05` lists.
 - Bin-space L1 treats every axis and every bin step as equal, and E14b shows that this **materially understates** the description — `f0` alone outscores the five-axis sum. Every ρ in this document is a property of that metric as much as of the captions.
 - E14's reference (0.260, 400 clips) and E14b's 5-axis figure (0.281, 500 clips) differ because the two runs use different clip sets and duration bounds. Compare within a run, not across.
