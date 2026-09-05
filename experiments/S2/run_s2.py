@@ -225,7 +225,8 @@ if not args.skip_render:
                      "measured": at.to_dict(),
                      "exact_match_rate": adh["exact_match_rate"],
                      "mean_bin_distance": adh["mean_bin_distance"],
-                     "anchor_similarity": m["res"].anchor_similarity})
+                     "anchor_score": m["res"].anchor_score,
+                     "score_kind": m["res"].score_kind})
         if (i + 1) % 5 == 0:
             el = time.time() - t0
             print(f"      {i+1}/{len(todo)} | {el/60:.1f} min | "

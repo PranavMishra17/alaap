@@ -74,8 +74,23 @@ class MintResult:
     working: np.ndarray         # working-space coordinates
     novelty: float
     anchors: list[int]
-    anchor_similarity: float
+    anchor_score: float         # top anchor's retrieval score; see score_kind
+    score_kind: str             # "cosine" (in [-1,1]) or "hybrid_z" (unbounded)
     strategy: str
+
+    @property
+    def anchor_similarity(self) -> float:
+        """
+        Deprecated. Only a similarity under retrieval="text"; the hybrid path
+        returns a blended z-score that routinely exceeds 1, so reading it as a
+        cosine overstates how close the anchor was. Raises rather than lying.
+        """
+        if self.score_kind != "cosine":
+            raise AttributeError(
+                f"anchor_score is a {self.score_kind}, not a similarity -- it is "
+                "unbounded and not comparable to a cosine. Use .anchor_score with "
+                ".score_kind.")
+        return self.anchor_score
 
 
 class RetrievalMapper:
@@ -288,7 +303,9 @@ class RetrievalMapper:
             sims = self._hybrid_scores(description, sims)
 
         order = np.argsort(-sims)[:max(top_k, 2)]
-        anchor_sim = float(sims[order[0]])
+        anchor_score = float(sims[order[0]])
+        score_kind = "hybrid_z" if (self.retrieval == "hybrid"
+                                    and self.anchor_bins is not None) else "cosine"
 
         # retrieval end: SLERP among the top-k anchors, weighted by similarity
         w = sims[order]
@@ -325,7 +342,7 @@ class RetrievalMapper:
         vec = self.space.decode(W, project_to_shell=True)[0]
         return MintResult(vector=vec, working=W[0], novelty=novelty,
                           anchors=[int(i) for i in order],
-                          anchor_similarity=anchor_sim,
+                          anchor_score=anchor_score, score_kind=score_kind,
                           strategy=strategy)
 
     def _hybrid_scores(self, description: str,

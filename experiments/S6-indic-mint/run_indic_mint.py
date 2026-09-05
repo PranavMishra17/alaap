@@ -212,9 +212,10 @@ for name, desc in CAST:
                       np.maximum(np.linalg.norm(E_corpus, axis=1) * np.linalg.norm(e), 1e-12)))
     minted.append({"name": name, "desc": desc, "v": m.vector, "e": e,
                    "uniqueness": u, "to_nearest_real": dc,
-                   "anchor_sim": m.anchor_similarity})
+                   "anchor_score": m.anchor_score,
+                   "score_kind": m.score_kind})
     print(f"      {name:<9} uniqueness {u:.3f} | nearest real speaker {dc:.3f} "
-          f"| anchor sim {m.anchor_similarity:.3f}")
+          f"| anchor {m.score_kind} {m.anchor_score:.3f}")
 
 nn = nn_distances(np.vstack([x["e"] for x in minted]))
 print(f"      minted-to-minted nn: median {np.median(nn):.3f} min {nn.min():.3f}")

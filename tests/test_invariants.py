@@ -955,7 +955,8 @@ class TestAdaptiveNovelty:
 
             class _R:
                 vector = v
-                anchor_similarity = 0.9
+                anchor_score = 0.9
+                score_kind = "cosine"
             return _R()
 
     @staticmethod
@@ -1402,3 +1403,48 @@ class TestCharacterErrorRate:
     def test_empty_reference_is_nan(self):
         from alaap.metrics import cer
         assert np.isnan(cer("", "anything"))
+
+
+class TestAnchorScoreIsNotAlwaysASimilarity:
+    """
+    `anchor_similarity` read 2.05 in S6 -- impossible for a cosine, and it went
+    into a committed results table that way. The hybrid path returns a blended
+    z-score, which is unbounded. The field now says which it is, and asking for
+    a similarity when it is not one raises instead of quietly overstating how
+    close the retrieved anchor was.
+    """
+
+    def _mapper(self, retrieval):
+        from alaap.geometry import SpeakerSpace
+        from alaap.mapper import RetrievalMapper
+        from alaap.acoustics import Attributes, Binner
+        from alaap.captions import caption_from_bins
+        rng = np.random.default_rng(0)
+        n = 60
+        f0 = rng.uniform(80, 260, n)
+        attrs = [Attributes(f0_mean=f, f0_std=f * 0.2, f0_range=f * 0.5,
+                            f0_cv=0.2, speaking_rate=4.0, hnr_db=15.0,
+                            spectral_tilt=-10.0, jitter=0.01, shimmer=0.05,
+                            snr_db=30.0, duration_s=5.0, voiced_frac=0.6)
+                 for f in f0]
+        binner = Binner.fit(attrs)
+        bins = [binner.bin_one(a) for a in attrs]
+        caps = [caption_from_bins(b, seed=i) for i, b in enumerate(bins)]
+        # vectors correlated with f0, so retrieval has real structure to find
+        Z = np.hstack([f0[:, None] / 100.0, rng.standard_normal((n, 15))])
+        space = SpeakerSpace.fit(Z, n_components=8)
+        from alaap.mapper import TextEncoder
+        m = RetrievalMapper(space, TextEncoder(), pca_dims=8, retrieval=retrieval)
+        return m.fit(caps, Z, anchor_bins=bins if retrieval == "hybrid" else None)
+
+    def test_text_retrieval_reports_a_real_cosine(self):
+        r = self._mapper("text").mint("a very deep voice", novelty=0.0, seed=0)
+        assert r.score_kind == "cosine"
+        assert -1.0 <= r.anchor_score <= 1.0, r.anchor_score
+        assert r.anchor_similarity == r.anchor_score
+
+    def test_hybrid_refuses_to_call_its_score_a_similarity(self):
+        r = self._mapper("hybrid").mint("a very deep voice", novelty=0.0, seed=0)
+        assert r.score_kind == "hybrid_z"
+        with pytest.raises(AttributeError, match="not a similarity"):
+            r.anchor_similarity

@@ -129,7 +129,7 @@ for gname, items in groups:
                       f"eta {el/n*(total-n)/60:.1f} min", flush=True)
         if per_line:
             rows.append({"group": gname, "tag": tag, "desc": desc,
-                         "anchor_sim": m.anchor_similarity, "renders": per_line})
+                         "anchor_score": m.anchor_score, "score_kind": m.score_kind, "renders": per_line})
 
 # -------------------------------------------------------------- 3. analyse
 print("[3/3] measuring")

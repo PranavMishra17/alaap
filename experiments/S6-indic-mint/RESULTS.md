@@ -133,7 +133,7 @@ first clip of two *distinct* speakers, and duplicate arm labels abort the run.
 - **Nobody has listened to these renders.** All machine-scored. Given that a listener confirmation on S5's *wrong-codec* audio established naturalness but not correctness, this matters.
 - **Intelligibility is now measured for minted vectors** — see the section below. There is no detectable cost.
 - `vtl_cm` is dropped on this corpus, mirroring S4: the formant estimate does not separate gender on IndicVoices-R (d = +0.11), so it is noise here. Indic captions run on seven axes here.
-- `anchor_similarity` reads > 1 (e.g. 2.02) under `retrieval="hybrid"`, because the hybrid path returns a blended **z-score**, not a cosine. The field name is misleading in that mode and should be renamed or normalised.
+- ~~`anchor_similarity` reads > 1 under `retrieval="hybrid"`~~ — **fixed.** `MintResult` now exposes `anchor_score` with a `score_kind` of `"cosine"` or `"hybrid_z"`, and asking a hybrid result for `.anchor_similarity` raises rather than returning an unbounded z-score dressed as a cosine. The 2.05/1.78/2.25/1.86 figures printed above are hybrid z-scores.
 - Licence: research-only per `ADR-009`. Indic-Mio's chain includes NC data; nothing here may ship as weights.
 
 ## Reproduce
