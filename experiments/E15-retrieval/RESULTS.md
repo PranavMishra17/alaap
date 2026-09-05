@@ -97,10 +97,39 @@ E15b's conclusion was that widening what the parser *recognises* beats perfectin
 
 So the remaining gap needs **interpretation**, not vocabulary: an LLM or a text encoder actually trained on description→voice pairs, which is what `RESEARCH/13` documents PromptTTS++ doing. The hybrid stands, but its fallback branch is carrying the harder half of the problem, and improving *that* is the open item — not more regex.
 
+---
+
+# E15d — it replicates on a second corpus and a second encoder
+
+Same comparison on **LibriTTS-R train.clean.360** (0.6B encoder, 1024-dim, deduplicated to one clip per speaker), five axes since that cache has no `vtl_cm`:
+
+| method | cos to true voice | rank of true (chance = 366) |
+|---|---|---|
+| text (current) | 0.1995 | 228.9 |
+| bin, equal weights | 0.2933 | 153.9 |
+| **bin, measured weights** | **0.3084** | **142.6** |
+
+**Bin retrieval wins on both corpora and both encoders** — +66% on GLOBE, **+55%** here. The conclusion is not a GLOBE artefact.
+
+The measured weights are the same shape, and more extreme:
+
+| axis | GLOBE_V2 | LibriTTS-R |
+|---|---|---|
+| `f0_mean` | 2.71 | **3.49** |
+| `vtl_cm` | 1.44 | *(not measured)* |
+| `spectral_tilt` | 0.66 | 0.69 |
+| `hnr_db` | 0.56 | 0.43 |
+| `f0_cv` | 0.33 | 0.23 |
+| `speaking_rate` | 0.31 | **0.17** |
+
+**Pitch dominates everywhere, and speaking rate is close to worthless for identity on both** (0.31 / 0.17 against a mean of 1.0). That is the expected shape: F0 and vocal-tract length are *anatomy*; rate and expressiveness are *behaviour* a speaker varies at will, so they should not identify anyone. The current equal-weight treatment gives rate the same say as pitch.
+
+Everything also scores higher on LibriTTS-R (cos 0.31 vs 0.16), consistent with **E14c** — GLOBE_V2's speaker labels are the weaker ones (E4: EER 20.0% vs 2.46%), which depresses every correlation measured against them.
+
 ## Not established
 
-- One corpus, English, one backend, `top_k=4`, one SLERP blending scheme.
-- The weights are measured on 350 speakers and are not validated on a second corpus.
+- **Two** corpora as of E15d, English only, one backend, `top_k=4`, one SLERP blending scheme. The two corpora differ in encoder as well, so corpus and encoder are not separated.
+- The GLOBE weights are measured on 350 speakers; E15d re-measures them independently on 733 LibriTTS-R anchors and gets the same ordering.
 - No rendering: no drift, consistency, or adherence, and no listening.
 - The hybrid design above is **proposed, not tested**.
 - E15b's descriptions are **my own**, written by someone who had just read the parser. That biases coverage upward, so 22% is more likely an over-estimate than an under-estimate.

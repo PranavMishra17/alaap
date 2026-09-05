@@ -207,5 +207,216 @@
     "warnings": [],
     "clean": true,
     "catalog_size_before": 9
+  },
+  {
+    "character_id": "cat0010",
+    "identity_id": "9170a470-0768-412e-a209-3eb9034c7c19",
+    "description": "This speaker has a middle-register voice, rough-edged, neither bright nor dark, with natural intonation and neither rushed nor slow.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "rough",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.4475849550677715,
+    "consistency": 0.6248586177825928,
+    "uniqueness": 0.7181207504470554,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 10
+  },
+  {
+    "character_id": "cat0011",
+    "identity_id": "f951d0d9-f4dc-4f98-87eb-5b7a0bb93854",
+    "description": "Imagine a moderately pitched voice, smooth and clear, neither bright nor dark, with natural intonation and neither rushed nor slow.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "clear",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.4162230500699486,
+    "consistency": 0.5501107573509216,
+    "uniqueness": 0.6940592970432551,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 11
+  },
+  {
+    "character_id": "cat0012",
+    "identity_id": "9f767f73-c302-4ee3-a2fe-2fbab03a7b29",
+    "description": "You hear a moderately pitched voice, with a strikingly clean tone, with an even tonal colour, with an even melodic range and neither rushed nor slow.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "very clear",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.48471458705688425,
+    "consistency": 0.6524170637130737,
+    "uniqueness": 0.6480972004795208,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 12
+  },
+  {
+    "character_id": "cat0013",
+    "identity_id": "6a906819-fe6a-4ff3-804c-520441f02487",
+    "description": "The speaker has a moderately pitched voice, lightly textured, with an even tonal colour, with very little pitch movement and at a steady pace.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "monotone",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.46632756925079827,
+    "consistency": 0.48062607645988464,
+    "uniqueness": 0.6978098762225198,
+    "attempts": 2,
+    "warnings": [
+      "attempt 1: consistency 0.376 < 0.43 (E9: unstable identities wander between lines)"
+    ],
+    "clean": false,
+    "catalog_size_before": 13
+  },
+  {
+    "character_id": "cat0014",
+    "identity_id": "6dfb84e5-e52f-4a0c-be96-80a53600d59a",
+    "description": "This speaker: a mid-range voice, with a trace of roughness, with an even tonal colour, with restrained intonation and neither rushed nor slow.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "slightly varied",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.4397767648635529,
+    "consistency": 0.7183700203895569,
+    "uniqueness": 0.6257506628474403,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 14
+  },
+  {
+    "character_id": "cat0015",
+    "identity_id": "5ab61225-c7a6-4ce2-8234-8acdc10b483e",
+    "description": "The voice is a mid-range voice, with a faint rasp, with an even tonal colour, with a wide melodic range and at a steady pace.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "expressive",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.5449587322548762,
+    "consistency": 0.5297884941101074,
+    "uniqueness": 0.6182477797518771,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 15
+  },
+  {
+    "character_id": "cat0016",
+    "identity_id": "81d18de2-c3bc-4b07-bee1-7428de9a26d4",
+    "description": "This speaker: a moderately pitched voice, lightly textured, neither bright nor dark, with dramatic pitch swings and at a natural, even tempo.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "highly animated",
+      "speaking_rate": "measured"
+    },
+    "tier": 1,
+    "drift": 0.3268946447270717,
+    "consistency": 0.5710859298706055,
+    "uniqueness": 0.6004691264157062,
+    "attempts": 3,
+    "warnings": [
+      "attempt 1: drift 0.342 < 0.4",
+      "attempt 1: consistency 0.387 < 0.43 (E9: unstable identities wander between lines)",
+      "attempt 2: drift 0.349 < 0.4",
+      "attempt 3: drift 0.327 < 0.4",
+      "accepted with drift 0.327 below the 0.4 floor after 3 attempts"
+    ],
+    "clean": false,
+    "catalog_size_before": 16
+  },
+  {
+    "character_id": "cat0017",
+    "identity_id": "42759340-eb32-4ed5-8d99-0faff3a80eaa",
+    "description": "The voice is a middle-register voice, lightly textured, neither bright nor dark, with natural intonation and with a very deliberate pace.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "very slow"
+    },
+    "tier": 1,
+    "drift": 0.49416405803602936,
+    "consistency": 0.5429121851921082,
+    "uniqueness": 0.5245776181587914,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 17
+  },
+  {
+    "character_id": "cat0018",
+    "identity_id": "65185bc7-bde4-4a87-bad1-1f9897eff049",
+    "description": "This speaker: a mid-range voice, with a faint rasp, with an even tonal colour, with natural intonation and at a measured, slow pace.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "slow"
+    },
+    "tier": 1,
+    "drift": 0.5561342713879985,
+    "consistency": 0.5347958207130432,
+    "uniqueness": 0.5043539038078617,
+    "attempts": 1,
+    "warnings": [],
+    "clean": true,
+    "catalog_size_before": 18
+  },
+  {
+    "character_id": "cat0019",
+    "identity_id": "14859a4e-4787-4c9f-b1ff-e6fb8b17a4f4",
+    "description": "This speaker: a middle-register voice, with a faint rasp, with an even tonal colour, moderately expressive and moving briskly.",
+    "cell": {
+      "f0_mean": "moderately pitched",
+      "spectral_tilt": "balanced",
+      "hnr_db": "slightly rough",
+      "f0_cv": "moderately expressive",
+      "speaking_rate": "quick"
+    },
+    "tier": 1,
+    "drift": 0.5064551109695107,
+    "consistency": 0.4674762785434723,
+    "uniqueness": 0.3196485342645876,
+    "attempts": 3,
+    "warnings": [
+      "attempt 1: too close to an existing identity (working-space distance 0.292 < 0.3); retrying at novelty 0.35",
+      "attempt 2: drift 0.365 < 0.4"
+    ],
+    "clean": false,
+    "catalog_size_before": 19
   }
 ]

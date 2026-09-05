@@ -62,7 +62,11 @@ ap.add_argument("--corpus-cache",
                 default="experiments/S2/out/"
                         "corpus_globe_v2_2500_1_Qwen3-TTS-12Hz-17B-Base.npz")
 ap.add_argument("--vtl-attrs", default="experiments/E14-transport/out/vtl_attrs_500.npz",
-                help="re-measured attributes carrying vtl_cm (from E14b)")
+                help="re-measured attributes carrying vtl_cm (from E14b); if it "
+                     "does not exist the run falls back to the cache's own "
+                     "attributes and five axes")
+ap.add_argument("--dedup-ids", action="store_true",
+                help="keep one clip per speaker (needed for per_speaker>1 caches)")
 ap.add_argument("--n-test", type=int, default=150)
 ap.add_argument("--top-k", type=int, default=4)
 ap.add_argument("--seed", type=int, default=0)
@@ -83,14 +87,37 @@ def unit(A):
     return A / (np.linalg.norm(A, axis=1, keepdims=True) + 1e-12)
 
 
-print("[1/4] corpus (using E14b's re-measured attributes, which carry vtl_cm)")
+print("[1/4] corpus")
 d = np.load(args.corpus_cache, allow_pickle=True)
 Z_all = d["Z"].astype(np.float64)
-attrs = [Attributes.from_dict(a) for a in
-         json.loads(str(np.load(args.vtl_attrs, allow_pickle=True)["attrs"]))]
+if os.path.exists(args.vtl_attrs):
+    attrs = [Attributes.from_dict(a) for a in
+             json.loads(str(np.load(args.vtl_attrs, allow_pickle=True)["attrs"]))]
+    print(f"      using E14b's re-measured attributes (six axes)")
+else:
+    attrs = [Attributes.from_dict(a) for a in json.loads(str(d["attrs"]))]
+    print(f"      {args.vtl_attrs} absent -- falling back to the cache's own "
+          f"attributes (five axes, no vtl_cm)")
 n_all = min(len(attrs), len(Z_all))
 attrs, Z = attrs[:n_all], Z_all[:n_all]
-print(f"      {n_all} speakers with all six axes")
+
+if args.dedup_ids and "ids" in d.files:
+    # a per_speaker>1 cache repeats speakers, and two clips of one speaker sit
+    # close in BOTH bin space and voice space -- leaving them in inflates every
+    # correlation here.
+    ids = [str(x) for x in d["ids"]][:n_all]
+    seen, keep = set(), []
+    for i, sp in enumerate(ids):
+        if sp not in seen:
+            seen.add(sp); keep.append(i)
+    Z, attrs = Z[keep], [attrs[i] for i in keep]
+    n_all = len(keep)
+    print(f"      deduplicated to {n_all} distinct speakers")
+
+# vtl_cm is only usable if it was actually measured
+AXES6[:] = [a for a in AXES6
+            if a != "vtl_cm" or np.isfinite([x.vtl_cm for x in attrs]).mean() > 0.8]
+print(f"      {n_all} speakers | axes: {', '.join(AXES6)}")
 
 rng = np.random.default_rng(args.seed)
 perm = rng.permutation(n_all)
