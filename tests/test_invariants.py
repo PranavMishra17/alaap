@@ -568,3 +568,26 @@ class TestServableMatchesTheAudit:
             public_servable = True      # contradicts SERVABLE
         with pytest.raises(LicenceGateError):
             load_backend(_Liar(), is_public_deployment=False)
+
+
+class TestSchwaDeletionIsPerLanguage:
+    """
+    Word-final inherent-vowel deletion is a per-LANGUAGE fact, not a
+    per-family one. Odia is the standard counterexample: it is Indo-Aryan and
+    written in a Brahmic script, and it RETAINS the final vowel where Bengali
+    and Hindi drop it. An earlier version of this table grouped it with
+    Bengali on family alone.
+    """
+
+    def test_odia_retains_its_final_vowel(self):
+        from alaap import acoustics as A
+        assert "oriya" not in A._SCHWA_DELETING
+        assert "tamil" not in A._SCHWA_DELETING
+        assert "telugu" not in A._SCHWA_DELETING
+        assert "kannada" not in A._SCHWA_DELETING
+        assert "malayalam" not in A._SCHWA_DELETING
+
+    def test_the_indo_aryan_deleters_are_exactly_these_four(self):
+        from alaap import acoustics as A
+        assert A._SCHWA_DELETING == {"devanagari", "bengali",
+                                     "gurmukhi", "gujarati"}

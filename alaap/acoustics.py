@@ -175,8 +175,13 @@ _BLOCKS = {  # script -> base codepoint of its 128-point Unicode block
     "gujarati":   0x0A80, "oriya":   0x0B00, "tamil":    0x0B80,
     "telugu":     0x0C00, "kannada": 0x0C80, "malayalam": 0x0D00,
 }
-# Indo-Aryan drop the word-final schwa; Dravidian do not.
-_SCHWA_DELETING = {"devanagari", "bengali", "gurmukhi", "gujarati", "oriya"}
+# Word-final inherent-vowel deletion. This is per-LANGUAGE, not per-family:
+# Hindi/Marathi (Devanagari), Bengali, Punjabi and Gujarati delete it, but
+# ODIA is the standard counterexample -- it retains the final vowel, which is
+# one of the features that distinguishes it from Bengali. Dravidian scripts
+# retain it too. Getting this wrong costs ~1 phone per word, i.e. 10-15% on
+# short words, so it is worth being fussy about.
+_SCHWA_DELETING = {"devanagari", "bengali", "gurmukhi", "gujarati"}
 
 # offsets within a block (identical across all nine)
 _VOWEL_IND = range(0x05, 0x15)   # independent vowels  अ..औ
