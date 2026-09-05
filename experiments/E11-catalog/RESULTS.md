@@ -1,7 +1,7 @@
 # E11 — catalog saturation, and what novelty actually costs
 
 **Run:** 2026-09-05 · `Qwen3-TTS-12Hz-1.7B-Base` · v2 (decorrelated) binner · GLOBE_V2 mapper
-**Three arms:** `out/` = novelty 0.0 (40 voices) · `out_nov0.45/` = 0.45 (running) · `out_nov0.75/` = 0.75 (20 voices)
+**Four arms:** `out/` = fixed 0.0 (40) · `out_nov0.45/` = 0.45 (20) · `out_nov0.75/` = 0.75 (20) · `out_adaptive/` = adaptive (running)
 
 **Question:** how many distinct voices does this backend actually hold before new descriptions stop producing new voices?
 
@@ -101,8 +101,40 @@ empty, and raise it only when a mint actually collides** — which `service.mint
 already detects, since it retries on exactly that condition. The retry, not the
 initial attempt, is where novelty belongs.
 
-That is a design proposal, not a measured result. It follows from these three
-arms but has not itself been run.
+*(That was written as a proposal. Arm 4 below is it, run.)*
+
+## Arm 4 — adaptive novelty, and it works
+
+The proposal above was implemented (`service.NOVELTY_STEP = 0.35`: first attempt
+at the caller's novelty, each **collision** raises it, drift and consistency
+failures never do) and run as a fourth arm with base `novelty=0.0`. Because the
+control predates the code, the two arms differ *only* in the escalation.
+
+Matched at the first **30** voices:
+
+| arm | n | clean | **drift below floor** | uniq mean | uniq min | **uniq below floor** | attempts |
+|---|---|---|---|---|---|---|---|
+| fixed 0.00 (control) | 30 | 87% | **7%** | 0.669 | 0.292 | **3%** | 1.20 |
+| **adaptive (0.00 base)** | 30 | 73% | **7%** | 0.670 | **0.320** | **0%** | 1.40 |
+| fixed 0.45 | 20 | 50% | 30% | 0.694 | 0.313 | 0% | 1.80 |
+| fixed 0.75 | 20 | 30% | 40% | 0.759 | 0.453 | 0% | 2.30 |
+
+**It buys the thing novelty was wanted for, and does not pay novelty's price.**
+Uniqueness floor breaches go **3% → 0%** and the closest pair moves from 0.292
+(below the 0.30 floor) to 0.320 (above it), while **drift-below-floor is
+identical at 7%**. Fixed `novelty=0.45` bought the same collision-freedom for
+**30%** drift failures.
+
+The mechanism is visible in the logs: **1 escalation across 30 voices.** The arm
+runs at `novelty=0` essentially always, and paid the cost exactly once, on the
+one mint that actually collided — which is the whole design.
+
+> **Two honest caveats.** The clean-rate gap (87% → 73%) is *not* explained by
+> the single escalation, which can account for at most one voice. Rendering is
+> stochastic, so the two arms differ run-to-run on drift and consistency
+> warnings, and 30 voices on one seed is not enough to separate that from a real
+> effect. And mean uniqueness is unchanged (0.669 vs 0.670) — the escalation
+> fixes the *worst* pair, not the average, which is exactly what a floor is for.
 
 ## Where this leaves the catalog
 
@@ -112,8 +144,8 @@ The three arms together say the capacity limit is **not** a knob that was set wr
 - **`novelty=0.45` costs 30% drift failures and buys no mean-uniqueness gain at n=20.**
 - **`novelty=0.75` does not collide but renders badly** — 40% below the drift floor.
 
-There is no fixed setting that avoids both failures, which is what motivates the
-adaptive proposal above.
+There is no fixed setting that avoids both failures — which is what the
+adaptive arm then resolved, buying collision-freedom at no drift cost.
 
 **And E14 then found the reason there isn't one.** Measured against the corpus's
 real (caption, voice) pairs, five acoustic axes predict voice distance at only
