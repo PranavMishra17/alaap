@@ -233,6 +233,30 @@ for ax in AXES:
     print(f"  {ax:<16} {s12:>5.2f} " + " ".join(cells))
 
 print()
+print("  RELIABILITY — the same effects as effect/SE, i.e. is the shift real at all")
+print("  rather than large. The two disagree, and both are needed: effect/SD says")
+print("  whether a shift is big against render-to-render spread; effect/SE says")
+print("  whether it is a consistent shift or a couple of outlier renders.")
+print(f"  {'axis':<16} " + " ".join(f"{t.strip('<>')[:7]:>8}" for t in TAGS))
+for ax in AXES:
+    nv = vals(neutral, ax)
+    nv = nv[np.isfinite(nv)]
+    if len(nv) < 3 or nv.std() < 1e-9:
+        continue
+    cells = []
+    for t in TAGS:
+        tv = vals([r for r in rows if r["tag"] == t], ax)
+        tv = tv[np.isfinite(tv)]
+        if len(tv) < 2:
+            cells.append(f"{'-':>8}")
+            continue
+        se = np.sqrt(nv.var(ddof=1) / len(nv) + tv.var(ddof=1) / len(tv))
+        z = abs(tv.mean() - nv.mean()) / se if se > 0 else np.nan
+        cells.append(f"{z:>7.2f}{'*' if z >= 2.0 else ' '}")
+    print(f"  {ax:<16} " + " ".join(cells))
+print("  * = shift is larger than 2 standard errors")
+
+print()
 print("  IDENTITY COST — ECAPA against the same voice rendered neutral")
 c_same, c_diff, _ = CALIBRATION["ecapa"]
 for t in ["<neutral>"] + TAGS:

@@ -49,6 +49,12 @@ both *improving* (`S9b`, `S10`).
 exact adherence over 141 Indic voices and **88.5% over 2500 English voices** — no code
 change, just a bigger library (`S8`, `S10`).
 
+**A text tag directs delivery without changing who is speaking — but only just.** Tags
+cost 0.02 of ECAPA similarity against a 0.90 self-similarity ceiling and move `f0_mean`
+by ≤0.21 noise-floor units, so the structural separation is real. The movement they buy
+is small: 1.08 noise-floor units on average, about the size of re-rolling the sampling
+seed. `shimmer` and `speaking_rate` respond reliably but weakly (`S13`).
+
 **Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
 worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)
 and is a **top delivery axis** (ratio 2.01 across emotions within a speaker). The axes

@@ -102,9 +102,10 @@ needs minting more than the English path does, and is worse at it.**
 - **GLOBE_V2 is the anchor corpus, and `E14`'s roadmap wanted it replaced.** Its speakers
   are the ones whose diversity is being counted; a different English corpus gives a
   different bound.
-- **`E11`'s numbers have NOT been re-run.** The settings changed today; E11's committed
-  results were produced with `pca_dims=50, top_k=4` and stand as a record of that
-  configuration. Re-running the whole English suite is a separate job.
+- ~~**`E11`'s numbers have NOT been re-run.**~~ **E11 has now been re-run** at the fixed
+  settings and confirms the prediction (43.1 measured against 41 predicted). Its original
+  committed results stand as a record of the old configuration. **E9, E12 and E14 have
+  not been re-run** and their numbers are still pre-fix.
 - **The 203-voice bound is the corpus's, not Qwen3's.** 2500 read-speech speakers are not
   a sample of all human voices.
 - **No audio was rendered or listened to anywhere in this experiment.** Every number is
