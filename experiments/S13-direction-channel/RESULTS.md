@@ -155,11 +155,44 @@ embedding, 3 seeds averaged:
 | `<angry>` | 124 | 5.08 | 215.0 | 0.573 | 16.68 |
 | `<enunciated>` | 158 | 5.83 | 215.3 | 0.576 | 13.08 |
 
-**It is not whispering.** `f0_mean` is unchanged to within 1.5 Hz on every tag.
+**It is not whispering.** `f0_mean` is unchanged to within 1.5 Hz on every tag, and
+`hnr_db` moves 0.85 dB where a real whisper should move it by many — on synthetics that
+measure spans +7.8 dB (harmonic) to −10.1 dB (noise).
 
-At a fixed seed, adding a tag changes the generated token stream almost completely
-(prefix agreement 0–2.9%) — consistent with the tag text perturbing the sample rather
-than conditioning anything.
+`voiced_frac` corroborates but should not be leaned on. It is an energy/ZCR voice-activity
+measure, not a periodicity detector, and it is **bimodal**: 0.000 for majority-noise
+excitation, ~0.60 for anything still majority-harmonic. A mild breathy whisper would read
+0.60 and look unchanged. `hnr_db` is the graded probe.
+
+### The conditioning test, with invented tags as the control
+
+The "prefix agreement 0–2.9% at a fixed seed" figure this section originally carried is
+**withdrawn**: changing prompt length changes RNG consumption, so near-zero agreement
+follows from *any* prompt edit, including appending a full stop. It proved nothing.
+
+Replaced with a deterministic test. Teacher-force one fixed speech-token sequence under
+each prompt variant, measure the mean Jensen-Shannon divergence of the speech-token
+distribution. No sampling, no confound. **The control is invented tags of the same shape.**
+
+```
+<whisper>      0.1716  documented
+<enunciated>   0.1520  documented
+<zorblax>      0.1102  INVENTED
+<qwixmop>      0.1099  INVENTED
+<happy>        0.1078  documented
+<surprise>     0.1076  documented
+<angry>        0.1061  documented
+<banana>       0.0938  INVENTED
+<sad>          0.0884  documented
+"."            0.0011  a plain full stop
+
+mean documented 0.1222 | mean invented 0.1047 | ratio 1.168
+```
+
+Two invented tags outrank four documented ones; `<sad>` scores below `<banana>`. The tags
+perturb the model more than a full stop — they are unusual text — but **not more than a
+nonsense word of the same shape.** That is a model reacting to odd input, not obeying a
+control, and it is the strongest single piece of evidence here.
 
 ### A hypothesis of mine, refuted by its own check
 
@@ -199,8 +232,13 @@ predicted:  centroid(*early*) < plain < centroid(*late*)
 | `The *mountains* remember…` | 0.4312 | −0.0177 = **0.85** noise units |
 | `…you *regret*.` | 0.4345 | −0.0144 = **0.69** noise units |
 
-**The ordering does not hold.** Both conditions move the centroid in the *same* direction,
-downward, by less than one noise unit each. Emphasising the last word of the sentence does
+**The predicted ordering was not detected.** Both conditions move the centroid in the
+*same* direction, downward, by less than one noise unit each.
+
+**And this test was underpowered, which must be said before the conclusion.** With SD
+0.0208 and n=4 per condition, the SE on the early-vs-late difference is ≈0.0147 against an
+observed 0.0033 — it could not have resolved an ordering below about 1.4 seed-SDs. So this
+is *no effect detected*, not *no effect exists*. Emphasising the last word of the sentence does
 not push energy later — it does the same thing as emphasising the second word.
 
 That pattern is what an inert marker produces: the asterisks perturb sampling, and where
@@ -212,12 +250,37 @@ emotion tags, not the documented word stress.
 
 ### Caveats on this one specifically
 
-- **4 seeds, one sentence, one voice, English.** Small.
+- **4 seeds, one sentence, one voice, English — and underpowered by its own arithmetic.**
+  See above; the test could not have found a small ordering.
 - **The energy centroid is a crude proxy.** Emphasis can be realised as pitch accent with
   little energy change, and that would not show here. A pitch-contour version of the same
   directional test would be a stronger instrument and was not run.
 - `*` being a plain text token means the finetune *could* still have learned it from data
   that used it — this measures the outcome, not the training.
+
+## Adversarially verified before filing
+
+Report 4 went to an independent Opus agent in an isolated worktree with instructions to
+**refute** it. The previous round of this exercise killed one of three claims and found
+another was my own mistake, so it is not a formality.
+
+It could not refute the central claim, and it closed the report's own biggest caveat:
+
+- **`MioTTS-Inference` does not use a different prompt format.** `api.py` does
+  `messages.append({"role": "user", "content": normalized})`, `normalize_text` is
+  Japanese-only punctuation folding, and `TTSRequest` has no style field. The recommended
+  path builds a byte-identical prompt to plain inline text.
+- **No checkpoint difference.** 4 commits, no branches; `main` is the tested revision.
+- **The question is already on record.** Discussion #1, 2026-06-23, asks whether the tags
+  were added as special tokens or conditioned. Asked twice, never answered.
+- **Where the tags came from:** the English list is exactly Expresso's style vocabulary and
+  the Indic list is Rasa's six emotions — both in the training data per the card. They were
+  clearly *intended* to work.
+
+It also found four things wrong with the report, all now fixed: the confounded
+prefix-agreement figure (withdrawn above), the `voiced_frac` framing, the overreach on
+emphasis, and a failure to acknowledge the card's own tagged Gujarati `<disgust>` sample —
+which the corrected report now addresses by asking for an A/B against an untagged control.
 
 ## What this means for the direction channel
 

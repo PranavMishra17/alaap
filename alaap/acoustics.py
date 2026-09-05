@@ -54,7 +54,22 @@ def _frame(x: np.ndarray, n: int, hop: int) -> np.ndarray:
 
 def voiced_mask(wav: np.ndarray, sr: int = SR, frame_ms: float = 25.0,
                 hop_ms: float = 10.0, energy_pct: float = 40.0) -> np.ndarray:
-    """Cheap energy+ZCR VAD. Returns a per-frame boolean."""
+    """
+    Cheap energy+ZCR VAD. Returns a per-frame boolean.
+
+    NOT a periodicity detector, and the difference matters when this is used
+    as evidence rather than as a gate. `energy_pct=40` means at most ~60% of
+    frames can ever pass, so `voiced_frac` reads ~0.60 for ordinary speech
+    and cannot go higher. It is also BIMODAL in excitation: measured on
+    synthetics it gives 0.597 for a harmonic signal, 0.601 for 70% harmonic
+    + 30% noise, and 0.000 for 30/70 or pure noise.
+
+    So a strong whisper collapses it to zero, but a mild breathy one reads
+    0.60 and looks untouched. `hnr_db` is the graded probe for that question
+    -- on the same synthetics it spans +7.8 dB to -10.1 dB. S13 originally
+    leaned on voiced_frac to argue `<whisper>` was not whispering; the
+    conclusion held, but hnr_db and f0_mean were the load-bearing evidence.
+    """
     n, hop = int(sr * frame_ms / 1000), int(sr * hop_ms / 1000)
     F = _frame(wav, n, hop)
     e = (F ** 2).mean(1)

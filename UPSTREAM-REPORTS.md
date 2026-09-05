@@ -349,8 +349,12 @@ neutral             84     4.82     215.5         0.583           24.32
 <enunciated>       158     5.83     215.3         0.576           13.08
 ```
 
-`voiced_frac` barely moves — it is not whispering. `f0_mean` is unchanged to within
-1.5 Hz across every tag.
+**`f0_mean` is unchanged to within 1.5 Hz across every tag, and `hnr_db` moves 0.85 dB.**
+On synthetic signals my HNR measure spans 7.8 dB (harmonic) to −10.1 dB (noise), so a
+whisper should move it by many dB, not one. `voiced_frac` corroborates but should not be
+leaned on: it is an energy/ZCR voice-activity measure rather than a periodicity detector,
+and it is bimodal — it collapses to 0.000 for majority-noise excitation but reads ~0.60
+for anything still majority-harmonic.
 
 On Hindi, across 78 renders (3 voices x 2 lines, with 30 untagged renders establishing
 the sampling noise floor at temperature 0.9), the mean effect of a tag on the acoustic
@@ -359,9 +363,35 @@ re-rolling the sampling seed. A fluent Hindi speaker listened to `<happy>`, `<sa
 `<angry>` and `<surprise>` renders of one sentence in one voice and reported them as the
 same voice with no distinguishable emotion.
 
-At a fixed seed, adding a tag changes the generated token stream almost completely
-(prefix agreement with the untagged generation: 0–2.9%), which is consistent with the
-tag text perturbing sampling rather than conditioning anything.
+### The conditioning test, with invented tags as the control
+
+Sampling comparisons are confounded — changing prompt length changes RNG consumption, so
+*any* prompt edit shifts the generated stream. So: teacher-force one fixed speech-token
+sequence under each prompt variant and measure the mean Jensen-Shannon divergence of the
+model's speech-token distribution. No sampling, no confound.
+
+The control is **invented tags of the same shape**. If `<banana>` perturbs the model as
+much as `<happy>`, the documented set carries no signal.
+
+```
+<whisper>      0.1716  documented
+<enunciated>   0.1520  documented
+<zorblax>      0.1102  INVENTED
+<qwixmop>      0.1099  INVENTED
+<happy>        0.1078  documented
+<surprise>     0.1076  documented
+<angry>        0.1061  documented
+<banana>       0.0938  INVENTED
+<sad>          0.0884  documented
+"."            0.0011  a plain full stop
+
+mean documented 0.1222 | mean invented 0.1047 | ratio 1.168
+```
+
+Two invented tags outrank four documented ones, and `<sad>` scores *below* `<banana>`.
+The tags do perturb the model more than a full stop does — they are unusual text — but
+**not more than a nonsense word of the same shape.** That is the signature of a model
+reacting to odd input, not obeying a control.
 
 ### Two things I checked so they are not confounders
 
@@ -391,16 +421,70 @@ The *mountains* remember every ...           0.4312   -0.85 noise units
 
 If the marker were obeyed, emphasising the *last* word would push energy later than
 emphasising the *second* word. Both move the same direction, by less than one
-seed-to-seed SD. (Caveat: the energy centroid would miss emphasis realised purely as
-pitch accent.)
+seed-to-seed SD.
+
+**Stated honestly: this test was underpowered.** With SD 0.0208 and n=4 per condition, the
+standard error on the early-vs-late difference is ≈0.0147 against an observed 0.0033 — it
+could not have resolved an ordering smaller than about 1.4 seed-SDs. So: *the predicted
+ordering was not detected*, not *there is definitely no effect*. The energy centroid would
+also miss emphasis realised purely as pitch accent. I report it because it points the same
+way as everything else, not because it is conclusive on its own.
+
+### I checked whether the recommended inference path does something different
+
+It does not. In `MioTTS-Inference`, `miotts_server/api.py` builds the prompt as:
+
+```python
+detected_language = detect_language(request.text)
+if detected_language == "ja":
+    normalized = normalize_text(request.text)
+else:
+    normalized = request.text.strip()
+...
+messages.append({"role": "user", "content": normalized})
+```
+
+`normalize_text` is Japanese-only punctuation folding with no tag handling, and
+`schemas.py`'s `TTSRequest` has no emotion/style field (`text`, `reference`, `llm`,
+`output`, `best_of_n`). Indic-Mio's `chat_template.jinja` adds no system prompt. So the
+recommended path builds a byte-identical prompt to plain inline text — there is no other
+format I could have been missing.
+
+### The card's own tagged sample, which I cannot explain away
+
+The card's widget example is Gujarati ending in `<disgust>`:
+
+> જ્યારે પણ મને તેની સખત જરૂર હોય ત્યારે આ દુકાનમાં મદદ કરવા માટે ક્યારેય કોઈ હાજર નથી હોતું. `<disgust>`
+
+I am not claiming that sample is fake. But a single tagged sample **cannot** show the tag
+caused anything, because there is no untagged control of the same text and speaker beside
+it. **Would you be willing to post an A/B — the same sentence, same reference speaker,
+with and without the tag?** If they differ audibly, my measurements are wrong somewhere
+and I would like to know where.
 
 ### What I could not rule out
 
-- That the tags require a prompt format other than plain inline text — something
-  `MioTTS-Inference` does that I have not replicated. If so, a card example showing the
-  correct call would fix this entirely.
-- That they work in a language or on a checkpoint I did not test. I used Hindi and
-  English on `SPRINGLab/Indic-Mio` @ `25feace0` with `MioCodec-25Hz-44.1kHz-v2`.
+- That they work in a language or on a checkpoint I did not test. I used Hindi, English
+  and Gujarati-adjacent text on `SPRINGLab/Indic-Mio` @ `25feace0` (all 4 commits, no
+  branches) with `MioCodec-25Hz-44.1kHz-v2`.
+- That the tags are trained but very weakly, below what my instruments resolve.
+
+### This has been asked before
+
+Discussion #1 (2026-06-23), `PRIYANSHUDHAKED`:
+
+> "how to add emotion tags like sad, angry, happy etc. did you add these as special
+> tokens are you applied any conditioning."
+
+Asked twice in that thread, and not answered. So this is not one confused user — and
+closing that thread would help the next person too.
+
+### Where I think this came from
+
+The English tag list — `<happy> <sad> <enunciated> <confused> <angry> <whisper>` — is
+exactly Expresso's style vocabulary, and the Indic list is Rasa's six emotions. Both are
+in your training data per the card. So the tags were clearly *intended* to work, which is
+why I think this is worth reporting rather than a documentation slip.
 
 If the tags are meant to work as plain text, adding them as special tokens and
 fine-tuning briefly on tagged data would likely be needed. If they were never trained in
