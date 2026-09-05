@@ -1315,3 +1315,53 @@ class TestMissingTauIsReportedNotSwallowed:
         assert notes and "applied at alpha" in notes[0]
         assert not np.allclose(vec, base), "tau was not applied"
         assert abs(np.linalg.norm(vec) - np.linalg.norm(base)) < 1e-4,             "steer must keep the vector on the shell (E3)"
+
+
+class TestDirectionBoundNamesItsModel:
+    """
+    `direction_bounds["emotion"]["identity_retained_ecapa"] = 0.591` was
+    measured by E0 on **0.6B**. E10 then made 1.7B the default, so a 1.7B
+    render was quoting a 0.6B number as if it described itself -- in the
+    degradation note, which ends up in the shipped manifest.
+
+    Refitting tau for 1.7B (scripts/fit_emotion_tau.py) does not fix this: the
+    vectors and the identity COST of applying them are separate measurements.
+    RESEARCH/10's rule is that an APPROXIMATE field needs a published bound; a
+    bound from a different model is not one.
+    """
+
+    def test_the_bound_records_which_model_it_came_from(self):
+        from alaap.renderer import Qwen3BaseRenderer
+        b = Qwen3BaseRenderer.direction_bounds["emotion"]
+        assert "measured_on" in b, "a bound must say what it was measured on"
+        assert "0.6B" in b["measured_on"]
+
+    def test_the_note_flags_a_bound_from_another_model(self):
+        from alaap.renderer import Direction, Qwen3BaseRenderer
+
+        class _R:
+            backend_id = "qwen3-tts-base"
+            backend_version = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+            direction_bounds = Qwen3BaseRenderer.direction_bounds
+            tau = {"anger": np.array([0.5, 0, 0, 0], dtype=np.float32)}
+
+        r = _R()
+        r.steer = Qwen3BaseRenderer.steer.__get__(r, _R)
+        _, notes = r.steer(np.ones(4, dtype=np.float32),
+                           Direction(emotion={"anger": 1.0}))
+        assert notes and "NOT re-measured" in notes[0], notes
+
+    def test_no_flag_when_the_bound_matches_the_model(self):
+        from alaap.renderer import Direction, Qwen3BaseRenderer
+
+        class _R:
+            backend_id = "qwen3-tts-base"
+            backend_version = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+            direction_bounds = Qwen3BaseRenderer.direction_bounds
+            tau = {"anger": np.array([0.5, 0, 0, 0], dtype=np.float32)}
+
+        r = _R()
+        r.steer = Qwen3BaseRenderer.steer.__get__(r, _R)
+        _, notes = r.steer(np.ones(4, dtype=np.float32),
+                           Direction(emotion={"anger": 1.0}))
+        assert notes and "NOT re-measured" not in notes[0], notes

@@ -148,12 +148,21 @@ class Qwen3BaseRenderer:
         "emotion": {
             "emotions": ["anger", "disgust", "fear", "happy", "sad"],
             "alpha_max": 1.0,
-            # identity retained at alpha=1.0, normalised so 0.0 = a DIFFERENT
-            # speaker and 1.0 = the target (E0, tau over 32 speakers)
+            # Identity retained at alpha=1.0, normalised so 0.0 = a DIFFERENT
+            # speaker and 1.0 = the target (E0, tau over 32 speakers).
+            #
+            # MEASURED ON 0.6B. E10 later made 1.7B the default, and this bound
+            # has NOT been re-measured there -- a 1.7B render currently quotes a
+            # 0.6B number. The tau vectors themselves were refitted for 1.7B
+            # (scripts/fit_emotion_tau.py), but the identity COST of applying
+            # them is a separate measurement and needs E0's eval re-run.
+            # Treat it as indicative for 1.7B, not established.
             "identity_retained_ecapa": 0.591,
             "identity_retained_wavlm": 0.853,
+            "measured_on": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
             "note": "the two encoders disagree; ECAPA is the stricter and the "
-                    "better discriminator (EER 2.58% vs 5.34%). Quote both.",
+                    "better discriminator (EER 2.58% vs 5.34%). Quote both. "
+                    "And say which model it was measured on -- see measured_on.",
         },
     }
 
@@ -266,8 +275,9 @@ class Qwen3BaseRenderer:
             # _apply_direction cannot catch this -- it only reports fields
             # marked REJECT, and emotion is APPROXIMATE, i.e. supported in
             # principle. Whether the vectors actually EXIST is a runtime fact.
+            _bv = getattr(self, "backend_version", "this model")
             msg = (f"emotion {sorted(direction.emotion)}: no direction vectors "
-                   f"loaded for {self.backend_version} -- tau is per-model and "
+                   f"loaded for {_bv} -- tau is per-model and "
                    f"none was found. Rendered NEUTRAL.")
             if direction.strict:
                 raise NotImplementedError(msg)
@@ -286,9 +296,13 @@ class Qwen3BaseRenderer:
             alpha = float(np.clip(w * direction.intensity, -cap, cap))
             v = v + alpha * t.astype(np.float64)
             applied = True
-            notes.append(f"emotion {emo!r} applied at alpha={alpha:.2f}; "
-                         f"identity retained ~{keep:.2f} at alpha=1.0 "
-                         f"(ECAPA-normalised)")
+            on = self.direction_bounds["emotion"].get("measured_on", "")
+            same = (not on) or on == getattr(self, "backend_version", on)
+            notes.append(
+                f"emotion {emo!r} applied at alpha={alpha:.2f}; "
+                f"identity retained ~{keep:.2f} at alpha=1.0 (ECAPA-normalised"
+                + ("" if same else f", measured on {on.split('/')[-1]}, "
+                                   f"NOT re-measured for this model") + ")")
         if applied:
             n = float(np.linalg.norm(v))     # keep it on the shell (E3)
             if n > 0:
