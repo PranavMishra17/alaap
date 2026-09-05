@@ -48,6 +48,33 @@ So the shipping design is a **hybrid**, not a replacement: parse what the text y
 
 Two other limits: 350 anchors here against 2,500 in the real mapper — retrieval quality generally improves with anchor density, and the methods may not scale identically. And nothing was rendered, so this is retrieval quality in embedding space, not audio.
 
+---
+
+# E15b — how much of a real description actually parses? 22%
+
+E15's caveat named a number it did not have. Here it is ():
+
+| kind of input | axes recovered, of 6 |
+|---|---|
+| **generated captions** — E15's condition | **5.00** |
+| the project's own example descriptions | 3.17 |
+| plain descriptions ("deep male voice, slow") | 1.17 |
+| **character-sheet style** ("a gravelly old sailor, world-weary") | **0.50** |
+| no acoustic content ("someone menacing", "a villain") | 0.00 |
+| **all user-style text** | **1.29 (22%)** |
+
+**E15 measured retrieval where 5 of 6 axes parse. Real input gives about 1.3.** And the style closest to how a game writer actually briefs a character — the product's central use case — yields **0.50 axes**, because "old sailor", "world-weary" and "giant of a man" carry no phrasing the parser knows.
+
+So E15's +66% is real but applies to roughly a fifth of the signal. **The hybrid must therefore lean on the text encoder for most of a real description**, and the bin path improves the part it can parse. That reorders the roadmap: widening what the parser recognises is worth more than perfecting how the parsed part is weighted.
+
+### It also uncovered a dead axis
+
+Building this measurement exposed a silent defect. The parser's synonym table was keyed **** — an axis S2 run 4 removed, replacing it with .  has no , and  **skips any target bin whose axis it cannot find**, so every natural synonym for expressiveness (*monotone, flat, animated, expressive, lively*) was parsed into an axis that was then silently discarded and never scored.
+
+The bare word **"monotone"** — the likeliest thing a user types for that axis — produced a target that could never be satisfied. Nothing errored. The axis simply stopped being covered, and it looked fine whenever it was tested with a *generated* caption, because those use a phrasing that also appears in the correctly-keyed caption phrasebook.
+
+Fixed, with  asserting that every axis the parser can emit exists in . Coverage moved 1.25 → 1.29 axes, which is small — the defect cost scoring accuracy, not parse rate.
+
 ## Not established
 
 - One corpus, English, one backend, `top_k=4`, one SLERP blending scheme.
