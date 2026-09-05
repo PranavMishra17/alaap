@@ -103,7 +103,7 @@ else:
                         attrs=json.dumps(attrs_d), texts=np.array(texts, dtype=object))
 
 from alaap.acoustics import Attributes
-attrs = [Attributes(**a) for a in attrs_d]
+attrs = [Attributes.from_dict(a) for a in attrs_d]
 print(f"      {len(attrs)} measured, {len(set(ids))} speakers")
 
 # -------------------------------------------------- 2. bin + caption + space

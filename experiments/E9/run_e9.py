@@ -84,7 +84,7 @@ CENTRAL = [
 print(f"[1/3] rebuilding the mapper from {args.corpus_cache}")
 d = np.load(args.corpus_cache, allow_pickle=True)
 Z = d["Z"].astype(np.float64)
-attrs = [Attributes(**a) for a in json.loads(str(d["attrs"]))]
+attrs = [Attributes.from_dict(a) for a in json.loads(str(d["attrs"]))]
 binner = Binner.load(args.binner)
 caps = [caption_from_bins(binner.bin_one(a), seed=i) for i, a in enumerate(attrs)]
 space = SpeakerSpace.fit(Z, n_components=150)

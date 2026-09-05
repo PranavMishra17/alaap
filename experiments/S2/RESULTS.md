@@ -238,3 +238,82 @@ and rapid speech are negatively correlated in GLOBE_V2, making the combination u
 Silhouette dropped slightly (0.779 → 0.736). With a richer manifold, minted voices for
 different descriptions spread out more, which reduces cluster tightness. Not obviously bad —
 but worth watching, since separability is what makes the catalog searchable.
+
+---
+
+# S2 run 4 — the same model, with DECORRELATED measurement axes (2026-09-05)
+
+Run 3 claimed *"the mapper is no longer weak"* on the strength of exact match 0.403.
+**That claim was inflated by a measurement artefact, and this run withdraws it.**
+
+Diagnosing why one description scored 0.00 in every run found two attributes badly
+entangled with pitch on GLOBE_V2:
+
+```
+  f0_mean vs f0_std (Hz)   r = +0.723
+  f0_mean vs hnr_db        r = +0.621     <- 39.9% of HNR variance is pitch
+```
+
+The second is a **measurement artefact**: a high-F0 signal has a stronger
+autocorrelation peak at its pitch period, so the HNR estimator reads it as "clearer".
+Fixed by binning `f0_cv = f0_std/f0_mean` instead of raw `f0_std`, and by regressing
+log-F0 out of HNR before binning (`r` → +0.199 and +0.053 respectively).
+
+## What that did to the scores
+
+| | run 3 — entangled bins | **run 4 — decorrelated** |
+|---|---|---|
+| exact match @ novelty 0.0 | 0.375 | **0.222** |
+| @ 0.5 | 0.403 | **0.306** |
+| @ 1.0 | 0.236 | 0.097 |
+| bin distance @ 0.0 | 0.861 | **1.278** |
+| @ 0.5 | 0.792 | **1.319** |
+| Vendi @ 0.5 | 0.499 | 0.494 |
+| silhouette | 0.736 | 0.718 |
+
+*(chance: exact match 0.200, bin distance ~1.600)*
+
+**Adherence dropped by roughly a quarter, and that is the correct direction.**
+
+The entangled axes made descriptions **spuriously easy** to satisfy. When `hnr_db`
+correlated r=+0.62 with `f0_mean`, getting the pitch right dragged you most of the way
+to the right roughness bin for free — so *"a very deep, gravelly voice"* was partly
+self-satisfying under the old measurement. Remove the correlation and hitting both
+requires genuinely independent control, which the mapper does not yet have.
+
+## The honest position
+
+**Exact match 0.306 against chance 0.200** — about 1.5× chance.
+**Bin distance 1.319 against chance ~1.600** — about 18% better than chance.
+
+That is real signal, measured on decorrelated axes, and it is **weaker than run 3
+reported**. The trajectory across all four runs, on comparable footing:
+
+| run | corpus / model | bins | exact match @ 0.5 |
+|---|---|---|---|
+| 1 | LibriTTS-R / 0.6B | entangled | 0.319 |
+| 2 | GLOBE_V2 / 0.6B | entangled | 0.250 |
+| 3 | GLOBE_V2 / 1.7B | entangled | 0.403 |
+| **4** | **GLOBE_V2 / 1.7B** | **decorrelated** | **0.306** |
+
+Runs 1–3 are not directly comparable to run 4. **Only run 4's number should be quoted.**
+
+## Why this is worth the drop
+
+An inflated adherence score is worse than a low one, because it would have been optimised
+against. Every future improvement now gets measured on axes that do not hand it free
+credit for correlations in the estimator — which is the whole point of measure-first
+being *reversible* rather than merely *automated*.
+
+The `Binner` is versioned; `load()` refuses a v1 binner with an explanation rather than
+silently applying entangled bins.
+
+## Still open
+
+- **Novelty 1.0 collapsed** (0.236 → 0.097). Pure GMM sampling is now clearly the worst
+  setting on decorrelated axes. E1's `k=5` was fitted on 122 LibriTTS speakers and needs
+  re-tuning against a dense corpus.
+- **The mapper genuinely lacks independent attribute control.** Retrieval returns whole
+  real voices, so it can only offer attribute combinations that co-occur in the corpus.
+  That is the strongest argument yet for a *generative* mapper (S3) over pure retrieval —
+  and the first evidence in this project that actually motivates it.

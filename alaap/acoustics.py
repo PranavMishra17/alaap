@@ -187,6 +187,22 @@ class Attributes:
     def to_dict(self):
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, d: dict) -> "Attributes":
+        """
+        Tolerant loader for cached attribute dicts.
+
+        f0_cv was added after the first corpora were measured (it replaced raw
+        f0_std as the binned expressiveness axis, because f0_std in Hz
+        correlates r=+0.72 with f0_mean). Rather than invalidate every cache
+        and re-measure, derive it when absent -- it is exactly std/mean.
+        """
+        d = dict(d)
+        if "f0_cv" not in d:
+            d["f0_cv"] = d.get("f0_std", 0.0) / max(d.get("f0_mean", 1e-6), 1e-6)
+        known = set(cls.__dataclass_fields__)
+        return cls(**{k: v for k, v in d.items() if k in known})
+
 
 def measure(wav: np.ndarray, text: str = "", sr: int = SR) -> Attributes:
     wav = np.asarray(wav, dtype=np.float32).reshape(-1)
