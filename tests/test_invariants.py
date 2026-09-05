@@ -214,7 +214,7 @@ class TestCaptionParsing:
 
     def test_caption_roundtrips_through_the_parser(self):
         bins = {"f0_mean": "very low-pitched", "hnr_db": "very rough",
-                "spectral_tilt": "dark", "f0_std": "monotone",
+                "spectral_tilt": "dark", "f0_cv": "monotone",
                 "speaking_rate": "slow"}
         for seed in range(8):
             back = target_bins_from_text(caption_from_bins(bins, seed=seed))
@@ -222,7 +222,7 @@ class TestCaptionParsing:
                 assert back.get(k) == v, f"seed {seed}: {k} {back.get(k)} != {v}"
 
     def test_captions_vary_in_surface_form(self):
-        bins = {"f0_mean": "low-pitched", "hnr_db": "clear", "f0_std": "expressive"}
+        bins = {"f0_mean": "low-pitched", "hnr_db": "clear", "f0_cv": "expressive"}
         assert len({caption_from_bins(bins, seed=s) for s in range(10)}) >= 5
 
 

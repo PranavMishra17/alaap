@@ -50,7 +50,7 @@ PHRASES = {
         "very high-pitched":   ["a very high voice", "an extremely high-pitched voice",
                                 "a piercingly high voice"],
     },
-    "f0_std": {
+    "f0_cv": {
         "monotone":            ["almost monotone", "flat and unvarying in pitch",
                                 "with very little pitch movement"],
         "slightly varied":     ["with slight pitch variation", "gently inflected",
@@ -121,7 +121,7 @@ OPENERS = [
 ]
 
 # Which attributes to include, in the order they read most naturally.
-ORDER = ["f0_mean", "hnr_db", "spectral_tilt", "f0_std", "speaking_rate", "shimmer"]
+ORDER = ["f0_mean", "hnr_db", "spectral_tilt", "f0_cv", "speaking_rate", "shimmer"]
 
 
 def caption_from_bins(bins: dict[str, str], subject: str = "This speaker",

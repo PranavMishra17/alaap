@@ -172,7 +172,8 @@ def speaking_rate(wav: np.ndarray, text: str, sr: int = SR) -> float:
 @dataclass
 class Attributes:
     f0_mean: float
-    f0_std: float
+    f0_std: float          # Hz -- kept for transparency, NOT binned (see f0_cv)
+    f0_cv: float           # f0_std / f0_mean -- scale-free, this is what is binned
     f0_range: float
     speaking_rate: float
     hnr_db: float
@@ -195,8 +196,10 @@ def measure(wav: np.ndarray, text: str = "", sr: int = SR) -> Attributes:
     f0 = f0_track(wav, sr)
     jit, shim = jitter_shimmer(wav, sr)
     vm = voiced_mask(wav, sr)
+    f0m, f0s = float(np.mean(f0)), float(np.std(f0))
     return Attributes(
-        f0_mean=float(np.mean(f0)), f0_std=float(np.std(f0)),
+        f0_mean=f0m, f0_std=f0s,
+        f0_cv=float(f0s / max(f0m, 1e-6)),
         f0_range=float(np.percentile(f0, 95) - np.percentile(f0, 5)),
         speaking_rate=speaking_rate(wav, text, sr) if text else 0.0,
         hnr_db=hnr(wav, sr), jitter=jit, shimmer=shim,
@@ -208,8 +211,8 @@ def measure(wav: np.ndarray, text: str = "", sr: int = SR) -> Attributes:
 BIN_LABELS = {
     "f0_mean": ["very low-pitched", "low-pitched", "moderately pitched",
                 "high-pitched", "very high-pitched"],
-    "f0_std": ["monotone", "slightly varied", "moderately expressive",
-               "expressive", "highly animated"],
+    "f0_cv": ["monotone", "slightly varied", "moderately expressive",
+              "expressive", "highly animated"],
     "speaking_rate": ["very slow", "slow", "measured", "quick", "rapid"],
     "hnr_db": ["very rough", "rough", "slightly rough", "clear", "very clear"],
     "spectral_tilt": ["very dark", "dark", "balanced", "bright", "very bright"],
@@ -223,48 +226,97 @@ BIN_LABELS = {
 
 class Binner:
     """
-    Percentile-calibrated bins.
+    Percentile-calibrated bins, with two DECORRELATIONS applied first.
 
-    Data-Speech bins equal-width; percentile bins are used here because they
-    guarantee balanced occupancy even when the corpus is skewed -- and
-    RESEARCH/05 found VoicePersona's skew was a PROMPT artefact that a
-    balanced binner would not have propagated.
+    Measured on GLOBE_V2 (2,500 clips), the naive attributes are badly
+    entangled with pitch:
+
+        f0_mean vs f0_std (Hz)   r = +0.723
+        f0_mean vs hnr_db        r = +0.621   <- 39.9% of HNR variance is pitch
+
+    The second is a MEASUREMENT ARTEFACT, not a property of voices: a high-F0
+    signal has a stronger autocorrelation peak at its pitch period, so the HNR
+    estimator reads it as "clearer". Left uncorrected, "gravelly" becomes
+    entangled with "low-pitched", and a description like "a high, harsh voice"
+    is far harder to satisfy than it should be -- which is exactly what S2
+    observed (that description scored 0.00 in every run).
+
+    Two fixes, both measured:
+
+        f0_std -> f0_cv (std/mean)              r = +0.723 -> +0.197
+        hnr_db -> residual after log-F0 regression  r = +0.621 -> +0.055
+
+    The HNR regression is fit on the CORPUS at Binner.fit time and stored, so
+    the correction travels with the binner rather than being recomputed per
+    call.
+
+    Bins are PERCENTILE, not equal-width as Data-Speech uses, because
+    percentiles guarantee balanced occupancy even on a skewed corpus -- and
+    RESEARCH/05 found VoicePersona's skew was a PROMPT artefact that an
+    equal-width binner would have propagated.
     """
 
-    def __init__(self, edges: dict[str, list[float]] | None = None,
-                 n_bins: int = 5):
+    def __init__(self, edges=None, n_bins: int = 5, hnr_fit=None):
         self.edges = edges or {}
         self.n_bins = n_bins
+        # (slope, intercept) of hnr_db ~ a*log(f0_mean) + b, or None
+        self.hnr_fit = hnr_fit
+
+    def _hnr_corrected(self, a: "Attributes") -> float:
+        """HNR with the pitch confound regressed out (see class docstring)."""
+        if not self.hnr_fit:
+            return a.hnr_db
+        sl, ic = self.hnr_fit
+        return float(a.hnr_db - (sl * np.log(max(a.f0_mean, 1e-6)) + ic))
+
+    def _value(self, a: "Attributes", field: str) -> float:
+        return self._hnr_corrected(a) if field == "hnr_db" else getattr(a, field)
 
     @classmethod
     def fit(cls, attrs: list[Attributes], n_bins: int = 5) -> "Binner":
         qs = np.linspace(0, 100, n_bins + 1)[1:-1]
+        # fit the HNR pitch correction on the corpus first
+        f0 = np.array([a.f0_mean for a in attrs], dtype=np.float64)
+        hn = np.array([a.hnr_db for a in attrs], dtype=np.float64)
+        ok = np.isfinite(f0) & np.isfinite(hn) & (f0 > 50)
+        hnr_fit = None
+        if ok.sum() >= 20:
+            sl, ic = np.polyfit(np.log(f0[ok]), hn[ok], 1)
+            hnr_fit = (float(sl), float(ic))
+        tmp = cls({}, n_bins, hnr_fit)
+
         edges = {}
         for f in BIN_LABELS:
-            v = np.array([getattr(a, f) for a in attrs], dtype=np.float64)
+            v = np.array([tmp._value(a, f) for a in attrs], dtype=np.float64)
             v = v[np.isfinite(v)]
             if len(v) >= n_bins:
                 edges[f] = [float(x) for x in np.percentile(v, qs)]
-        return cls(edges, n_bins)
+        return cls(edges, n_bins, hnr_fit)
 
     def bin_one(self, a: Attributes) -> dict[str, str]:
         out = {}
         for f, labels in BIN_LABELS.items():
             if f not in self.edges:
                 continue
-            i = int(np.searchsorted(self.edges[f], getattr(a, f)))
+            i = int(np.searchsorted(self.edges[f], self._value(a, f)))
             # tilt and hnr: more negative / lower = "darker" / "rougher"
             out[f] = labels[min(i, len(labels) - 1)]
         return out
 
     def save(self, path):
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        json.dump({"edges": self.edges, "n_bins": self.n_bins}, open(path, "w"), indent=2)
+        json.dump({"edges": self.edges, "n_bins": self.n_bins,
+                   "hnr_fit": self.hnr_fit, "version": 2}, open(path, "w"), indent=2)
 
     @classmethod
     def load(cls, path):
         d = json.load(open(path))
-        return cls(d["edges"], d["n_bins"])
+        if d.get("version", 1) < 2:
+            raise ValueError(
+                f"{path} is a v1 binner: it bins raw f0_std and uncorrected "
+                f"hnr_db, both of which are entangled with pitch "
+                f"(r=+0.723 / +0.621). Re-fit it.")
+        return cls(d["edges"], d["n_bins"], tuple(d["hnr_fit"]) if d.get("hnr_fit") else None)
 
 
 def adherence_error(target_bins: dict[str, str], rendered: Attributes,
