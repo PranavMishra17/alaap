@@ -1245,3 +1245,73 @@ class TestHybridRetrieval:
             return float(np.mean(out))
 
         assert mean_cos_to_true(mh) > mean_cos_to_true(mt)
+
+
+class TestMissingTauIsReportedNotSwallowed:
+    """
+    The demo asked for emotion on three of its five lines, got none, and
+    recorded no problem in its manifest.
+
+    `tau` is per-model -- vectors fitted on 0.6B are 1024-d and meaningless on
+    1.7B's 2048-d, so `_load_tau` correctly drops them. But `steer()` then
+    returned an empty degradation list whenever `self.tau` was empty, so a
+    request that could not be honoured simply vanished.
+
+    `_apply_direction` cannot catch this: it reports fields marked REJECT, and
+    emotion is APPROXIMATE -- supported in principle. Whether the vectors exist
+    is a runtime fact about the loaded model, and the contract is that anything
+    asked for and not delivered comes back as a degradation.
+    """
+
+    class _R:
+        backend_id = "qwen3-tts-base"
+        backend_version = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+        tau: dict = {}
+        direction_bounds = {"emotion": {"alpha_max": 1.0,
+                                        "identity_retained_ecapa": 0.62}}
+        steer = None  # bound below
+
+    def _renderer(self, tau=None):
+        from alaap.renderer import Qwen3BaseRenderer
+        r = self._R()
+        r.tau = tau or {}
+        r.steer = Qwen3BaseRenderer.steer.__get__(r, self._R)
+        return r
+
+    def test_emotion_without_tau_returns_a_degradation(self):
+        from alaap.renderer import Direction
+        r = self._renderer()
+        vec, notes = r.steer(np.ones(8, dtype=np.float32),
+                             Direction(emotion={"anger": 1.0}, intensity=0.7))
+        assert notes, "emotion was requested, not delivered, and not reported"
+        assert "no direction vectors" in notes[0]
+        assert "NEUTRAL" in notes[0]
+
+    def test_strict_direction_raises_instead(self):
+        from alaap.renderer import Direction
+        r = self._renderer()
+        with pytest.raises(NotImplementedError):
+            r.steer(np.ones(8, dtype=np.float32),
+                    Direction(emotion={"sad": 1.0}, strict=True))
+
+    def test_no_emotion_requested_is_still_silent(self):
+        """Only an unhonoured REQUEST is a degradation."""
+        from alaap.renderer import Direction
+        r = self._renderer()
+        _, notes = r.steer(np.ones(8, dtype=np.float32), None)
+        assert notes == []
+        _, notes = r.steer(np.ones(8, dtype=np.float32), Direction())
+        assert notes == []
+
+    def test_available_tau_is_applied_and_reported(self):
+        from alaap.renderer import Direction
+        # tau must NOT be parallel to the vector: steer renormalises to the
+        # original norm, so adding a parallel direction returns the input
+        # unchanged. That is correct behaviour and a degenerate test.
+        tau = np.zeros(8, dtype=np.float32); tau[0] = 0.5
+        base = np.ones(8, dtype=np.float32)
+        r = self._renderer(tau={"anger": tau})
+        vec, notes = r.steer(base, Direction(emotion={"anger": 1.0}, intensity=0.5))
+        assert notes and "applied at alpha" in notes[0]
+        assert not np.allclose(vec, base), "tau was not applied"
+        assert abs(np.linalg.norm(vec) - np.linalg.norm(base)) < 1e-4,             "steer must keep the vector on the shell (E3)"

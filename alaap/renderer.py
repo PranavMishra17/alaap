@@ -254,8 +254,24 @@ class Qwen3BaseRenderer:
         Invariant I5: this never touches the stored identity. The identity is
         minted neutral and stays neutral; steering happens per line.
         """
-        if direction is None or not direction.emotion or not self.tau:
+        if direction is None or not direction.emotion:
             return np.asarray(vec, dtype=np.float32), []
+        if not self.tau:
+            # Emotion was ASKED FOR and cannot be delivered. Returning no
+            # degradation here made the request vanish silently, which the demo
+            # exposed: it runs on 1.7B, the only tau asset is 0.6B (tau is
+            # per-model, 1024-d against 2048-d), so three lines requested
+            # emotion, none got it, and the manifest recorded no problem.
+            #
+            # _apply_direction cannot catch this -- it only reports fields
+            # marked REJECT, and emotion is APPROXIMATE, i.e. supported in
+            # principle. Whether the vectors actually EXIST is a runtime fact.
+            msg = (f"emotion {sorted(direction.emotion)}: no direction vectors "
+                   f"loaded for {self.backend_version} -- tau is per-model and "
+                   f"none was found. Rendered NEUTRAL.")
+            if direction.strict:
+                raise NotImplementedError(msg)
+            return np.asarray(vec, dtype=np.float32), [msg]
         v = np.asarray(vec, dtype=np.float64).copy()
         n0 = float(np.linalg.norm(v))
         notes, applied = [], False
