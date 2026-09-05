@@ -60,3 +60,5 @@ Thumbs.db
 !RESEARCH/**
 !docs/**
 experiments/*/out/
+data/
+cache/
