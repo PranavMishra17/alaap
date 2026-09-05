@@ -78,4 +78,4 @@ experiments/*/out/*.db
 # slipped through and their live SQLite catalogs were being re-committed on
 # every commit while the arm was still writing to them.
 experiments/**/out_*/
-experiments/**/*_run.log
+experiments/**/*run*.log
