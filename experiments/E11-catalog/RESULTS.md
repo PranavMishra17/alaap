@@ -25,6 +25,34 @@ Every mint is audited by `service.mint` against three floors: **uniqueness ≥ 0
 | consistency | 0.564 | 0.454 | 0.464 | 0 / 40 |
 | uniqueness | 0.616 | **0.149** | 0.294 | 3 / 40 |
 
+## Re-run at the fixed settings (2026-09-05)
+
+`S9b`/`S10` found `pca_dims` and `top_k` were the diversity knobs and both were mis-set.
+This catalog re-run at `pca_dims=full, top_k=2`, through the same audited pipeline —
+real Qwen3 renders, drift and consistency measured per voice, not geometry:
+
+| | old settings, n=80 (`S10`, geometry) | **fixed, n=80 (`S10`, geometry)** | **fixed, n=80 (this run, audited)** |
+|---|---|---|---|
+| normalised Vendi | 0.287 | 0.518 | **0.538** |
+| effective voices | 23 | 41 | **43.1** |
+| share of the 203 bound | 11% | 20% | **21%** |
+| drift, mean | — | — | 0.467 |
+| consistency, mean | — | — | 0.599 |
+| clean acceptance | — | — | 62/80 (77.5%) |
+
+**S10's geometry prediction held under the full pipeline: 41 predicted, 43.1 measured.**
+Drift (0.457 → 0.467) and consistency (0.564 → 0.599) both improved against the original
+run, so this is not a diversity-for-quality trade.
+
+> **The comparison that is NOT being made.** The original run below minted **42** voices;
+> this one minted **80**. Effective-voice counts at different n are not comparable —
+> that is exactly the error `S9` had to retract. The honest comparison is the two `S10`
+> columns, which are both n=80: **23 → 41, +81%**.
+
+Artefacts in `out_fixed/`; the original `out/` is untouched.
+
+---
+
 > ⚠️ **Superseded in part by `S10`.** These numbers were produced with `pca_dims=50, top_k=4`, which `S9b` later measured as the settings that cost the most diversity. Against the bound `S10` established — 203 effective voices in GLOBE_V2's real speakers — this run reached **11%** of what was available, and the same corpus at `pca_dims=full, top_k=2` reaches 41 (**+81%**). Nothing below is wrong; it is a record of a configuration that has since been improved.
 
 **Vendi (normalised) 0.482 → 20.2 effectively-distinct voices from 42 minted.** Against `RESEARCH/06`'s anti-mode-collapse target of ≥0.35 that passes, but **fewer than half the voices minted are effectively distinct.**

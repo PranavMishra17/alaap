@@ -36,6 +36,20 @@ that document could, because the bound was not measured. The answer is **11%**. 
 number is not wrong; it is an understatement of what the English path can do, produced by
 settings nobody had reason to question.
 
+### Confirmed under the real pipeline
+
+These four rows are geometry — minted vectors, no audio. `E11` re-ran its full audited
+catalog at the fixed settings (real Qwen3 renders, drift and consistency measured per
+voice, n=80):
+
+| | predicted here | **measured by `E11`** |
+|---|---|---|
+| normalised Vendi | 0.518 | **0.538** |
+| effective voices | 41 | **43.1** |
+
+**The geometry prediction held.** Drift 0.467 and consistency 0.599 both came in *above*
+the original E11 run's 0.457 / 0.564, so the fix costs nothing in quality here either.
+
 ## Search: English is where retrieval really wins
 
 Description → nearest library voice, exact bin match on all five axes:
