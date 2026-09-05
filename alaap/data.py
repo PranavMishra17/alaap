@@ -37,6 +37,9 @@ CORPORA = {
     "libritts_r": ("blabble-io/libritts_r", "dev", "dev.clean", "CC-BY-4.0", "speaker_id"),
     "libritts_r_train": ("blabble-io/libritts_r", "clean", "train.clean.100", "CC-BY-4.0", "speaker_id"),
     "libritts_r_test": ("blabble-io/libritts_r", "dev", "test.clean", "CC-BY-4.0", "speaker_id"),
+    # ~900 speakers -- 4x train.clean.100. S2's top improvement was "scale the
+    # fit set"; 206 speakers was the binding constraint on mapper quality.
+    "libritts_r_360": ("blabble-io/libritts_r", "clean", "train.clean.360", "CC-BY-4.0", "speaker_id"),
 }
 
 

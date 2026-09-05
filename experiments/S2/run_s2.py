@@ -65,7 +65,7 @@ def stage(msg):
 
 # ------------------------------------------------------- 1. corpus + measure
 stage(f"1. corpus: {args.n} clips from {args.corpus}")
-cache = os.path.join(OUT, "corpus.npz")
+cache = os.path.join(OUT, f"corpus_{args.corpus}_{args.n}_{args.per_speaker}.npz")
 if os.path.exists(cache):
     d = np.load(cache, allow_pickle=True)
     Z = d["Z"].astype(np.float64); ids = list(d["ids"])
@@ -97,7 +97,7 @@ print(f"      {len(attrs)} measured, {len(set(ids))} speakers")
 # -------------------------------------------------- 2. bin + caption + space
 stage("2. binning, captioning, fitting the speaker space")
 binner = Binner.fit(attrs)
-binner.save(os.path.join(OUT, "binner.json"))
+binner.save(os.path.join(OUT, f"binner_{args.corpus}.json"))
 
 # speaker-level: average the attributes and vectors per speaker
 uniq = sorted(set(ids)); idsa = np.asarray(ids)
@@ -116,14 +116,14 @@ print(f"      {len(spk_vec)} speaker identities with grounded captions")
 print(f"      e.g. {spk_cap[0]}")
 
 space = SpeakerSpace.fit(spk_vec, n_components=min(150, len(spk_vec) - 1))
-space.save(os.path.join(OUT, "speaker_space.npz"))
+space.save(os.path.join(OUT, f"speaker_space_{args.corpus}.npz"))
 print(f"      {space}")
 
 # ------------------------------------------------------------- 3. mapper
 stage("3. fitting the retrieval mapper")
 te = TextEncoder()
 mapper = RetrievalMapper(space, te, pca_dims=50).fit(spk_cap, spk_vec)
-mapper.save(os.path.join(OUT, "mapper.npz"))
+mapper.save(os.path.join(OUT, f"mapper_{args.corpus}.npz"))
 print(f"      fitted on {len(spk_cap)} (caption, vector) pairs, "
       f"text dim {te.dim}, PCA {mapper.k}")
 
@@ -181,7 +181,7 @@ if not args.skip_render:
         at = measure(a.wav, args.line, a.sample_rate)
         tgt = target_bins_from_text(m["desc"])
         adh = adherence_error(tgt, at, binner)
-        fn = f"d{m['desc_i']}_n{m['novelty']}.wav"
+        fn = f"{args.corpus}_d{m['desc_i']}_n{m['novelty']}.wav"
         sf.write(os.path.join(AUD, fn), a.wav, a.sample_rate)
         rows.append({"desc_i": m["desc_i"], "desc": m["desc"],
                      "novelty": m["novelty"], "file": fn,
@@ -208,7 +208,7 @@ summary = {
     "eval_descriptions": EVAL_DESCRIPTIONS,
     "renders": results_render,
 }
-json.dump(summary, open(os.path.join(OUT, "results.json"), "w"),
+json.dump(summary, open(os.path.join(OUT, f"results_{args.corpus}.json"), "w"),
           indent=2, default=float)
 
 print()

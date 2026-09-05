@@ -102,15 +102,30 @@ PHRASES = {
     },
 }
 
-OPENERS = ["{subject} has {desc}.", "{subject} speaks with {desc}.",
-           "The voice is {desc_bare}.", "{subject}: {desc_bare}."]
+# Varied deliberately. S2 found template captions give the text encoder too
+# narrow a signal, so retrieval keys off almost nothing. More surface variety
+# without changing what is GROUNDED underneath.
+OPENERS = [
+    "{subject} has {desc}.",
+    "{subject} speaks with {desc}.",
+    "The voice is {desc_bare}.",
+    "{subject}: {desc_bare}.",
+    "A voice that is {desc_bare}.",
+    "You hear {desc}.",
+    "{subject} sounds like this: {desc_bare}.",
+    "Picture {desc}.",
+    "{desc_bare} — that is how {subject_lower} sounds.",
+    "Imagine {desc}.",
+    "The speaker has {desc}.",
+    "This is {desc}.",
+]
 
 # Which attributes to include, in the order they read most naturally.
 ORDER = ["f0_mean", "hnr_db", "spectral_tilt", "f0_std", "speaking_rate", "shimmer"]
 
 
 def caption_from_bins(bins: dict[str, str], subject: str = "This speaker",
-                      max_attrs: int = 4, seed: int | None = None,
+                      max_attrs: int = 5, seed: int | None = None,
                       impressions: Optional[list[str]] = None) -> str:
     """
     Deterministic, grounded caption. Every clause traces to a measured bin.
@@ -141,8 +156,10 @@ def caption_from_bins(bins: dict[str, str], subject: str = "This speaker",
         desc_bare = head
     desc_bare = desc_bare.replace(", and ", " and ").replace(",,", ",")
 
+    # shuffle attribute order sometimes, so position is not a fixed cue
     tpl = rng.choice(OPENERS)
-    text = tpl.format(subject=subject, desc=desc_bare, desc_bare=desc_bare)
+    text = tpl.format(subject=subject, desc=desc_bare, desc_bare=desc_bare,
+                      subject_lower=subject[0].lower() + subject[1:])
     text = text[0].upper() + text[1:]
     if impressions:
         text += " It sounds " + ", ".join(impressions[:2]) + "."
