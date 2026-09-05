@@ -44,15 +44,68 @@ Both donors are **female** — this is the harder within-gender case, and the tw
 
 The same content tokens produce two audibly different speakers. And the codec-level swap test is unambiguous — re-encoding a swapped render moves it **toward the donor** (0.9956) and **away from the original** (0.9875).
 
-## Three things the model card gets wrong
+## ⚠️ The first run of this experiment used the WRONG CODEC
 
-Worth recording, because each cost a debugging cycle:
+Recorded in full because it is the most instructive failure in the project so far,
+and because an adversarial review caught it, not I.
 
-1. **The codec pairing.** The card's example loads `MioCodec-25Hz-24kHz` and then writes the output at 44100 Hz. The 24 kHz variant has an integrated iSTFTHead and **no vocoder weights**, so `from_pretrained` raises `No vocoder weights found with prefix 'vocoder.'`. Indic-Mio outputs 44 kHz and pairs with **`MioCodec-25Hz-44.1kHz`**.
-2. **Argument shapes.** The card builds `[1, 1, T]`. Every batched shape raises `too many values to unpack (expected 3)`. **Both arguments must be 1-D**: content `[T]`, global `[128]`. Probed exhaustively — 1 of 9 shape combinations works.
-3. **Argument order.** The card calls `codec.decode(codes_tensor)` positionally, which binds the codes to `global_embedding`. The signature is `decode(global_embedding=…, content_token_indices=…)`.
+The first run decoded Indic-Mio's tokens through **`MioCodec-25Hz-44.1kHz`** (the
+legacy variant). The output was fluent, well-articulated Hindi **saying different
+words than the prompt**:
 
-## A measurement trap this nearly walked into
+```
+PROMPT   : नमस्ते, आप कैसे हैं? आज मौसम बहुत अच्छा है।
+legacy   : अज़्ट उद आयार मुशिलो के लब शिबगो जो लिख चिए आया
+corrected: नमस्ती आप कैसे है, आज मोसम बहुत अच्छा है
+```
+
+**Nothing raised.** Both codecs are FSQ with `levels [8,8,8,5,5]` = 12800 entries,
+so every index is *valid* in either — the shared vocabulary size is a coincidence
+of architecture, not a shared codebook. Measured on identical audio:
+
+| | |
+|---|---|
+| exact token agreement, legacy vs 24 kHz | **0.0000%** (chance 0.0078%) |
+| content-tokenizer weights, 24 kHz vs 44.1kHz-**v2** | **bit-identical**, 7/7 probe tensors |
+| content-tokenizer weights, 24 kHz vs 44.1kHz-**legacy** | 0/7 identical |
+| log-mel corr, legacy decoding 24 kHz's tokens | +0.418 (vs +0.94 for either codec on its own) |
+
+**Every identity metric in this document was unaffected** — donor embeddings and
+decoder came from the same codec, so that path was internally consistent. What was
+false was the *content* premise: "the same content tokens … while the words stay".
+The words were never the prompt's words.
+
+**Why a listener did not catch it.** A fluent Hindi speaker was sent the audio and
+reported it sounded good and was not gibberish. That was an honest answer to a
+badly-formed question: they were never told what the sentence was supposed to say.
+Fluent-sounding wrong words are indistinguishable from correct words without a
+reference. **Ask "does this say X?", never "does this sound right?"**
+
+### What was actually wrong with the model card
+
+My original three claims went out for adversarial review before filing. One was
+refuted, and it was the one I was least sure of:
+
+1. **"The card names the wrong codec" — REFUTED.** The card is right: the base model
+   `MioTTS-0.6B` states twice that it uses `MioCodec-25Hz-24kHz`, and Indic-Mio is a
+   ~6-hour finetune of it. **The real card bug is the sample rate** — it loads a
+   24 000 Hz codec and writes the wav at `44100`, a 1.84× speed-up.
+2. **`MioCodec` vs `MioCodecModel` — my error, not a library bug.** The 24 kHz and v2
+   variants have an integrated iSTFT head and no external vocoder; `MioCodecModel` is
+   their documented loader. `MioCodec`'s `No vocoder weights found with prefix
+   'vocoder.'` is a *correct refusal*, and the class I should have used is the first
+   thing MioCodec's README documents.
+3. **Tensor shapes — CONFIRMED.** 1 of 9 shape combinations works; both arguments must
+   be 1-D. `decode_batch` is the intended batched path.
+4. **Positional argument — CONFIRMED, and understated.** `codec.decode(codes_tensor)`
+   binds codes to `global_embedding`. The deeper problem is that the card's example has
+   **no speaker input at all** — it cannot be repaired by reordering arguments.
+
+This experiment now uses **`MioCodec-25Hz-44.1kHz-v2`**, whose tokenizer is bit-identical
+to the 24 kHz model's and which is natively 44.1 kHz — matching what the authors'
+own `MioTTS-Inference` defaults to.
+
+## A measurement trap this nearly walked into## A measurement trap this nearly walked into
 
 The first smoke test compared MioCodec global embeddings by **raw cosine** and printed *"NOT separable — red flag"*: two different speakers sat at 0.9882, the same speaker at 0.9970, a separation of 0.0088.
 
@@ -62,7 +115,7 @@ The independent ECAPA numbers above are the honest measurement, and they are una
 
 ## Not established
 
-- **Intelligibility is completely unmeasured.** Identity transfer says nothing about whether the Hindi and Tamil are *correct* — a voice can carry perfectly and say gibberish. `RESEARCH/04` names `ai4bharat/indic-conformer-600m-multilingual` as the eval ASR; a WER/CER pass is the next thing that matters, and this result should not be leaned on until it exists.
+- **Intelligibility is now measured** (S5b, `run_intelligibility.py`), and it was the check that exposed the codec error. With the corrected codec: **CER 0.000 on Tamil and English**, 0.114 mean on Hindi — and the Hindi residual is `whisper-small`'s Devanagari orthography (नमस्ते→नमस्ती, मौसम→मोसम), not synthesis error. Critically, **CER spread between the two donors is 0.000 on every line**: who speaks has no effect on what is said, which is the two towers being genuinely independent. `ai4bharat/indic-conformer-600m-multilingual` is the better instrument and is gated pending one accept click.
 - **Nobody has listened yet.** Everything here is machine-scored.
 - 2 donors, 4 lines, 8 comparisons, one seed. Small.
 - No drift/consistency floors, no minting from a *description* — this carries an **existing** speaker's vector, it does not yet mint a new one from text. That is the next step and the one that makes it a two-tower *product* rather than a voice cloner.

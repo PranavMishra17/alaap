@@ -62,7 +62,16 @@ os.makedirs(OUT, exist_ok=True)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--lm", default="SPRINGLab/Indic-Mio")
-ap.add_argument("--codec", default="Aratako/MioCodec-25Hz-44.1kHz")
+# CODEC CHOICE IS LOAD-BEARING -- see S5's RESULTS.md.
+# `MioCodec-25Hz-44.1kHz` (legacy) has a content-token space UNRELATED to the
+# one Indic-Mio was trained on: 0.0000% index agreement against the 24 kHz
+# model on identical audio, where chance is 0.0078%. Both are FSQ with 12800
+# entries, so every index is accepted and NOTHING RAISES -- the output is
+# fluent-sounding speech saying different words.
+# `-v2` shares the 24 kHz model's tokenizer bit-for-bit and is natively
+# 44.1 kHz. Use MioCodecModel (integrated iSTFT head, no external vocoder);
+# MioCodec is the loader for the legacy external-vocoder variant only.
+ap.add_argument("--codec", default="Aratako/MioCodec-25Hz-44.1kHz-v2")
 ap.add_argument("--max-new-tokens", type=int, default=1024)
 ap.add_argument("--temperature", type=float, default=0.9)
 ap.add_argument("--top-p", type=float, default=0.9)
@@ -90,8 +99,8 @@ def to_codec_sr(wav, src=24000):
 
 
 print(f"[1/5] loading codec {args.codec}")
-from miocodec import MioCodec
-codec = MioCodec.from_pretrained(args.codec)
+from miocodec import MioCodecModel
+codec = MioCodecModel.from_pretrained(args.codec)
 dev = "cuda" if torch.cuda.is_available() else "cpu"
 codec = codec.to(dev).eval()
 
