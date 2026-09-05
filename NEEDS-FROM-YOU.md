@@ -7,75 +7,17 @@
 
 ## 🔴 BLOCKING — a decision or credential only you can give
 
-### 1. Hugging Face token + accept the IndicVoices-R terms  ⏱️ ~3 minutes
+**Nothing. Both blockers cleared 2026-09-05.**
 
-**This is the one you flagged in advance** — "if you need API keys for indic languages, implement the code and keep everything you need from me in a file". Here it is.
+| was blocking | how it closed |
+|---|---|
+| **HF token + gated corpora** | You provided a token. `ai4bharat/indicvoices_r`, `Rasa`, `IndicVoices` and `indic-parler-tts` are all readable. Stored in `.hf_token`, gitignored, never printed and never sent anywhere but huggingface.co |
+| **Unread Parler gate terms** | Answered by evidence, not by reading: `indic-parler-tts` declares **no `extra_gated_*` fields at all** — `gated: auto` with nothing but `license: apache-2.0`. There are no terms to read. `preflight.py` now checks this against the Hub rather than waiting for a paste |
+| **The whole licence blockade** | You set the posture: research/personal, no commercial intent. `ADR-009`. The audit in `RESEARCH/08` stays exactly as written as the record of what may be *shipped* — it just is not a gate on *use* any more |
 
-Every serious Indic speech corpus with real speaker diversity is **gated** on the Hub. I hit this wall on all three:
+> **One residual, and it is not blocking:** the IITM IndicTTS EULA question (`RESEARCH/08` §4.7(a)) is still open. It bears on **redistribution**, not use. If you ever want to publish weights or an MIT release with audio, that question returns — and `provenance.assert_trainable` already refuses an unclean training mix.
 
-```
-ai4bharat/indicvoices_r   DatasetNotFoundError: gated dataset. You must be authenticated.
-ai4bharat/IndicVoices     DatasetNotFoundError: gated dataset. You must be authenticated.
-ai4bharat/Rasa            DatasetNotFoundError: gated dataset. You must be authenticated.
-```
-
-Gating is not a licence problem — IndicVoices-R is **CC-BY-4.0**, which passes our audit (invariant I4). AI4Bharat just wants to know who is downloading it. So this is purely an access click.
-
-**What to do:**
-
-1. Sign in at <https://huggingface.co> (make an account if you have none — free).
-2. Open <https://huggingface.co/datasets/ai4bharat/indicvoices_r> and click **Agree and access repository**. Do the same for <https://huggingface.co/datasets/ai4bharat/Rasa> while you are there — it is the emotion corpus we want for Indic τ vectors later.
-3. Create a **read** token at <https://huggingface.co/settings/tokens>.
-4. Give it to me either way:
-
-```bash
-envs/qwen3/Scripts/huggingface-cli.exe login
-```
-
-or, if you would rather not run anything, paste the token into a file I will read and never commit:
-
-```bash
-echo "hf_xxxxxxxxxxxxxxxxxxxx" > .hf_token
-```
-
-*(`.hf_token` is already in `.gitignore`. I will not print it, commit it, or send it anywhere except huggingface.co.)*
-
-**What it unlocks:** IndicVoices-R is 1,899 speakers across 22 languages, 1,704 hours, studio-quality — it is the only corpus that can give Indic voices real speaker diversity. Without it the Indic catalog is built on ~2 speakers per language.
-
-**While you are logged in, do one more thing —** it unblocks a *second*, bigger problem (below):
-
-5. Open <https://huggingface.co/ai4bharat/indic-parler-tts>, accept the gate, and **copy the gate agreement text into `GATE-TERMS-indic-parler.txt`**. Screenshot is fine. I need to read what you actually agreed to.
-
-**What I did instead:** built the entire Indic pipeline against ungated corpora so it runs the moment the token lands. Nothing is waiting on me.
-
----
-
-### 2. Indic Parler-TTS is licence-blocked, and it is the backend the Indic plan runs on
-
-I found a real defect in our own code tonight and fixed it, but the fix has a strategic cost you should see.
-
-**The architecture problem first, since you asked it directly** ("is it just license or a backend two tower issue?"). It is **both, and the backend half is worse**:
-
-> `Qwen3-TTS` — our entire working backend, every experiment E0–E10, the whole two-tower loop — **supports 10 languages and not one of them is Indian.** en, zh, fr, de, it, ja, ko, pt, ru, es. There is no Hindi. There is no amount of speaker-vector work that fixes this; the frozen TTS tower physically cannot produce Hindi phonemes.
-
-So Indic needs a **different backend**, and the only clean-chain candidate is `ai4bharat/indic-parler-tts` — which is what ADR "ship Indic Parler catalog now" committed us to.
-
-**The defect:** our code had `indic-parler-tts: True` in the licence gate, while our own audit (`RESEARCH/08` §4.7, §8.4) says **False — CONDITIONAL**. The gate would have allowed it into a public deployment. I set it to `False` and added a test pinning code to audit, because two copies of one fact drift and this pair already had.
-
-**Why the audit blocks it** — two unsettled issues:
-
-| # | Issue | Who can settle it |
-|---|---|---|
-| a | 382 of its 1,806 training hours are IITM **IndicTTS**. AI4Bharat relabels that CC-BY-4.0; the actual IITM EULA §2.2 forbids onward sublicensing. If §2.2 binds, Parler's own Apache-2.0 weight release is non-compliant and we inherit that. | IIT Madras — an email asking them to confirm the CC-BY-4.0 re-designation |
-| b | The repo is **gated**, and a gate is a click-through whose terms are not in public metadata. We have not read them. | **You**, in 30 seconds — step 5 above |
-
-**(b) is free and you can do it tonight.** (a) is an email, and `RESEARCH/08` calls it "the one worth spending a lawyer hour on".
-
-**Until both clear:** Indic renders cannot be publicly served. Everything else Indic — corpus, captions, measurement, the mapper — is unaffected and I am building all of it. This blocks *shipping*, not *building*.
-
-**Decision I need from you eventually (not tonight):** if IITM never answers, do we (i) ship Indic anyway on our own read of the risk, (ii) ship Indic as non-commercial/research only, or (iii) train our own Indic tower on the corpora whose chain we control? I will keep building toward all three.
-
----
+**Token hygiene, worth one line:** the token is now in this conversation's history. Nothing here leaks it, but if that bothers you, rotate it at <https://huggingface.co/settings/tokens> and drop the new one into `.hf_token` — nothing else needs changing.
 
 ## 🟡 UNLOCKS WORK — I've built around it, but it caps what I can verify
 
