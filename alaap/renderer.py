@@ -157,7 +157,7 @@ class Qwen3BaseRenderer:
     # PROCESSES, and check nvidia-smi before believing a performance number.
     DEFAULT_MAX_NEW_TOKENS = 2000
 
-    def __init__(self, model_id: str = "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+    def __init__(self, model_id: str = "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
                  device: str = "cuda", dtype: str = "bfloat16",
                  max_new_tokens: int | None = None):
         import torch

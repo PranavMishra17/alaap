@@ -28,13 +28,21 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+# E10: 1.7B beats 0.6B on every identity metric (EER 1.84% vs 2.17%,
+# d-prime 4.47 vs 4.07, effective rank 82.7 vs 62.6) at essentially the same
+# speed (RTF 4.27 vs 4.18), and peaks at 4.09 GB so it fits a 6 GB card.
+# NOTE: experiments E0-E5 and S2 were all run on 0.6B; their conclusions hold
+# but their NUMBERS are 0.6B numbers.
+DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 SR = 24000
 
 # measured in E3 on an RTX 3060 6GB
+# measured in E3/E10 on an RTX 3060 6GB
 KNOWN_MODELS = {
-    "Qwen/Qwen3-TTS-12Hz-0.6B-Base": {"enc_dim": 1024, "vram_gb": 2.02},
-    "Qwen/Qwen3-TTS-12Hz-1.7B-Base": {"enc_dim": 2048, "vram_gb": None},
+    "Qwen/Qwen3-TTS-12Hz-0.6B-Base": {"enc_dim": 1024, "vram_peak_gb": 2.19,
+                                      "eer_indomain": 0.0217, "rtf": 4.18},
+    "Qwen/Qwen3-TTS-12Hz-1.7B-Base": {"enc_dim": 2048, "vram_peak_gb": 4.09,
+                                      "eer_indomain": 0.0184, "rtf": 4.27},
 }
 
 
