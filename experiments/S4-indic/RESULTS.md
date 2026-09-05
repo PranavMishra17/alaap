@@ -1,6 +1,6 @@
 # S4 — the Indic caption pipeline
 
-**Run:** 2026-09-05 · `SPRINGLab/IndicVoices-R_{Hindi,Tamil}` · 250 clips each · 141 / 153 speakers · Devanagari + Tamil
+**Run:** 2026-09-05 · `SPRINGLab/IndicVoices-R_{Hindi,Tamil,Bengali}` · 250 clips each · 141 / 153 / 138 speakers · three scripts, both language families
 **Question:** can we manufacture (caption, voice) pairs for Indic languages, and are the measurements underneath them real?
 
 ---
@@ -33,18 +33,21 @@ Spearman is the statistic that matters, because percentile binning depends on ra
 
 **Scale offset.** Our phones/s over theirs: **median 0.855, IQR 0.825–0.883.** A tight, stable ratio below 1 is the predicted signature of **medial schwa deletion**, which their lexicon models and our grapheme rules deliberately do not. Percentile bins are invariant to a scale factor, so this costs nothing here — but it is a known systematic bias and it is why the test is correlation, not equality.
 
-## Result 1b — Tamil, the Dravidian control
+## Result 1b — three languages, both families
 
-Hindi alone cannot validate `count_phones_indic`, because the rule that is most likely to be wrong is the one Hindi exercises: **Indo-Aryan word-final schwa deletion**. Tamil is the control — it is Dravidian, it *retains* final vowels, and the code must therefore apply the opposite rule to the same grapheme machinery.
+Hindi alone cannot validate `count_phones_indic`, because the rule most likely to be wrong is the one Hindi exercises: **Indo-Aryan word-final schwa deletion**. Tamil is the control — Dravidian, *retains* final vowels, so the same grapheme machinery must apply the opposite rule. Bengali is the second Indo-Aryan case, in a third script.
 
-| corpus | script | speakers | `speaking_rate` ρ | `f0_mean` ρ | rate ratio | round-trip |
-|---|---|---|---|---|---|---|
-| `indicvoices_r_hi` | Devanagari | 141 | **0.966** | 0.986 | 0.855 | 100% |
-| `indicvoices_r_ta` | Tamil | 153 | **0.981** | 0.940 | 0.833 | 100% |
+| corpus | script | family | speakers | `speaking_rate` ρ | `f0_mean` ρ | rate ratio | round-trip |
+|---|---|---|---|---|---|---|---|
+| `indicvoices_r_hi` | Devanagari | Indo-Aryan | 141 | **0.966** | 0.986 | 0.855 | 100% |
+| `indicvoices_r_ta` | Tamil | **Dravidian** | 153 | **0.981** | 0.940 | 0.833 | 100% |
+| `indicvoices_r_bn` | Bengali | Indo-Aryan | 138 | **0.978** | 0.979 | 0.866 | 100% |
 
-**Tamil scores higher than Hindi on the axis that matters** (0.981 vs 0.966), which is the expected direction: Tamil needs no schwa-deletion correction, so there is one less approximation between graphemes and phones. The rate ratio is close in both (0.833 / 0.855), consistent with a single shared cause — unmodelled medial schwa deletion — rather than a per-language accident.
+**Every language clears the 0.70 floor by a wide margin, in three scripts across both families.** Tamil scores highest on the axis that matters, which is the expected direction — it needs no schwa-deletion correction, so there is one fewer approximation between graphemes and phones.
 
-**Both branches of the Brahmic family validate.** The nine-script offset table and the per-script schwa rule are sound, not tuned to Hindi.
+The rate ratio is tight across all three (0.833–0.866). A single shared offset across two unrelated language families points at one shared cause — unmodelled **medial** schwa deletion — rather than three per-language accidents. Percentile bins are scale-invariant, so it costs nothing; it is recorded because it is a known systematic bias, not a mystery.
+
+**The nine-script offset table and the per-script schwa rule are sound, and not tuned to Hindi.**
 
 ## Result 2 — neither language can reuse English bins
 
@@ -70,7 +73,19 @@ Where clips land in the **English** (GLOBE_V2, n=2,500) bin edges. Even occupanc
 | `hnr_db` | 2.36 | 0.08 | +0.80 | 0.03 0.04 0.06 0.17 **0.71** |
 | `spectral_tilt` | −8.53 | −6.05 | **−1.62** | **0.75** 0.11 0.06 0.05 0.03 |
 
-Two things worth noting. **Tamil's speaking rate matches English almost exactly** (+0.04 σ) where Hindi's was −0.93 σ — so the languages differ from English on *different* axes, and from each other. And **Tamil's spectral tilt is the most extreme single shift measured**: 75% of Tamil clips fall in the darkest English bin.
+**Bengali:**
+
+| attribute | Bengali median | English median | shift (English σ) | occupancy in the 5 English bins |
+|---|---|---|---|---|
+| `f0_mean` | 204.98 | 127.34 | **+1.73** | 0.02 0.04 0.10 0.21 **0.64** |
+| `f0_cv` | 0.12 | 0.15 | −0.53 | 0.45 0.21 0.14 0.11 0.09 |
+| `speaking_rate` | 18.52 | 21.58 | −0.77 | 0.49 0.21 0.16 0.08 0.06 |
+| `hnr_db` | 1.80 | 0.08 | +0.60 | 0.02 0.05 0.12 0.24 **0.57** |
+| `spectral_tilt` | −6.70 | −6.05 | −0.43 | 0.39 0.17 0.15 0.12 0.16 |
+
+**The two Indo-Aryan languages cluster, and Tamil does not.** Hindi and Bengali agree closely on every axis (rate −0.93 / −0.77 σ, expressiveness −0.70 / −0.53, tilt −0.49 / −0.43). Tamil breaks from both on exactly the two axes where it should be free to: its speaking rate matches **English** almost exactly (+0.04 σ), and its spectral tilt is the largest single shift measured anywhere in this experiment — **75% of Tamil clips in the darkest English bin**.
+
+That is a linguistically coherent pattern rather than noise, and it sharpens the conclusion: bins must be fitted **per language**, not once per "Indic". A single Indic binner would misrepresent Tamil about as badly as an English one misrepresents Hindi.
 
 **Over half of all Hindi clips fall into the single top English pitch bin.** A shared binner would describe most Hindi speakers as "very high-pitched" and most as "monotone" and "very slow" — three axes collapsed at once. **Per-language binners are mandatory**, and `Binner.fit` is already per-corpus, so the pipeline was already right; this measures how wrong the alternative would have been.
 
@@ -96,14 +111,14 @@ Two things worth noting. **Tamil's speaking rate matches English almost exactly*
 
 ## What this establishes
 
-1. **The Indic caption pipeline works end to end** — stream → measure → bin → caption → verify — on real Hindi, validated against an independent toolchain.
-2. **`count_phones_indic` is sound** (ρ = 0.966) with a known, quantified 0.855 scale bias from unmodelled medial schwa deletion.
+1. **The Indic caption pipeline works end to end** — stream → measure → bin → caption → verify — on real Hindi, Tamil and Bengali, validated against an independent toolchain.
+2. **`count_phones_indic` is sound** (ρ = 0.966–0.981 across three scripts and both language families) with a known, quantified 0.833–0.866 scale bias from unmodelled medial schwa deletion.
 3. **Per-language binners are required**, and the code already does this.
 4. Route **C** in `ADR-006` (train our own Indic tower on IndicVoices-R) now has a working annotation pipeline in front of it. This is the piece that was missing.
 
 ## Caveats and what is not established
 
-- **250 clips per language, two languages, one corpus family.** Bengali (`indicvoices_r_bn`) is wired and not yet run. The two languages tested cover both branches (Indo-Aryan and Dravidian), but both come from IndicVoices-R, so corpus-specific recording conventions are not controlled for.
+- **250 clips per language, three languages, one corpus.** Both families and three scripts are covered, but all three come from IndicVoices-R, so corpus-specific recording conventions are not controlled for. The remaining 19 IndicVoices-R languages are untested; the mirrors exist only for these three.
 - **Licence: development only.** The mirror declares no licence of its own (CC-BY-4.0 upstream). `stream_clips` refuses it without `dev_only=True`. Shipping needs the gated original — `NEEDS-FROM-YOU` §1.
 - **Nothing here was rendered.** Qwen3-TTS has no Indic language at all (`ADR-006`), so no Hindi audio was synthesised and no drift/consistency number exists for Indic. This validates the **annotation** half only.
 - Medial schwa deletion is lexically conditioned and unmodelled; the 0.855 ratio is its size.
