@@ -62,3 +62,5 @@ Thumbs.db
 experiments/*/out/
 data/
 cache/
+demo_out/
+demo_out_run.log
