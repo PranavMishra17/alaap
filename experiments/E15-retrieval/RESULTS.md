@@ -75,6 +75,28 @@ The bare word **"monotone"** — the likeliest thing a user types for that axis 
 
 Fixed, with `TestCaptionAxesAreLive` asserting that every axis the parser can emit exists in `BIN_LABELS`. Coverage moved 1.25 → 1.29 axes, which is small — the defect cost scoring accuracy, not parse rate.
 
+---
+
+# E15c — widening the phrase table helps a little, and shows where the real limit is
+
+E15b's conclusion was that widening what the parser *recognises* beats perfecting how the parsed part is weighted. So the synonym table gained ~45 terms — **only ones with a defensible acoustic mapping**: `breathy`/`whispery`/`husky` → the rough end of HNR (breathiness *is* noise in the harmonic ratio), `booming`/`rumbling`/`baritone` → low pitch, `muffled`/`tinny`/`nasal` → spectral tilt, `deadpan`/`droning`/`singsong` → expressiveness, `languid`/`gabbling`/`clipped` → rate.
+
+**Deliberately excluded: `old`, `young`, `giant`, `child`.** Mapping an age or a body to a formant is an *inference*, and inventing a target bin fabricates a score. The parser's contract is to recognise acoustic description, not to guess acoustics from character.
+
+| kind of input | before | after |
+|---|---|---|
+| the project's own example descriptions | 3.17 | 3.17 |
+| plain descriptions | 1.17 | **1.50** |
+| character-sheet style | 0.50 | **0.75** |
+| no acoustic content | 0.00 | 0.00 |
+| **all user-style text** | 1.29 (22%) | **1.42 (24%)** |
+
+**Two points from a small gain.** Plain descriptions improved most (+28%), which is where a phrase table should help. The project's own examples did not move at all — they were already written in the pipeline's own vocabulary, which is exactly the blind spot that let the `f0_std` defect survive.
+
+**And character-sheet style is still 0.75 of 6, which is the real finding.** *"A giant of a man, voice like rocks grinding"* and *"a frightened child hiding in a cupboard"* do not describe acoustics at all — they describe a person, and the reader infers the voice. **No phrase table reaches that**, because the information is not lexical, it is semantic and world-knowledge-shaped.
+
+So the remaining gap needs **interpretation**, not vocabulary: an LLM or a text encoder actually trained on description→voice pairs, which is what `RESEARCH/13` documents PromptTTS++ doing. The hybrid stands, but its fallback branch is carrying the harder half of the problem, and improving *that* is the open item — not more regex.
+
 ## Not established
 
 - One corpus, English, one backend, `top_k=4`, one SLERP blending scheme.
@@ -83,6 +105,7 @@ Fixed, with `TestCaptionAxesAreLive` asserting that every axis the parser can em
 - The hybrid design above is **proposed, not tested**.
 - E15b's descriptions are **my own**, written by someone who had just read the parser. That biases coverage upward, so 22% is more likely an over-estimate than an under-estimate.
 - Parse coverage is measured on 24 descriptions across four styles, which is a sketch, not a survey of how people actually write character briefs.
+- The ~45 added synonyms are mappings I judged defensible; none was validated by measuring audio that people describe with those words. A wrong mapping would corrupt adherence scoring silently, in the same way the `f0_std` key did.
 
 ## Reproduce
 

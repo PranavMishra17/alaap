@@ -212,7 +212,16 @@ def target_bins_from_text(text: str) -> dict[str, str]:
                     ("bass", "very low-pitched"), ("very high", "very high-pitched"),
                     ("squeaky", "very high-pitched"), ("deep", "low-pitched"),
                     ("low", "low-pitched"), ("high", "high-pitched"),
-                    ("mid-range", "moderately pitched")],
+                    ("mid-range", "moderately pitched"),
+                    # E15b: only 22% of realistic descriptions parsed. These are
+                    # additions whose ACOUSTIC mapping is defensible. Words like
+                    # "old", "young", "giant" or "child" are deliberately NOT
+                    # here: mapping an age or a body to a formant is an
+                    # inference, and inventing a target bin fabricates a score.
+                    ("booming", "very low-pitched"), ("rumbling", "very low-pitched"),
+                    ("baritone", "low-pitched"), ("bassy", "very low-pitched"),
+                    ("shrill", "very high-pitched"), ("piping", "very high-pitched"),
+                    ("reedy", "high-pitched"), ("light", "high-pitched")],
         "hnr_db": [("very rough", "very rough"), ("very clear", "very clear"),
                    ("crystalline", "very clear"), ("gravelly", "very rough"),
                    ("raspy", "very rough"), ("harsh", "very rough"),
@@ -220,7 +229,16 @@ def target_bins_from_text(text: str) -> dict[str, str]:
                    ("slight rasp", "slightly rough"), ("rasp", "rough"),
                    ("hoarse", "rough"), ("rough", "rough"),
                    ("clean", "very clear"), ("smooth", "clear"),
-                   ("clear", "clear")],
+                   ("clear", "clear"),
+                   # Breathiness and whisper are noise in the harmonic ratio,
+                   # which is exactly what HNR measures -- so these map to the
+                   # rough end without inferring anything.
+                   ("breathy", "rough"), ("whispery", "very rough"),
+                   ("whispered", "very rough"), ("whisper", "very rough"),
+                   ("husky", "rough"), ("scratchy", "very rough"),
+                   ("grating", "very rough"), ("croaky", "very rough"),
+                   ("silky", "very clear"), ("velvety", "clear"),
+                   ("pure", "very clear"), ("polished", "very clear")],
         "speaking_rate": [("very slow", "very slow"), ("very slowly", "very slow"),
                           ("very rapidly", "rapid"), ("unhurried", "slow"),
                           ("deliberate", "slow"), ("slowly", "slow"),
@@ -229,7 +247,11 @@ def target_bins_from_text(text: str) -> dict[str, str]:
                           ("rapid", "rapid"), ("rapidly", "rapid"),
                           ("hurried", "rapid"), ("quickly", "quick"),
                           ("quick", "quick"), ("brisk", "quick"),
-                          ("fast", "quick")],
+                          ("fast", "quick"), ("gabbling", "rapid"),
+                          ("breakneck", "rapid"), ("clipped", "quick"),
+                          ("languid", "very slow"), ("ponderous", "very slow"),
+                          ("drawling", "very slow"), ("leisurely", "slow"),
+                          ("measured pace", "measured"), ("even tempo", "measured")],
         # Was keyed "f0_std" until 2026-09-05. f0_std is a DEAD axis -- S2 run 4
         # replaced it with f0_cv because f0_std in Hz correlates r=+0.72 with
         # f0_mean. BIN_LABELS has no f0_std, and adherence_error skips any
@@ -239,13 +261,22 @@ def target_bins_from_text(text: str) -> dict[str, str]:
         "f0_cv": [("highly animated", "highly animated"), ("monotone", "monotone"),
                    ("flat", "monotone"), ("gently inflected", "slightly varied"),
                    ("animated", "highly animated"), ("expressive", "expressive"),
-                   ("lively", "expressive")],
+                   ("lively", "expressive"),
+                   ("singsong", "highly animated"), ("melodic", "expressive"),
+                   ("deadpan", "monotone"), ("flat and dull", "monotone"),
+                   ("droning", "monotone"), ("unvarying", "monotone"),
+                   ("emotive", "expressive")],
         "spectral_tilt": [("very bright", "very bright"), ("very dark", "very dark"),
                           ("dark-timbred", "dark"), ("shrill", "very bright"),
                           ("piercing", "very bright"), ("warm", "dark"),
                           ("mellow", "dark"), ("dark", "dark"),
                           ("bright", "bright"), ("crisp", "bright"),
-                          ("balanced", "balanced")],
+                          ("balanced", "balanced"),
+                          ("muffled", "very dark"), ("boomy", "very dark"),
+                          ("plummy", "dark"), ("nasal", "bright"),
+                          ("tinny", "very bright"), ("sharp", "bright"),
+                          ("edgy", "very bright"), ("round", "dark"),
+                          ("resonant", "dark")],
     }
     for field, pairs in SYN.items():
         if field in out:
