@@ -128,9 +128,9 @@ not by turning novelty up.
    real-speaker radius distribution before decoding. Directly targets the measured
    92%/75% contraction; a few lines, and it must be validated against the same bound —
    a change that raises Vendi without producing audibly distinct voices is not a fix.
-2. **Raise the uniqueness floor.** At 0.30 the accepted set's nn median is 0.365 —
-   minting clusters just above the floor. Rejects more, should spread what survives.
-   One flag, but it treats the symptom.
+2. ~~**Raise the uniqueness floor.**~~ **Done, and validated by a listener** (`S11`):
+   0.30 admitted pairs heard as the same person half the time. Now 0.45 for MioCodec,
+   costing 3% of effective diversity to remove 10 duplicate voices from 50.
 3. ~~**Raise novelty.**~~ **Tested and ruled out** — it contracts harder (75% of real
    radius at 0.70). The knob does the opposite of its name in this space.
 4. ~~**Widen the corpus.**~~ **Tested and ruled out** — +200% speakers, +0 effective
@@ -144,8 +144,9 @@ not by turning novelty up.
 - **The bound is the corpus's, not MioCodec's.** 432 read-speech speakers are not a
   sample of all human voices. A different corpus could hold more; nothing here says the
   128-d embedding itself tops out at 48.
-- **No listening.** Whether two voices 0.30 apart in working space are audibly the same
-  person is untested, and that is what the floor is really asserting.
+- ~~**No listening.**~~ **`S11` ran it**, with controls 4/4. Two voices 0.30 apart *are*
+  audibly the same person about half the time, which is what moved the floor to 0.45.
+  Still a pilot: 8 pairs, 2 at the floor, one listener.
 
 ## Reproduce
 

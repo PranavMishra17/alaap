@@ -56,7 +56,8 @@ from alaap.captions import caption_from_bins
 from alaap.catalog import sample_cells, saturation_curve
 from alaap.geometry import SpeakerSpace
 from alaap.mapper import RetrievalMapper, TextEncoder
-from alaap.service import CONSISTENCY_FLOOR, DRIFT_FLOOR, UNIQUENESS_MIN
+from alaap.service import (CONSISTENCY_FLOOR, DRIFT_FLOOR,
+                           UNIQUENESS_MIN_MIOCODEC as UNIQUENESS_MIN)
 from alaap.metrics import nn_distances, vendi_score
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
@@ -83,6 +84,11 @@ ap.add_argument("--pca-dims", type=int, default=0,
                 help="0 = the full space, which is what S9b measured as best")
 ap.add_argument("--top-k", type=int, default=2,
                 help="anchors blended per mint; 1 is pure retrieval")
+# S11 put this floor in front of a listener: pairs at d=0.323 were heard
+# as the same person half the time, everything at d>=0.506 correctly.
+# 0.45 costs 10 nominal voices of 50 and 3% of effective diversity --
+# the ten were duplicates.
+ap.add_argument("--uniqueness", type=float, default=UNIQUENESS_MIN)
 ap.add_argument("--keep-audio", type=int, default=8,
                 help="write wavs for the first K accepted voices only; "
                      "N x L 44.1 kHz wavs is a lot of disk for no extra evidence")
@@ -173,7 +179,7 @@ print(f"      pca_dims {PCA_DIMS} | top_k {args.top_k}")
 cells = sample_cells(args.n, args.seed)
 descs = [(f"ind{i:04d}", caption_from_bins(c, seed=i), c) for i, c in enumerate(cells)]
 print(f"[2/5] {len(descs)} descriptions over a stratified cover of bin space")
-print(f"      floors: uniqueness {UNIQUENESS_MIN} drift {DRIFT_FLOOR} "
+print(f"      floors: uniqueness {args.uniqueness} drift {DRIFT_FLOOR} "
       f"consistency {CONSISTENCY_FLOOR} -- rejections ARE the result")
 
 # ------------------------------------------- 3. content tokens, generated ONCE
@@ -261,9 +267,10 @@ for i, (cid, desc, cell) in enumerate(descs):
     cons = float(np.mean([cos(embs[a], embs[b])
                           for a in range(len(embs)) for b in range(a + 1, len(embs))]))
 
-    ok = (uniq >= UNIQUENESS_MIN and drift >= DRIFT_FLOOR and cons >= CONSISTENCY_FLOOR)
+    ok = (uniq >= args.uniqueness and drift >= DRIFT_FLOOR
+          and cons >= CONSISTENCY_FLOOR)
     why = ("" if ok else
-           ",".join(x for x, bad in [("uniqueness", uniq < UNIQUENESS_MIN),
+           ",".join(x for x, bad in [("uniqueness", uniq < args.uniqueness),
                                      ("drift", drift < DRIFT_FLOOR),
                                      ("consistency", cons < CONSISTENCY_FLOOR)] if bad))
     if ok:

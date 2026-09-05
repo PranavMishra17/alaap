@@ -41,7 +41,24 @@ from .renderer import Audio, Direction, load_backend
 
 # E2/E4 measured operating points. Working space, in-domain fit.
 DRIFT_FLOOR = 0.40          # below this, re-mint (E2 worst case was 0.3546)
-UNIQUENESS_MIN = 0.30       # VoicePrivacy B3's threshold, applied in WORKING space
+# UNIQUENESS_MIN was borrowed: VoicePrivacy B3's threshold, applied in a
+# WORKING space nobody had validated it for. S11 put it in front of a listener
+# and it is too low for MioCodec's space -- pairs at d=0.323, comfortably
+# ACCEPTED by this floor, came back 1-of-2 "same person". Everything at
+# d >= 0.506 was heard correctly, controls 4/4.
+#
+# Raising it is nearly free, which is the real finding: on 80 Indic mints,
+# 0.30 -> 0.45 drops 50 accepted voices to 40 while effective voices go 21.5
+# -> 20.8. The ten voices lost were duplicates; the catalog was overcounting,
+# not the metric undercounting.
+#
+# It stays 0.30 HERE because that listening test was Indic/MioCodec only and
+# 0.45 is not transferable: Qwen3's 2048-d space is a different geometry and a
+# cosine distance in it does not mean the same thing. The English path needs
+# its own listening test before this moves. Callers that HAVE validated a
+# floor pass `uniqueness_min` instead (S7 passes 0.45).
+UNIQUENESS_MIN = 0.30
+UNIQUENESS_MIN_MIOCODEC = 0.45      # S11, validated by listening (n=8 pairs)
 
 # E9: extreme voices hold together as well as central ones ON AVERAGE, but
 # their WORST CASE is worse (0.4279 vs 0.5008 ECAPA consistency). Means were
@@ -139,7 +156,8 @@ class VoiceService:
     def mint(self, description: str, character_id: str, language: str = "en",
              novelty: float = 0.5, verify: bool = True, max_attempts: int = 3,
              seed_line: str = "This is how I sound when I speak.",
-             tags: list[str] | None = None, top_k: int = 2) -> MintOutcome:
+             tags: list[str] | None = None, top_k: int = 2,
+             uniqueness_min: float | None = None) -> MintOutcome:
         """
         description -> identity, stored in BOTH tiers.
 
@@ -150,6 +168,10 @@ class VoiceService:
         """
         if self.mapper is None:
             raise RuntimeError("no mapper: cannot mint from a description")
+        # Per-space floor: 0.30 is unvalidated by listening, 0.45 is the value
+        # S11 validated for MioCodec. Callers pass the one they measured.
+        uniq_floor = (UNIQUENESS_MIN if uniqueness_min is None
+                      else float(uniqueness_min))
         warnings: list[str] = []
         best = None
         collisions = 0        # drives the novelty escalation below
@@ -173,11 +195,11 @@ class VoiceService:
             vec = m.vector
 
             uniq = self._uniqueness(vec, language)
-            if uniq < UNIQUENESS_MIN:
+            if uniq < uniq_floor:
                 collisions += 1
                 warnings.append(
                     f"attempt {attempt}: too close to an existing identity "
-                    f"(working-space distance {uniq:.3f} < {UNIQUENESS_MIN}); "
+                    f"(working-space distance {uniq:.3f} < {uniq_floor}); "
                     f"retrying at novelty "
                     f"{min(1.0, novelty + NOVELTY_STEP * collisions):.2f}")
                 if attempt < max_attempts:

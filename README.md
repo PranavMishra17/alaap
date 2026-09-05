@@ -58,12 +58,15 @@ explicitly protected (`S12`).
 
 ### What is not established
 
-- **Almost nothing has been listened to.** The metrics are geometry and ASR. A blind
-  listening set with positive and negative controls exists (`S11`) and has not been scored.
-- One fluent Hindi speaker has confirmed one render says its target sentence. That is the
-  entire human validation so far.
-- Catalog sizes are small (38–55 voices), single-seed, and Vendi-based — "effective
-  voices" is a metric artefact until a listener confirms it.
+- **Very little has been listened to.** The metrics are geometry and ASR. `S11` is a
+  blind listening pilot — 8 pairs, controls 4/4 — and it immediately found the
+  `uniqueness` floor was too low: voices 0.323 apart were heard as the same person half
+  the time. Raising it to 0.45 removed 10 duplicate voices from 50 at a cost of 3% of
+  effective diversity. **A borrowed threshold survived nine experiments before a person
+  listened to it.**
+- That pilot is n=8 with 2 pairs at the floor and one listener. It detects a problem; it
+  does not locate the right threshold, and the English floor remains unvalidated.
+- Catalog sizes are small (40–55 voices), single-seed, and Vendi-based.
 - No commercial TTS has been measured; `S8`'s library is corpus speakers standing in for
   a studio voice library.
 

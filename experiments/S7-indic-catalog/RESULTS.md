@@ -152,9 +152,13 @@ minting at all.
 - **Nobody has listened to the 8 saved renders.** Machine-scored only.
 - **Vendi at n=38 is noisy.** E11's 0.482 came from 42 accepted; these are comparable
   in size and both are small.
-- The `uniqueness` floor of 0.30 is VoicePrivacy B3's threshold applied in working
-  space. It is a defensible choice, not a measured one for *this* space — a different
-  floor gives a different effective count.
+- ~~The `uniqueness` floor of 0.30 is VoicePrivacy B3's threshold applied in working
+  space, a defensible choice rather than a measured one.~~ **`S11` measured it and it was
+  too low** — a listener heard pairs at d=0.323 as the same person half the time, and
+  everything at d≥0.506 correctly. The floor is now 0.45 for MioCodec, which drops 10 of
+  50 accepted voices and 3% of effective diversity: those ten were duplicates. Numbers in
+  this document above were produced at 0.30 and so **overcount the nominal catalog** —
+  the effective-voice figures barely move (21.5 → 20.8).
 
 ## Reproduce
 
