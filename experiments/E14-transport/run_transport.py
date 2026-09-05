@@ -117,7 +117,12 @@ E_true = space.encode(Z[i_test])
 
 # bin-space coordinates: index of each caption's bin on each axis
 from alaap.acoustics import BIN_LABELS
-AXES = [a for a in BIN_LABELS]
+# Only the axes this binner actually BINS. A fitted binner drops an axis whose
+# measurement is unusable on its corpus -- vtl_cm is dropped wherever the
+# formant estimate does not separate gender (S4, S6) -- so iterating BIN_LABELS
+# blind raises KeyError on the first clip.
+_probe = binner.bin_one(attrs[i_test[0]])
+AXES = [a for a in BIN_LABELS if a in _probe]
 BIDX = {a: {lbl: k for k, lbl in enumerate(BIN_LABELS[a])} for a in AXES}
 B = np.array([[BIDX[a][binner.bin_one(attrs[i])[a]] for a in AXES]
               for i in i_test], dtype=np.float64)

@@ -106,6 +106,65 @@ Candidates, in order of evidence:
 1. **`gmm_components=1`, `novelty≈1.0`** — best on spread, collisions and plausibility simultaneously. Needs rendering confirmation most of all, because it is the setting E1 explicitly warned about.
 2. **Raise `novelty` from 0.0 regardless** — the collision reduction (19.0% → 0.7%) is large and the plausibility cost is nil.
 
+## Re-run at the fixed settings (2026-09-05)
+
+`S9b`/`S10` found `pca_dims=50` truncates the basis and zero-pads the discarded
+components. Re-run at the full basis, same control, same metric:
+
+| | old (`pca_dims 50`) | **fixed (full basis)** |
+|---|---|---|
+| novelty 0.00 — nn median | 0.63× real | **0.72×** |
+| novelty 1.00 — nn median | 0.75× real | **0.93×** |
+| isolation across novelty | flat 23–28% | **35% → 49%** |
+| `k=1`, novelty 1.0 — isolation | 45% | **72%** |
+| held-out real speakers (control) | 54% | 54% |
+
+Full new tables:
+
+```
+CONTROL  held-out REAL speakers   isolation 54%   nn median 0.653
+
+NOVELTY (gmm_components=5)
+novelty  nn med  vs real  <floor  isolation
+   0.00   0.467    0.72x    8.7%        35%
+   0.45   0.528    0.81x    4.7%        32%
+   1.00   0.610    0.93x    0.0%        49%
+
+COMPONENTS (novelty=1.0)
+      k  nn med  vs real  <floor  isolation
+      1   0.672    1.03x    0.0%        72%
+      3   0.638    0.98x    0.0%        58%
+      5   0.610    0.93x    0.0%        49%
+     24   0.523    0.80x    1.3%        39%
+     48   0.509    0.78x   11.7%        37%
+```
+
+**Everything improved, and one thing improved past its own reference.**
+
+Spread rose across the board — minted voices now reach 0.93× real speaker spacing at
+novelty 1.0 where they reached 0.75× before, and `k=1` reaches **1.03×**, i.e. slightly
+*wider* than real speakers sit from each other.
+
+### ⚠️ The `k=1` isolation number now overshoots, and that is not straightforwardly good
+
+The old write-up said *"k=1 wins on every column at once"* at 45% isolation, praising it as
+**the only setting that comes near real speakers' 54%**. It now reads **72%**, against the
+same 54% control.
+
+`isolation_pct` is the percentile of a sample's median k-NN radius within the reference's
+own radii. 54% means "as typical as a real speaker". **72% means these voices sit in
+*sparser* regions than real people do** — more distinct, and correspondingly further from
+the dense part of the manifold. The old conclusion was "k=1 is the only setting that gets
+close to real"; the honest new one is "k=1 now passes real and keeps going", and whether
+that is better or worse is **not a question this metric answers.**
+
+`E1` warned specifically about overshooting past real speaker spacing, and `k=1` at 1.03×
+is now in the region it warned about. It was 0.75× when that warning looked satisfied.
+
+**So the recommendation below needs a listener, not a re-read.** `S11` established the
+instrument: pairs at known distances with positive and negative controls. Nothing here
+says whether a voice at 1.03× real spacing sounds like a person.
+
 ## Not established
 
 - One corpus, English only, `pca_dims=50` never swept.

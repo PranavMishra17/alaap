@@ -56,7 +56,12 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
 ap.add_argument("--corpus-cache",
                 default="experiments/S2/out/corpus_globe_v2_2500_1.npz")
-ap.add_argument("--binner", default="experiments/S2/out/binner_globe_v2.json")
+# NAMING TRAP: the `_v2` in binner_globe_v2.json is the GLOBE V2 CORPUS, not
+# the binner FORMAT version -- that file is a v1 binner and Binner.load
+# refuses it (it bins raw f0_std and uncorrected hnr_db). The v2-format
+# binner carries the model id, because the decorrelation was fitted per
+# model.
+ap.add_argument("--binner", default="experiments/S2/out/binner_globe_v2_Qwen3-TTS-12Hz-17B-Base.json")
 ap.add_argument("--novelty", type=float, default=0.0)
 ap.add_argument("--lines", type=int, default=3)
 args = ap.parse_args()
