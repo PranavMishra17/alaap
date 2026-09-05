@@ -285,14 +285,14 @@ m.decode(global_embedding=torch.randn(128),
 
 ---
 
-## Report 4 — the emotion/style tags appear to have no effect
+## Report 4 — the emotion/style tags and word stress appear to have no effect
 
 **Post to:** <https://huggingface.co/SPRINGLab/Indic-Mio/discussions/new>
 
 **Title** — copy this line:
 
 ```text
-Emotion tags (<happy>, <whisper>, ...) appear to have no effect — they are not tokens in the tokenizer
+Emotion tags and word stress appear to have no effect (tags are not tokens in the tokenizer)
 ```
 
 **Body** — copy everything between the four-backtick fences:
@@ -370,6 +370,29 @@ tag text perturbing sampling rather than conditioning anything.
   appearing. Intelligibility is unaffected.
 - **Formatting does not change the tokenization**: `<happy>`, ` <happy>`, `<happy>.`,
   `[happy]` and `(happy)` all tokenize to 3 pieces.
+
+### Word stress (`*word*`) also appears inert
+
+The card documents this alongside the tags:
+
+> A word can be stressed by using asterisks(*) around it.
+
+`*` **is** a single token here (id 9), unlike the emotion tags, so this one is not a
+tokenizer problem. But it produces no positional effect. Emphasising an early word versus
+a late word in the same English sentence, 4 seeds each, measuring the energy centroid in
+normalised time:
+
+```
+condition                              mean centroid
+plain                                        0.4489   (seed-to-seed SD 0.0208)
+The *mountains* remember every ...           0.4312   -0.85 noise units
+... even the ones you *regret*.              0.4345   -0.69 noise units
+```
+
+If the marker were obeyed, emphasising the *last* word would push energy later than
+emphasising the *second* word. Both move the same direction, by less than one
+seed-to-seed SD. (Caveat: the energy centroid would miss emphasis realised purely as
+pitch accent.)
 
 ### What I could not rule out
 

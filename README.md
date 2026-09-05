@@ -55,7 +55,10 @@ ceiling and moves `f0_mean` by ≤0.21 noise-floor units, so whatever you write 
 cannot change who is speaking. But a fluent listener heard no emotion in any of
 `<happy>`, `<sad>`, `<angry>`, `<surprise>`, and the reason is mechanical: **none of the
 nine documented tags is a token** in Indic-Mio or its base model, and none is in the
-added vocabulary. `<whisper>` does not whisper. Filed upstream (`S13`).
+added vocabulary. `<whisper>` does not whisper. **Word-level emphasis (`*word*`) fails too** — `*` *is* a
+real token, yet emphasising an early versus a late word moves energy the same direction by
+under one noise unit. The text channel carries no direction at all on this backend. Filed
+upstream (`S13`, `S13b`).
 
 **Description and direction use disjoint acoustic axes.** `speaking_rate` is nearly
 worthless for identity (weight 0.10–0.31, measured on three corpora and two languages)

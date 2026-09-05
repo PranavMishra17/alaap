@@ -1,4 +1,4 @@
-# S13 — identity is safe from the text channel; the emotion tags do nothing
+# S13 — identity is safe from the text channel, and the text channel does nothing
 
 **Run:** 2026-09-05 · `SPRINGLab/Indic-Mio` + `MioCodec-25Hz-44.1kHz-v2` · 78 renders · 3 voices × 2 Hindi lines
 **Question:** can a text tag move delivery without moving who is speaking?
@@ -172,6 +172,53 @@ This is filed upstream as Report 4 in `UPSTREAM-REPORTS.md`, with what could *no
 ruled out stated: that the tags need a prompt format `MioTTS-Inference` uses and I did
 not replicate.
 
+## S13b — word-level emphasis fails too, and `*` is not the reason
+
+`*` **is** a single token (id 9), unlike all nine emotion tags — so emphasis was
+structurally a live candidate in a way `<happy>` never was. It is still an ordinary text
+token rather than a special one, and wrapping fragments the word it marks:
+
+```
+'The mountains remember'    3 tokens  ['The', ' mountains', ' remember']
+'The *mountains* remember'  6 tokens  ['The', ' *', 'mount', 'ains', '*', ' remember']
+```
+
+**The test needs no forced alignment.** A global acoustic difference cannot separate
+"emphasis worked" from "the sample was re-rolled" — the trap this experiment already fell
+into once. But emphasis has a property re-rolling does not: it is **local**. Emphasising an
+early word should push energy earlier; emphasising a late word, later.
+
+```
+energy centroid = Σ t·rms(t) / Σ rms(t),   t normalised to [0, 1]
+predicted:  centroid(*early*) < plain < centroid(*late*)
+```
+
+| condition | mean centroid | vs plain |
+|---|---|---|
+| plain | 0.4489 | — (seed-to-seed SD **0.0208**) |
+| `The *mountains* remember…` | 0.4312 | −0.0177 = **0.85** noise units |
+| `…you *regret*.` | 0.4345 | −0.0144 = **0.69** noise units |
+
+**The ordering does not hold.** Both conditions move the centroid in the *same* direction,
+downward, by less than one noise unit each. Emphasising the last word of the sentence does
+not push energy later — it does the same thing as emphasising the second word.
+
+That pattern is what an inert marker produces: the asterisks perturb sampling, and where
+they sit makes no difference. A directional ordering cannot be manufactured by re-rolling
+a seed, which is why the ordering rather than the magnitude was the test.
+
+**So the text channel on this backend carries no direction at all** — not the documented
+emotion tags, not the documented word stress.
+
+### Caveats on this one specifically
+
+- **4 seeds, one sentence, one voice, English.** Small.
+- **The energy centroid is a crude proxy.** Emphasis can be realised as pitch accent with
+  little energy change, and that would not show here. A pitch-contour version of the same
+  directional test would be a stronger instrument and was not run.
+- `*` being a plain text token means the finetune *could* still have learned it from data
+  that used it — this measures the outcome, not the training.
+
 ## What this means for the direction channel
 
 **The safe half is proven; the drive half does not exist on this backend.** Tags are not
@@ -190,10 +237,9 @@ Three routes, now re-ordered by what the evidence supports:
    (z=6.7) but *weakly*. It is also the axis a caller can set directly rather than
    requesting — resample or re-time the render to a target rate, and the tag supplies the
    rest. This is the only route the measurements actively endorse.
-2. **Word-level emphasis (`*word*`).** Documented by Indic-Mio and **not tested here**.
-   Worth testing *first now*, and worth checking its tokenization before rendering
-   anything: `*` may or may not survive the tokenizer any better than `<happy>` did.
-   Two minutes of tokenizer inspection decides whether the render is worth running.
+2. ~~**Word-level emphasis (`*word*`).**~~ **Tested — see S13b above. It does not work
+   either.** `*` survives the tokenizer as a real token, and it still produces no
+   positional effect.
 3. **Direct signal-level control of `speaking_rate`.** Not a model capability at all —
    re-time the render. `S12` says rate is a real delivery axis and `S13` says identity
    survives text changes; nothing says the *model* has to be the one moving it.

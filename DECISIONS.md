@@ -353,10 +353,14 @@ stacks *onto* the tag is building on nothing.
 
 What survives is the harder property: **identity is provably robust to whatever is
 appended to the text**, so a direction channel can be built here the moment there is
-something that actually drives. The candidates are word-level emphasis (`*word*`,
-untested, and its tokenization should be checked before rendering anything) and
-signal-level re-timing of `speaking_rate` — which is not a model capability at all.
-*(S12, S13)*
+something that actually drives. **Word-level emphasis was the remaining candidate and it also fails** (`S13b`): `*` is a
+real single token, unlike every emotion tag, and emphasising an early word versus a late
+word moves the energy centroid in the *same* direction by under one noise unit. The
+predicted ordering does not hold, so the marker is inert.
+
+**The text channel on this backend carries no direction at all.** What remains is
+signal-level re-timing of `speaking_rate` — not a model capability, and therefore not
+subject to whether the model was trained to obey anything. *(S12, S13, S13b)*
 
 ---
 

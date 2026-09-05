@@ -23,9 +23,10 @@ so state is restated every time. Every turn ends with:
 - **Next (now)** — ONE action, doable in under two minutes.
 - **Decisions needed** — as detailed options with trade-offs, never an open question.
 
-**Do not stop to ask permission for work that is already scoped.** Anything that can be
-read, measured, scoped, or verified gets done before the turn ends. Only irreversible or
-outward-facing actions wait: pushing, posting upstream, anything public.
+**Do not stop to ask permission for work that is already scoped, and never ask before
+running a check that takes under ~5 minutes — just run it.** Anything that can be read,
+measured, scoped, or verified gets done before the turn ends. Only irreversible or
+outward-facing actions wait: pushing (unless asked), posting upstream, anything public.
 
 Lead with the action, not the preamble. Number multi-step work. Concrete time estimates.
 Cap lists at 5. No "Let me…", no "Hope this helps".
