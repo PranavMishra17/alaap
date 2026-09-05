@@ -38,10 +38,11 @@ WHAT IS MEASURED per minted voice
 and over the catalog as a whole, as it grows:
     acceptance rate vs catalog size   <- the saturation curve
     nearest-neighbour distance distribution
-    Vendi score                        <- effective number of distinct voices
+    Vendi score (normalised)           <- fraction of maximum diversity
 
 The headline is the gap between "voices minted" and "effective number of
-voices". If 400 mints yield a Vendi score of 90, the catalog is 90 voices.
+voices" = normalised Vendi x n. If 400 mints score 0.22, the catalog holds
+about 90 effective voices and RESEARCH/06 would call 0.22 an ALARM.
 
 Runs on 1.7B with the v2 (decorrelated) binner -- the configuration S2 run 4
 used, and the only one whose adherence number we still believe. Pass --model
@@ -248,8 +249,9 @@ summary = {
 if len(vectors) >= 10:
     V = np.vstack(vectors)
     E = space.encode(V)
-    summary["vendi_score"] = float(vendi_score(E))
-    summary["effective_fraction"] = summary["vendi_score"] / len(V)
+    # normalise=True returns a FRACTION of maximum diversity, not a count.
+    summary["vendi_normalised"] = float(vendi_score(E))
+    summary["effective_voices"] = summary["vendi_normalised"] * len(V)
     nn = nn_distances(E)
     summary["nn_median"] = float(np.median(nn))
     summary["nn_p05"] = float(np.percentile(nn, 5))
@@ -272,10 +274,10 @@ if summary.get("consistency_mean") is not None:
 if summary.get("uniqueness_mean") is not None:
     print(f"  uniqueness         mean {summary['uniqueness_mean']:.3f}  "
           f"min {summary['uniqueness_min']:.3f}  (floor {UNIQUENESS_MIN})")
-if "vendi_score" in summary:
-    print(f"  VENDI SCORE        {summary['vendi_score']:.1f} distinct voices "
-          f"from {len(vectors)} minted "
-          f"({summary['effective_fraction']:.1%})")
+if "vendi_normalised" in summary:
+    print(f"  VENDI (normalised) {summary['vendi_normalised']:.3f} "
+          f"(target >=0.35) = {summary['effective_voices']:.1f} effective "
+          f"voices from {len(vectors)} minted")
     print(f"  nn distance        median {summary['nn_median']:.3f}  "
           f"p05 {summary['nn_p05']:.3f}")
 print()
