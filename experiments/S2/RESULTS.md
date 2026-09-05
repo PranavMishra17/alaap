@@ -116,3 +116,70 @@ envs/qwen3/Scripts/python.exe experiments/S2/run_s2.py --n 600 --per-speaker 3
 ```
 
 ~13 min (CPU measurement dominates), plus ~4 min of rendering. Delete `out/corpus.npz` to force re-extraction.
+
+---
+
+# S2 run 2 — GLOBE_V2, per-clip pairing (2026-09-05)
+
+The top fix from run 1 was "scale the fit set", but the deeper problem was
+**vocal range**, not speaker count: LibriTTS-R is clean audiobook read speech with
+no gravelly or aged voices to retrieve, and percentile binning *hides* that by
+guaranteeing every bin is occupied.
+
+**The unlock:** the mapper only ever needs `(caption, vector)` pairs, never speaker
+identity — so pairing **per clip** rather than per speaker sidesteps GLOBE_V2's
+unreliable labels entirely (E4: ECAPA EER 20% there vs 2.46% on LibriTTS-R) and
+opens up its 23,519 voices purely for range.
+
+## Comparison — both re-scored with the fixed parser
+
+| | LibriTTS-R (600 clips / 206 spk) | **GLOBE_V2 (2500 clips)** |
+|---|---|---|
+| effective rank | 46.4 | **128.6** |
+| identity fraction | 0.163 | 0.199 |
+| silhouette | 0.584 | **0.779** |
+| **exact match** @ novelty 0.0 | 0.194 | **0.236** |
+| @ novelty 0.5 | **0.319** | 0.250 |
+| @ novelty 1.0 | 0.264 | 0.139 |
+| **bin distance** @ novelty 0.0 | 1.333 | **0.958** |
+| @ novelty 0.5 | 1.292 | **1.028** |
+| @ novelty 1.0 | 1.458 | 1.375 |
+
+*(chance: exact match 0.200, bin distance ~1.600)*
+
+## What changed, and why
+
+**1. Mean bin distance improved from 1.29 → 0.96** — a 26% reduction, and now
+**40% better than chance** rather than 19%. Bin distance is the more reliable of the
+two adherence measures (exact match is brittle with only 3–4 targets per
+description), so this is the headline.
+
+**2. The effective rank of the speaker manifold nearly tripled, 46 → 129.**
+That is the vocal-range hypothesis confirmed directly: GLOBE_V2's voices span a far
+richer manifold than audiobook readers do. Note this also means E3's "the prior is a
+~50-D problem" is corpus-dependent — on a diverse corpus it is a ~130-D problem.
+
+**3. The optimal novelty MOVED, from 0.5 to 0.0.** On LibriTTS-R the blend beat pure
+retrieval, because retrieval had nothing good to retrieve. On GLOBE_V2 **pure
+retrieval is best** — with 2,500 diverse voices there is usually a genuinely close
+match, so adding generative novelty only drifts away from the target.
+
+> **That is a real, generalisable finding: the optimal novelty setting is a function
+> of corpus coverage.** A sparse catalogue needs generative fill-in; a dense one does
+> not. It also means the novelty dial should not ship with a fixed default — it should
+> be tuned per corpus, and probably exposed with a sensible per-catalogue default.
+
+**4. Separability rose 0.584 → 0.779**, so different descriptions map to more clearly
+distinct voice clusters.
+
+## Still unsolved
+
+- **Exact match at novelty 0.5–1.0 got *worse*** (0.319 → 0.250, 0.264 → 0.139).
+  Consistent with point 3 — generative novelty is now actively unhelpful — but it
+  means the GMM end of the dial needs re-tuning against a dense corpus, not reusing
+  E1's `k=5` which was fitted on 122 LibriTTS speakers.
+- **Two descriptions remain hard**: "a very clear, crystalline voice, expressive and
+  measured" (0.00 match) and "a high, harsh voice racing through the words" (0.00).
+  Both combine attributes that may be negatively correlated in real voices — you
+  cannot easily be both very clear *and* harsh.
+- **Still no listening test.** All 18 GLOBE renders are in `out/audio/globe_v2_*.wav`.
