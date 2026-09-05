@@ -183,3 +183,58 @@ distinct voice clusters.
   Both combine attributes that may be negatively correlated in real voices — you
   cannot easily be both very clear *and* harsh.
 - **Still no listening test.** All 18 GLOBE renders are in `out/audio/globe_v2_*.wav`.
+
+---
+
+# S2 run 3 — GLOBE_V2 on the 1.7B default (2026-09-05)
+
+E10 made `Qwen3-TTS-12Hz-1.7B-Base` the default, so the baseline was re-measured on it.
+Same corpus, same captions, same mapper code — only the encoder changed.
+
+| | LibriTTS-R 0.6B | GLOBE_V2 0.6B | **GLOBE_V2 1.7B** |
+|---|---|---|---|
+| effective rank | 46.4 | 128.6 | **200.1** |
+| identity fraction | 0.163 | 0.199 | 0.197 |
+| silhouette | 0.584 | **0.779** | 0.736 |
+| Vendi @ novelty 0.5 | 0.465 | 0.451 | **0.499** |
+| **exact match** @ 0.0 | 0.194 | 0.236 | **0.375** |
+| @ 0.5 | 0.319 | 0.250 | **0.403** |
+| @ 1.0 | 0.264 | 0.139 | 0.236 |
+| **bin distance** @ 0.0 | 1.333 | 0.958 | **0.861** |
+| @ 0.5 | 1.292 | 1.028 | **0.792** |
+| @ 1.0 | 1.458 | 1.375 | 1.097 |
+
+*(chance: exact match 0.200, bin distance ~1.600)*
+
+## What changed
+
+**1. Adherence is now clearly, not marginally, better than chance.**
+Exact match **0.403 vs 0.200** — twice chance. Bin distance **0.792 vs ~1.600** — half of chance.
+Across the three runs the trajectory is `0.319 → 0.250 → 0.403` on exact match and
+`1.292 → 1.028 → 0.792` on bin distance. **The mapper is no longer weak.**
+
+**2. Effective rank rose again, 128.6 → 200.1.** The 2048-d space carries a much richer
+manifold than 1024-d over the identical audio. Combined with E3 (46.4 on LibriTTS/0.6B),
+effective rank has now been shown to depend on **both** corpus diversity *and* encoder
+capacity — it is not a property of the model alone.
+
+**3. The optimal novelty moved BACK to 0.5.** Run 2 found 0.0 best on GLOBE/0.6B; here the
+blend wins again. Taken with run 1 (0.5 best on a sparse corpus), the pattern is that the
+optimum depends on **both** corpus density and space capacity, and is genuinely unstable
+across configurations.
+
+> **This strengthens run 2's conclusion rather than contradicting it: the novelty dial must be
+> re-tuned whenever the corpus or the encoder changes.** Shipping a fixed default would be
+> wrong in at least one of the three configurations measured so far.
+
+**4. Per-description results are now uneven in an informative way.** *"a very deep, gravelly
+voice, speaking slowly and almost monotone"* hits **0.75 exact match / 0.25 bin distance** —
+the extreme case, consistent with E9. *"a bright, high-pitched voice, highly animated and
+speaking quickly"* still scores 0.00, which is worth investigating: it may be that high pitch
+and rapid speech are negatively correlated in GLOBE_V2, making the combination unreachable.
+
+## Caveat
+
+Silhouette dropped slightly (0.779 → 0.736). With a richer manifold, minted voices for
+different descriptions spread out more, which reduces cluster tightness. Not obviously bad —
+but worth watching, since separability is what makes the catalog searchable.
