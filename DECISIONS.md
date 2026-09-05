@@ -227,6 +227,41 @@ E14 measured it against the corpus's own real (caption, voice) pairs: five acous
 
 ---
 
+## ADR-009 — research-only posture; the licence audit becomes documentation, not a gate
+
+**Date:** 2026-09-05 · **Status:** accepted · **Amends:** ADR-006
+
+### Context
+
+`ADR-006` recorded that no publicly-servable Indic path existed: Indic Parler-TTS CONDITIONAL (`RESEARCH/08` §4.7), Indic-Mio BLOCKED (§4.4, NC training inputs). That conclusion was correct **for a commercial release**, and it was blocking the project's whole reason for existing.
+
+Two things then changed.
+
+**The owner set the posture.** Verbatim: *"I have no personal preference to monetise this or build commercially on this — I want to do best to get this done."* Priority is a working system; gating comes later if ever.
+
+**One of ADR-006's two open questions closed on evidence.** With the HF token, the gate metadata is now readable, and `indic-parler-tts` declares **no `extra_gated_prompt`, no `extra_gated_heading`, no `extra_gated_description`** — `gated: auto` with nothing but `license: apache-2.0`. There are no separate gate terms. §4.7's concern (b), *"you cannot responsibly host weights whose gate terms you have not read"*, is answered: **there are none to read.** Only the IITM IndicTTS question (a) remains, and it bears on redistribution, not use.
+
+### Decision
+
+**Use any backend whose chain is understood, for research and personal use. Do not distribute weights, and treat generated audio as research output.**
+
+The audit in `RESEARCH/08` stays exactly as written. It is not deleted, softened, or re-scored — it remains the record of what may be *shipped*, for whenever that question returns.
+
+### Why no code change was needed
+
+The gate already expressed this distinction. `load_backend(renderer, is_public_deployment=False)` permits a backend that `SERVABLE` marks `False`; only `is_public_deployment=True` refuses. `SERVABLE` answers *"may this be served publicly?"* — and the answer for Indic-Mio is still no. Research use was never the thing it forbade.
+
+That is the invariant working as designed rather than being worked around: **the posture changed, the audit did not, and the gate needed no edit.**
+
+### Consequences
+
+- **Indic-Mio becomes the Indic backend** (`ADR-006` route B, previously blocked). S5 then measured the two-tower split working on it — content tokens from the LM, identity as an arbitrary 128-d vector into `MioCodec.decode()`, ECAPA-verified at +0.615 normalised, 8/8 correct.
+- **Route C (train our own tower) is deferred, not dropped.** It stays the only route no third party can veto, the captioning pipeline for it is built and validated, and `alaap/provenance.py` already gates its training mix. If redistribution ever matters, it is the answer.
+- **`.hf_token` is gitignored** and read from the environment; it is never committed and never sent anywhere but huggingface.co.
+- If an MIT release is ever wanted: **code only**. Weights and audio derived from Indic-Mio inherit the NC chain, and `provenance.assert_trainable` already refuses that mix.
+
+---
+
 ## Open questions — deliberately not decided yet
 
 | # | Question | Decided at | Blocked on |
@@ -244,6 +279,7 @@ E14 measured it against the corpus's own real (caption, voice) pairs: five acous
 | Date | Change |
 |---|---|
 | 2026-09-02 | Research pass 1 complete. ADR-000 through ADR-005 locked. Project renamed VoiceForge → Alaap. |
+| 2026-09-05 | ADR-009: research-only posture. The owner has no commercial intent, and the Parler gate turns out to declare no extra terms at all, so the licence audit becomes documentation rather than a gate. Indic-Mio becomes the Indic backend; S5 then measured the two-tower split working on it. No code change was needed — load_backend already separated research use from public serving. |
 | 2026-09-05 | ADR-007 and ADR-008: catalog capacity is a description problem, not a sampler one — re-weight the axes, retrieve on bins, change the anchor corpus; and novelty becomes adaptive rather than fixed. |
 | 2026-09-05 | ADR-006: no publicly-servable Indic path exists today. Both halves of `RESEARCH/04` §9's stack fail the licence audit; `Qwen3-TTS` has no Indic language at all. Four routes recorded, decision deferred to S5. |
 
