@@ -127,6 +127,51 @@ Deferring means v1 has no description→novel-Indic-voice. Accepted, because it 
 
 ---
 
+## ADR-006 — Indic has no publicly-servable path today; build on the mirrors, decide the route at S5
+
+**Date:** 2026-09-05 · **Status:** accepted (routes deliberately left open) · **Supersedes:** the stack table in `RESEARCH/04` §9
+
+### Context
+
+Indic is the stated reason the project exists. Three facts, all verified in code or primary sources on 2026-09-05, jointly close every off-the-shelf route:
+
+1. **`Qwen3-TTS` cannot speak any Indian language.** `LANG_ALIAS` in `alaap/renderer.py` is `{en, zh, fr, de, it, ja, ko, pt, ru, es}`. Every experiment E0–E10, the entire working two-tower loop, runs on a backend with no Indic phoneme inventory. No amount of speaker-vector work changes this — the TTS tower is frozen by design (ADR-001).
+2. **`ai4bharat/indic-parler-tts` is CONDITIONAL** (`RESEARCH/08` §4.7): IITM IndicTTS EULA §2.2, plus unread gate terms.
+3. **`SPRINGLab/Indic-Mio` is BLOCKED** (`RESEARCH/08` §4.4, HIGH confidence): Expresso (CC-BY-NC-4.0) is a declared direct training input; Emilia (NC) enters twice transitively; MioCodec — unavoidable at inference — derives from unlicensed code.
+
+(2) and (3) are exactly the two halves of the stack `RESEARCH/04` §9 recommended. That document read declared licences; `08` traced the chains. **`08` wins.**
+
+Separately, and independently of licence: **Indic Parler exposes no speaker vector at all** — its identity is a closed set of 69 names. So even if (2) cleared tomorrow, Parler alone gives Tier-3, which ADR-002 killed.
+
+### Decision
+
+**Keep building the Indic pipeline on corpora we can legally develop against, and do not pick a backend route until S5.**
+
+Concretely, now:
+- Corpus via the ungated `SPRINGLab/IndicVoices-R_*` mirrors, behind `data.DEV_ONLY` + the `dev_only=True` acknowledgement (CC-BY-4.0 upstream, undeclared on the mirror — develop yes, ship no).
+- Captions via measure-first, which is backend-independent: `count_phones_indic` + `Binner.fit` on the Indic distribution + `caption_from_bins`.
+- Everything above the renderer — mapper, geometry, identity store, eval — is language-agnostic already and needs no Indic decision.
+
+### The four routes, and what each costs
+
+| # | Route | Unblocks | Cost | Kills it |
+|---|---|---|---|---|
+| **A** | **Clear Parler's two conditions**, then use it as a Tier-2 *designer* only: description → seed waveform → freeze, and accept that identity lives in the waveform | Indic at Tier 2 | One click (read the gate terms) + one email to IITM | Either condition failing; also caps Indic at Tier 2 forever |
+| **B** | **Lawyer-clear Indic-Mio** and get its `global_embedding` as the Indic speaker vector — the only clean route to Indic **Tier 1** | Indic at Tier 1 | Lawyer hour; `08` §4.4 says "NEEDS LAWYER before any reinstatement" | Expresso being a declared direct input is "the least deniable of the three" |
+| **C** | **Train our own Indic tower** on IndicVoices-R (CC-BY-4.0, 1,704 h, 10,496 speakers — more speakers than any English corpus we have) | Indic at Tier 1, chain fully controlled | ~\$200–800 + script/phonology risk; breaks the "never train a backbone" constraint (Q1) | Nothing legal. Only budget and scope |
+| **D** | **Ship Indic research-only / non-commercial**, treating the NC chains as acceptable for a non-commercial release | Indic immediately | Forecloses commercial use of that lineage | The product being commercial |
+
+**Route C is the only one no third party can veto**, and its input corpus is already the project's strongest asset. That is worth weighing against its cost rather than treating "never train a backbone" as settled — which is precisely what Q1 exists to reopen at S5.
+
+### Consequences
+
+- `SERVABLE["indic-parler-tts"]` set to `False`; it had shipped `True`, contradicting the audit outright. `TestServableMatchesTheAudit` now pins code to audit.
+- Indic **rendering** experiments cannot run until an HF token exists (all AI4Bharat repos are gated). Indic **measurement** experiments run now — see S4.
+- `RESEARCH/04` §9 carries a SUPERSEDED banner pointing here.
+- Q1 ("does the never-train-a-backbone constraint survive?") is no longer hypothetical. Route C is its concrete form.
+
+---
+
 ## Open questions — deliberately not decided yet
 
 | # | Question | Decided at | Blocked on |
@@ -144,6 +189,7 @@ Deferring means v1 has no description→novel-Indic-voice. Accepted, because it 
 | Date | Change |
 |---|---|
 | 2026-09-02 | Research pass 1 complete. ADR-000 through ADR-005 locked. Project renamed VoiceForge → Alaap. |
+| 2026-09-05 | ADR-006: no publicly-servable Indic path exists today. Both halves of `RESEARCH/04` §9's stack fail the licence audit; `Qwen3-TTS` has no Indic language at all. Four routes recorded, decision deferred to S5. |
 
 ---
 

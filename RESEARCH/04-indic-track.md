@@ -303,6 +303,19 @@ Every input is CC-BY-4.0 and every tool is permissive. **This is the single high
 
 **Why this shape.** Indic Parler-TTS is the only Indic model that turns *a description* into speech, and Indic-Mio is the only clean-licence Indic model that exposes *a speaker vector*. Chaining them gives description → seed waveform → `global_embedding` → persisted identity → unlimited dialogue. That is **Tier 2 guaranteed, Tier 1 if E1 passes** — and every link is Apache-2.0 or MIT.
 
+> ### ⚠️ SUPERSEDED ON LICENCE — read [08 §4.4](08-licensing-propagation.md) and [08 §4.7](08-licensing-propagation.md) before building on this table
+>
+> The sentence above — *"every link is Apache-2.0 or MIT"* — was written from the **declared** licences. The deeper chain trace in `08` reached the opposite conclusion on **both** halves of this stack, and `08` wins: it traced the training inputs, this table read the YAML.
+>
+> | Role | This table said | `08` found | Status |
+> |---|---|---|---|
+> | Voice **designer** — `ai4bharat/indic-parler-tts` | Apache-2.0, clean chain | §4.7 **CONDITIONAL**: 382 of 1,806 h are IITM IndicTTS, whose recovered EULA §2.2 forbids onward sublicensing; repo is gated and the gate terms are unread | `public_servable = False` |
+> | Voice **renderer** — `SPRINGLab/Indic-Mio` | Apache-2.0, clean chain | §4.4 **BLOCKED, HIGH confidence**: `ylacombe/expresso` (CC-BY-NC-4.0) is a *declared, direct* training input in Indic-Mio's own YAML; Emilia (NC) enters twice transitively via MioTTS-0.6B and MioCodec; MioCodec derives from the unlicensed `kanade-tokenizer`. MioCodec is unavoidable at inference. | `public_servable = False`, **needs lawyer** |
+>
+> **Consequence, stated plainly: as of 2026-09-05 there is no publicly-servable Indic path.** Both halves of the recommended stack fail the audit, and `Qwen3-TTS` — the backend every experiment E0–E10 actually runs on — supports ten languages, none of them Indian (`LANG_ALIAS` in `alaap/renderer.py`).
+>
+> This blocks **shipping**, not **building**. Corpus access, captioning, measurement and the mapper are all unaffected and are proceeding on `SPRINGLab/IndicVoices-R_*` mirrors. See `NEEDS-FROM-YOU.md` §1–2 for the two cheap actions that would unblock the designer half, and `DECISIONS.md` ADR-006 for the four routes out.
+
 **Install constraints for one 8–12GB GPU:**
 
 - **Three mutually incompatible Python environments. Run them as separate processes/services — this is not optional.**

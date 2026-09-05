@@ -43,8 +43,9 @@ and over the catalog as a whole, as it grows:
 The headline is the gap between "voices minted" and "effective number of
 voices". If 400 mints yield a Vendi score of 90, the catalog is 90 voices.
 
-Runs on 0.6B for corpus-consistency with the cached GLOBE mapper. Pass
---model to override.
+Runs on 1.7B with the v2 (decorrelated) binner -- the configuration S2 run 4
+used, and the only one whose adherence number we still believe. Pass --model
+and --binner to override.
 
     envs/qwen3/Scripts/python.exe experiments/E11-catalog/run_catalog.py --n 300
 """
@@ -76,10 +77,17 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
 os.makedirs(OUT, exist_ok=True)
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
+# 1.7B + the v2 (decorrelated) binner. This is the configuration S2 run 4
+# used to produce the only adherence number we still believe: the 0.6B
+# artefacts in S2/out carry a v1 binner, which bins raw f0_std and
+# uncorrected hnr_db, and Binner.load refuses to open one. Do not "fix" that
+# by re-fitting a v1 -- the entangled axes are what S2 run 3 got wrong.
+ap.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-1.7B-Base")
 ap.add_argument("--corpus-cache",
-                default="experiments/S2/out/corpus_globe_v2_2500_1.npz")
-ap.add_argument("--binner", default="experiments/S2/out/binner_globe_v2.json")
+                default="experiments/S2/out/"
+                        "corpus_globe_v2_2500_1_Qwen3-TTS-12Hz-17B-Base.npz")
+ap.add_argument("--binner", default="experiments/S2/out/"
+                                    "binner_globe_v2_Qwen3-TTS-12Hz-17B-Base.json")
 ap.add_argument("--n", type=int, default=300)
 ap.add_argument("--novelty", type=float, default=0.0)
 ap.add_argument("--seed", type=int, default=0)
