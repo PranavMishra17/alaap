@@ -47,3 +47,21 @@ I had to pick to keep moving. All reversible; say the word and I'll change any o
 |---|---|---|
 | 3 | **LibriTTS-R replaces GLOBE_V2 for anything speaker-label-dependent** | ECAPA scores EER 20.0% on GLOBE_V2 vs 2.46% on LibriTTS-R via the identical code path. GLOBE_V2's labels/enhancement don't preserve identity. It's still fine for population *geometry* (E3 stands) |
 | 4 | **ECAPA-TDNN (`speechbrain/spkrec-ecapa-voxceleb`) is the eval-axis-2 scorer** | RESEARCH/06 wants an encoder independent of the conditioning one. ⚠️ It is VoxCeleb-trained, and RESEARCH/08 flags VoxCeleb as never properly licensed — **acceptable as a measurement instrument only. It must never be trained on, served, or shipped.** If you want it swapped for something cleaner, say so; `pyannote/wespeaker-voxceleb-resnet34-LM` has the same issue, so a genuinely clean alternative may need hunting |
+
+---
+
+## Appended 2026-09-05 (later)
+
+### 🟡 UNLOCKS WORK — licence questions I routed around
+
+| # | What | Status | What I did |
+|---|---|---|---|
+| 5 | **Emotional speech corpus for the Direction channel (E0)** | CREMA-D is **ODbL** upstream; `confit/cremad-parquet` re-hosts it with **no declared licence** | Used it as a **research instrument only**. The τ (emotion direction) vectors derived from it are **research-lane until the ODbL derived-database question is answered**. If we ship a Direction channel, either settle ODbL or find a permissive emotional corpus |
+| 6 | **Two HF mirrors declare licences their upstream does not support** | `NoahMartinezXiang/2018_RAVDESS` claims apache-2.0 over **CC-BY-NC-SA** RAVDESS; `NoahMartinezXiang/2014_CREMA-D` claims apache-2.0 over **ODbL** CREMA-D | **Avoided both.** This is invariant I4's exact trap and it is now 7 instances found. Do not use either |
+
+### 🟢 FYI — more decisions
+
+| # | Decision | Reasoning |
+|---|---|---|
+| 5 | **GLOBE_V2 at per-clip pairing is the mapper corpus** | The mapper needs (caption, vector) pairs, never speaker identity — so per-clip sidesteps GLOBE_V2's unreliable labels entirely and unlocks its vocal RANGE. LibriTTS-R is clean audiobook read speech with no gravelly or aged voices, which S2 identified as the binding limit on adherence |
+| 6 | **Abandoned LibriTTS-R `train.clean.360`** | Streaming a 24 GB split stalled on shard fetch. GLOBE_V2 streams fine and gives more vocal range anyway |
