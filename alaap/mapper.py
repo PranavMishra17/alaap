@@ -114,7 +114,31 @@ class RetrievalMapper:
         ncomp = min(self.gmm_components, max(1, len(self.P) // 10))
         self.gmm = GaussianMixture(ncomp, covariance_type="full", reg_covar=1e-4,
                                    random_state=0, max_iter=500).fit(self.P)
+        # Cholesky factors, so mint() can draw from the GMM with ITS OWN rng.
+        # sklearn's gmm.sample() calls check_random_state(self.random_state)
+        # on every call, and random_state is a fixed int -- so it returns the
+        # SAME points every time. See _sample_gmm.
+        self._chol = [np.linalg.cholesky(
+            c + 1e-9 * np.eye(c.shape[0])) for c in self.gmm.covariances_]
         return self
+
+    def _sample_gmm(self, rng, n: int) -> np.ndarray:
+        """
+        Draw n points from the fitted mixture using the CALLER's rng.
+
+        Why not `self.gmm.sample(n)`: sklearn re-derives its RNG from the
+        fixed `random_state=0` on each call, so every call returns an
+        identical batch. mint() then had at most 64 distinct generative
+        outcomes available for the whole life of the mapper, and E12 measured
+        the consequence -- nearest-neighbour distance 0.000 at novelty 1.0,
+        i.e. minted voices with exact duplicates. Sampling here instead makes
+        the draw depend on the per-description seed, as was always intended.
+        """
+        w = self.gmm.weights_
+        comps = rng.choice(len(w), size=n, p=w)
+        z = rng.standard_normal((n, self.gmm.means_.shape[1]))
+        return np.stack([self.gmm.means_[c] + self._chol[c] @ z[i]
+                         for i, c in enumerate(comps)])
 
     # --------------------------------------------------------------- mint
     @staticmethod
@@ -161,7 +185,7 @@ class RetrievalMapper:
 
         # generative end: GMM sample, nudged toward the retrieved region so the
         # description still steers it
-        cand = self.gmm.sample(64)[0]
+        cand = self._sample_gmm(rng, 64)
         d = cand - retrieval
         pick = cand[np.argsort((d * d).sum(1))[:8]]
         generative = pick[rng.integers(len(pick))]

@@ -74,10 +74,12 @@ from alaap.watermark import Watermarker
 from alaap.service import VoiceService, UNIQUENESS_MIN
 from alaap.metrics import vendi_score, nn_distances
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
-os.makedirs(OUT, exist_ok=True)
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 ap = argparse.ArgumentParser()
+# Separate output dirs so two novelty arms can be compared side by side
+# rather than overwriting each other. out/ holds the novelty=0.0 control.
+ap.add_argument("--out", default=os.path.join(HERE, "out"))
 # 1.7B + the v2 (decorrelated) binner. This is the configuration S2 run 4
 # used to produce the only adherence number we still believe: the 0.6B
 # artefacts in S2/out carry a v1 binner, which bins raw f0_std and
@@ -94,6 +96,9 @@ ap.add_argument("--novelty", type=float, default=0.0)
 ap.add_argument("--seed", type=int, default=0)
 ap.add_argument("--resume", action="store_true")
 args = ap.parse_args()
+OUT = args.out
+AUD = os.path.join(OUT, "audio")
+os.makedirs(AUD, exist_ok=True)
 
 # The five axes that caption_from_bins actually renders into prose, in the
 # order it renders them. snr/jitter/shimmer are recording-quality axes; a

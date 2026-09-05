@@ -674,3 +674,67 @@ class TestTrainingDataGate:
         assert m["backend_version"] == "v0.1"
         assert m["training_mix"][0]["name"] == "IndicVoices-R"
         assert m["attribution_required"] and m["all_train_releasable"] is True
+
+
+class TestMapperGenerativeBranchDoesNotCollapse:
+    """
+    E12 measured nearest-neighbour distance 0.000 between minted voices at
+    novelty >= 0.90 -- i.e. minting 300 voices produced exact duplicates.
+
+    Cause: `GaussianMixture.sample()` calls check_random_state(self.random_state)
+    on every call, and random_state was a fixed int, so every call returned the
+    IDENTICAL batch of points. The generative branch therefore had at most 64
+    distinct outcomes available for the entire life of the mapper, no matter how
+    many different descriptions it was asked for.
+
+    That is a capacity ceiling on the whole catalog, and it was invisible at the
+    default novelty=0.0 because the generative branch has zero weight there.
+    """
+
+    @staticmethod
+    def _tiny_mapper(seed=0):
+        """A mapper over synthetic anchors -- no corpus or GPU needed."""
+        from alaap.geometry import SpeakerSpace
+        from alaap.mapper import RetrievalMapper
+
+        class _FakeText:
+            model_id = "fake"
+
+            def encode(self, x):
+                one = isinstance(x, str)
+                xs = [x] if one else list(x)
+                out = np.zeros((len(xs), 8), dtype=np.float64)
+                for i, s in enumerate(xs):
+                    r = np.random.default_rng(abs(hash(s)) % (2 ** 31))
+                    v = r.standard_normal(8)
+                    out[i] = v / np.linalg.norm(v)
+                return out
+
+        rng = np.random.default_rng(seed)
+        Z = rng.standard_normal((200, 64)) * 3.0 + 1.5
+        space = SpeakerSpace.fit(Z, n_components=16)
+        caps = [f"voice number {i} with a distinct manner" for i in range(200)]
+        return RetrievalMapper(space, _FakeText(), pca_dims=8).fit(caps, Z)
+
+    def test_repeated_gmm_draws_differ(self):
+        """The direct cause: two draws with different rngs must not match."""
+        m = self._tiny_mapper()
+        a = m._sample_gmm(np.random.default_rng(1), 32)
+        b = m._sample_gmm(np.random.default_rng(2), 32)
+        assert not np.allclose(a, b), "gmm sampling ignores the caller's rng"
+
+    def test_gmm_sampling_is_reproducible_for_one_seed(self):
+        """...while staying deterministic, so a mint is reproducible."""
+        m = self._tiny_mapper()
+        a = m._sample_gmm(np.random.default_rng(7), 16)
+        b = m._sample_gmm(np.random.default_rng(7), 16)
+        assert np.allclose(a, b)
+
+    def test_high_novelty_mints_are_distinct(self):
+        """The observable symptom: no exact duplicates across many mints."""
+        m = self._tiny_mapper()
+        V = np.stack([m.mint(f"a voice of kind {i}", novelty=1.0, seed=i).vector
+                      for i in range(60)])
+        d = np.linalg.norm(V[:, None, :] - V[None, :, :], axis=-1)
+        np.fill_diagonal(d, np.inf)
+        assert d.min() > 1e-6, "minted duplicate voices at novelty=1.0"
