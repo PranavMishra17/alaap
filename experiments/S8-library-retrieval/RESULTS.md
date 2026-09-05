@@ -54,6 +54,26 @@ can never be worse off.
 Both arms go through `RetrievalMapper.retrieve`, the same ranking `mint` uses. A
 retrieval experiment that reimplements the ranking measures its own reimplementation.
 
+### But those queries are generated captions, not what a user types
+
+Every query above is a `caption_from_bins` output naming all five axes. Real users do
+not write like that — `E15b` measured generated captions yielding 5 of 6 axes and
+realistic user text yielding **1.29 (22%)**. Reporting only the caption number would
+present the ceiling as the operating point.
+
+So: a second query set naming just **two** axes in the bin's own words
+(*"a balanced, slightly rough voice"*), scored **only on the axes it named** — asking
+whether a voice has an attribute the user never mentioned is not a fair question.
+
+| | random | text | **hybrid** |
+|---|---|---|---|
+| exact match on the named axes | 21.2% | 38.2% | **53.8%** |
+
+**Adherence falls from 65.6% to 53.8% when the query goes sparse, and hybrid still
+beats chance by 2.5× and text by 15.6 pp.** The degradation is real and should be
+quoted as the operating number; the 65.6% describes a user who writes like the system's
+own captions.
+
 ## The number that actually decides library-vs-minting
 
 Not adherence — **reach**. A library of 141 that answers every description with the same

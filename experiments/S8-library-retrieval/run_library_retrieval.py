@@ -174,6 +174,48 @@ def adherence(cell, voice):
     return exact / len(FIELDS), near / len(FIELDS)
 
 
+# ---------------------------------------- 3b. what a real user actually types
+# Every query above is a caption_from_bins output naming all five axes. Real
+# users do not write like that: E15b measured generated captions yielding 5 of
+# 6 axes and realistic user text yielding 1.29 (22%). Scoring only on generated
+# captions would report the ceiling as if it were the operating point.
+#
+# So: a second query set naming just TWO axes, in the bin's own words, and
+# scored ONLY on the axes it actually named -- asking whether a voice has an
+# attribute the user never mentioned is not a fair question.
+print("[3b/4] sparse queries: two named axes, as a user would write them")
+srng = np.random.default_rng(args.seed + 1)
+sparse = []
+for i, c in enumerate(cells):
+    picked = sorted(srng.choice(len(FIELDS), 2, replace=False))
+    ax = [FIELDS[k] for k in picked]
+    sparse.append((f"a {c[ax[0]]}, {c[ax[1]]} voice", ax))
+
+sparse_arms = {}
+for mode in ("text", "hybrid"):
+    m = RetrievalMapper(lib_space, enc,
+                        pca_dims=min(32, lib_space.components.shape[0]),
+                        retrieval=mode).fit(
+        lib_caps, LIB_Z, anchor_bins=lib_bins if mode == "hybrid" else None)
+    sparse_arms[mode] = [int(m.retrieve(q, top_k=1)[0][0]) for q, _ in sparse]
+
+
+def named_adherence(cell, voice, named):
+    """Exact agreement over ONLY the axes the query actually named."""
+    order = {a: {lab: i for i, lab in enumerate(BIN_LABELS[a])} for a in FIELDS}
+    hits = sum(order[a][cell[a]] == order[a][voice["bins"][a]]
+               for a in named if a in voice["bins"])
+    return hits / len(named)
+
+
+sparse_scores = {
+    mode: float(np.mean([named_adherence(cells[i], library[sparse_arms[mode][i]], ax)
+                         for i, (_, ax) in enumerate(sparse)]))
+    for mode in ("text", "hybrid")}
+sparse_scores["random"] = float(np.mean(
+    [named_adherence(cells[i], library[int(rand_picks[i])], ax)
+     for i, (_, ax) in enumerate(sparse)]))
+
 rows = []
 for i, (cell, qi) in enumerate(zip(cells, queries)):
     tex, tnr = adherence(cell, library[arms["text"][i]])
@@ -210,6 +252,12 @@ print(f"  {'exact bin match':20} {rex:>9.1%} {tex:>9.1%} {ex:>9.1%} {ex-tex:>+10
 print(f"  {'within one bin':20} {rnr:>9.1%} {tnr:>9.1%} {nr:>9.1%} {nr-tnr:>+10.1%}")
 print()
 print(f"  text arm reached   {len(set(int(p) for p in arms['text']))}/{len(library)} voices")
+print()
+print(f"  SPARSE QUERIES -- two named axes, scored only on those two:")
+print(f"    {'random':<10} {sparse_scores['random']:.1%}")
+print(f"    {'text':<10} {sparse_scores['text']:.1%}")
+print(f"    {'hybrid':<10} {sparse_scores['hybrid']:.1%}")
+print(f'    e.g. "{sparse[0][0]}"')
 print()
 print("  THE CONTROL: random is what retrieval degenerates to if the captions")
 print("  carry no signal. Five axes x five bins gives 20% per-axis for free.")
