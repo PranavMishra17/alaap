@@ -123,6 +123,16 @@ No custom mapper required. It ships value on day one, de-risks the entire platfo
 
 **Protect it.** The most likely failure mode of this project is that S2/S3 research swallows the calendar and nothing ever ships. The catalog is the hedge.
 
+> ### ⚠️ MEASURED 2026-09-05 — "a few hundred" is not yet reachable by minting
+>
+> E11 built the catalog on `Qwen3-TTS-12Hz-1.7B-Base` and it **saturates at about forty voices**: mean uniqueness halves (0.803 → 0.457) across the first 40, three pairs breach the uniqueness floor, and the Vendi score of 0.482 means **roughly 20 effectively-distinct voices out of 42 minted.** The target in this section is an order of magnitude above what minting currently delivers.
+>
+> **The cause is known and it is not the sampler.** E14 measured that five acoustic axes predict voice distance at ρ = 0.260 among real speakers, and the mapper already transports 90% of that. The catalog fills up because **the description cannot distinguish more voices** — see `DECISIONS.md` **ADR-007** and `experiments/E14-transport/RESULTS.md`.
+>
+> **The route is costed and ordered** (ADR-007): re-weight the axes, retrieve on bins rather than sentence embeddings (+66%/+55%, measured on two corpora), move the anchor corpus off GLOBE_V2 (whose speaker labels E4 measured at EER 20.0% vs LibriTTS-R's 2.46%), and add axes — `vtl_cm` is built and worth +15%. None of that is blocked; none of it has been done end to end.
+>
+> **What this does not change:** the *shape* of the minimum shippable thing is still right, and everything else in it — batch rendering, per-line direction, watermarking, the export manifest — is built and working. The number is the open item, not the plan.
+
 ---
 
 ## 6. The ten S0 experiments
