@@ -91,9 +91,11 @@ distinguished (`S19`).
   separates cleanly — real speech scores 50, this project's renders score 98. Crucially it
   is *not* a MOS predictor: published MOS models correlate with pitch at r ≈ −0.79 where
   humans sit at −0.06, which would reject high-pitched voices for a reason people do not
-  share. This one measures −0.021. **But it is blind to the codec's own contribution** —
-  the codec roundtrip scores identically to real speech while a listener told them apart —
-  so it gates output and cannot track progress on half the problem.
+  share. This one measures −0.021. Whether it can see the codec's own
+  contribution is **unresolved**: an early claim that it was blind rested on three clips,
+  and a 40-clip follow-up found a gap that a significance test still rejects. It is
+  validated for flagging generated output and should not be used to track codec progress
+  in either direction (`S20b`).
 - **Very little has been listened to.** The metrics are geometry and ASR. `S11` is a
   blind listening pilot — 8 pairs, controls 4/4 — and it immediately found the
   `uniqueness` floor was too low: voices 0.323 apart were heard as the same person half

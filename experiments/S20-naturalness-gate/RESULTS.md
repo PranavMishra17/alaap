@@ -62,7 +62,21 @@ failing 3 would have been the documented trap in a new implementation.
 
 The separation is not marginal: **real speech at 50%, this project's renders at 98%.**
 
-## ⚠️ The limitation is as important as the result
+## ⚠️ WITHDRAWN — the limitation below was not established
+
+**The section that follows rested on 3 roundtrip clips and `S20b` withdraws it.** With 40
+clips the gap is +7.2 points at this layer, `t = 1.23` — which a test rejects — and
+resampling 3 of those 40 reproduces the "identical" result in **41% of draws**. The gate is
+neither shown to see the codec nor shown to be blind to it; settling it needs ~114 clips
+per side.
+
+What survives unchanged is what the gate was validated for: **flagging generated speech**,
+where the separation is 50 vs 98.
+
+*(Original text kept below, struck through in substance, because the reasoning is the
+instructive part.)*
+
+## ~~The limitation is as important as the result~~
 
 **The codec roundtrip scores 53.3% — identical to real speech at 53.3%.** And a listener
 told those two apart 2 times in 3 (`S19`).
@@ -96,10 +110,10 @@ well above real speech.
 - **Reference is 70 Hindi clips from one corpus.** The gate is only meaningful against a
   reference from the same domain; scoring English renders against a Hindi reference would
   measure language, not naturalness.
-- **Layer 6 was picked on general grounds** (middle layers carry phonetic and quality
-  detail, top layers drift toward the pretext task) and not swept. Another layer might
-  separate the codec roundtrip, which would remove the limitation above — that is the
-  cheapest next test.
+- ~~Layer 6 was picked on general grounds and not swept.~~ **`S20b` swept all 12.** None
+  separates the codec roundtrip significantly; layer 6 is not beaten on evidence and stays.
+  The sweep's own first pass declared three layers winners on an effect-size cut with no
+  test behind it, and that is corrected there.
 - **n = 1 to 4 for the S13, S14 and S19 groups.** Only the real (70), S6 (21) and S7 (24)
   numbers rest on a usable sample.
 - **It has never rejected anything.** No render in the project has been gated on it, and a

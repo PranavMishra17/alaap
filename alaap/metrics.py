@@ -313,10 +313,17 @@ def naturalness_isolation(X: np.ndarray, reference: np.ndarray) -> float:
         correlation with f0    r = -0.021
         real vs real           d = +0.18, a tie
 
-    THE LIMITATION, which matters as much as the result. The codec roundtrip
-    scores 53.3 -- IDENTICAL to real speech -- and a listener told those apart
-    2 times in 3 (S19). So this detects GENERATED speech and is blind to the
-    codec's own contribution. It can gate output; it cannot measure progress on
-    the codec half of the problem, and a better codec would not move it.
+    WHAT IT IS VALIDATED FOR: flagging GENERATED speech. 50 vs 94-98 is beyond
+    argument.
+
+    WHAT IS UNKNOWN, and was briefly written here as fact. S20 reported the
+    codec roundtrip at 53.3 against real's 53.3 and concluded the gate is blind
+    to codec degradation. That rested on THREE roundtrip clips. S20b built 40
+    and found a +7.2 gap at this layer -- but at t = 1.23, which a test
+    rejects, and resampling 3 of the 40 reproduces S20's zero in 41% of draws.
+
+    So the gate is neither shown to see the codec nor shown to be blind to it.
+    Settling it needs ~114 roundtrip clips against ~114 real. Until then, do
+    not use this to track codec improvements in either direction.
     """
     return isolation_pct(np.atleast_2d(X), np.asarray(reference, dtype=np.float64))
