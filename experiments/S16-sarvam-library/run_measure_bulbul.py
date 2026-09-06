@@ -125,10 +125,14 @@ def preflight() -> None:
                             "speaker": SPEAKERS[0], "model": args.model})
     if r.status_code == 200:
         return
-    seg = KEY.split("_")
-    scope = seg[1] if len(seg) > 2 else "?"
+    # A product key carries the product NAME in the second segment
+    # (sk_samvaad_...); a subscription key has a random id there
+    # (sk_z07yluiv_...). Alphabetic-only is the tell -- checking `!= "api"`
+    # would fire on every valid key.
     hint = ""
-    if scope and scope != "api":
+    seg = KEY.split("_")
+    scope = seg[1] if len(seg) > 2 else ""
+    if scope.isalpha() and len(scope) >= 4:
         hint = (f"  |  the key's scope segment reads {scope!r}. A TTS call "
                 "needs the API SUBSCRIPTION key from "
                 "dashboard.sarvam.ai/key-management, not a product key. "
@@ -198,10 +202,32 @@ FIELDS = list(CATALOG_AXES)
 V = {f: np.array([[t.get(f, np.nan) for t in r["takes"]] for r in rows], float)
      for f in FIELDS}
 
-# THE CONTROL. Within-voice spread across two sentences must be much smaller
-# than between-voice spread, or the axes are reading the TEXT, not the VOICE.
-print("      control — is the pipeline measuring the voice or the sentence?")
-print(f"        {'axis':<16} {'within':>10} {'between':>10} {'ratio':>8}")
+# THE CONTROL, and which axes it is fair to apply it to.
+#
+# The first run failed it on spectral_tilt, f0_cv and speaking_rate. Running
+# the IDENTICAL statistic on IndicVoices-R -- real speakers, two clips each,
+# same code -- separated the two possible explanations:
+#
+#   axis            corpus  bulbul
+#   f0_mean           0.05    0.09   both separate
+#   hnr_db            0.28    0.72   both separate
+#   spectral_tilt     0.14    1.09   measurement fine, BULBUL is homogeneous
+#   f0_cv             1.04    1.05   fails on REAL speakers too
+#   speaking_rate     1.32    1.54   fails on REAL speakers too
+#
+# So f0_cv and speaking_rate are not identity axes at all: two ordinary clips
+# of the same person differ on them MORE than two people do. That independently
+# replicates S12, which measured the same thing on CREMA-D across acted
+# emotions (ratios 1.57 and 2.01) -- here it falls out of plain read speech
+# with no emotion labels involved.
+#
+# The control therefore applies to the IDENTITY axes only. Requiring the
+# delivery axes to pass would abort on data that is behaving correctly.
+IDENTITY_AXES = ["f0_mean", "spectral_tilt", "hnr_db"]
+DELIVERY_AXES = ["f0_cv", "speaking_rate"]
+
+print("      control — within-voice vs between-voice spread")
+print(f"        {'axis':<16} {'within':>10} {'between':>10} {'ratio':>8}  expect")
 ratios = {}
 for f in FIELDS:
     a = V[f]
@@ -214,13 +240,20 @@ for f in FIELDS:
     if between <= 0:
         continue
     ratios[f] = within / between
-    print(f"        {f:<16} {within:>10.3f} {between:>10.3f} {within/between:>8.2f}")
-bad = [f for f, r in ratios.items() if r > 1.0]
-if not ratios or len(bad) > len(ratios) / 2:
-    sys.exit(f"ABORT: within-voice spread exceeds between-voice on {bad}. The "
-             "measurement is tracking the sentence rather than the speaker, and "
-             "no retrieval number below would mean anything.")
-print(f"      passed — {len(ratios)-len(bad)}/{len(ratios)} axes are voice-dominated")
+    exp = "< 1 (identity)" if f in IDENTITY_AXES else "> 1 (delivery)"
+    print(f"        {f:<16} {within:>10.3f} {between:>10.3f} "
+          f"{within/between:>8.2f}  {exp}")
+
+bad = [f for f in IDENTITY_AXES if ratios.get(f, 99) > 1.0]
+if len(bad) >= 2:
+    sys.exit(f"ABORT: {bad} fail on axes that separate real speakers (corpus "
+             "ratios 0.05/0.14/0.28). The measurement is tracking the sentence "
+             "and no retrieval number below would mean anything.")
+if bad:
+    print(f"      NOTE: {bad} does not separate these voices, though it "
+          "separates real speakers (corpus 0.14). Bulbul is homogeneous there.")
+print(f"      identity axes usable: "
+      f"{[f for f in IDENTITY_AXES if ratios.get(f, 99) <= 1.0]}")
 
 # ------------------------------------------------------- library + coverage
 attrs_mean = []
@@ -241,9 +274,30 @@ for r, a in zip(rows, proto):
                     "caption": caption_from_bins(b, seed=len(library))})
 
 print("[4/4] coverage and retrieval")
-cov = {f: len({v["bins"][f] for v in library if f in v["bins"]}) for f in FIELDS}
-print("      bins occupied of 5, per axis: " +
-      ", ".join(f"{f.split('_')[0]} {c}/5" for f, c in cov.items()))
+# COVERAGE MUST BE MEASURED AGAINST THE CORPUS BINNER, not this one.
+# `binner` above was FIT on these 37 voices, so its percentile edges partition
+# them by construction and every axis reads 5/5 no matter how homogeneous the
+# library is. That number says nothing. The real question is where 37 curated
+# voices land inside the range REAL speakers occupy, which needs the binner
+# fitted on real speakers.
+from alaap.acoustics import Binner as _B
+S4B = "experiments/S4-indic/out/binner_indicvoices_r_hi.json"
+if os.path.exists(S4B):
+    cb = _B.load(S4B)
+    cb.edges.pop("vtl_cm", None)
+    real_bins = [cb.bin_one(a) for a in proto]
+    print("      coverage of the REAL speaker range (binner fitted on "
+          "IndicVoices-R):")
+    for f in FIELDS:
+        seen = {b[f] for b in real_bins if f in b}
+        labs = [l for l in BIN_LABELS[f] if l in seen]
+        print(f"        {f:<16} {len(seen)}/5 bins   {', '.join(labs[:3])}"
+              f"{' ...' if len(labs) > 3 else ''}")
+    occupied = np.mean([len({b[f] for b in real_bins if f in b}) / 5
+                        for f in FIELDS if any(f in b for b in real_bins)])
+    print(f"        -> {occupied:.0%} of the real-speaker range is represented")
+else:
+    print(f"      (no corpus binner at {S4B}; coverage not measurable)")
 cells = sample_cells(args.queries, args.seed)
 queries = [caption_from_bins(c, seed=10_000 + i) for i, c in enumerate(cells)]
 enc = TextEncoder()

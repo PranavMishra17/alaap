@@ -342,6 +342,16 @@ The axes identity discards are the axes delivery uses. `speaking_rate` was measu
 near-useless for identity five times across three corpora and two languages; that was the
 signature of an axis belonging to the other channel, not a curiosity.
 
+**`S16` replicated this independently and with no emotion involved.** Two ordinary clips
+of the same IndicVoices-R speaker differ on `speaking_rate` (1.32) and `f0_cv` (1.04) more
+than two speakers do — plain read speech, a different corpus, a different measurement path.
+S12's claim did not need acted emotion to appear; it is a property of the axes.
+
+**Consequence not yet acted on:** captions are written over five axes and two of them
+carry no identity information. `S9` found the described space holds only ~38 effective
+voices, and this is a candidate cause that was not on its list. Re-fitting the mapper on
+identity axes only, then re-measuring the bound, is the cheapest test of it.
+
 **Decision.** The direction channel is built on `speaking_rate`, `f0_cv`, `jitter` and
 `shimmer`. **`f0_mean` is off-limits to direction** — at ratio 1.04 emotion moves pitch
 about as much as different speakers differ in pitch, and pitch is what identity is mostly

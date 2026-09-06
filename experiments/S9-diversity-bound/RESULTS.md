@@ -122,6 +122,21 @@ Vendi is counting.
 blend, so it has to be restored at the blend — not by feeding minting more anchors, and
 not by turning novelty up.
 
+## A fourth cause, found later by `S16`
+
+The three candidates below were the ones visible at the time. `S16` added another, and it
+is more promising than any of them.
+
+**Two of the five caption axes carry no identity information.** `speaking_rate` and
+`f0_cv` have within-speaker spread *larger* than between-speaker spread on real speakers —
+1.32 and 1.04 — so two clips of one person differ on them more than two people do. `S12`
+found the same on acted emotion; `S16` found it on plain read speech.
+
+A description specifying rate and expressiveness is spending two of its five words on
+things that distinguish nobody. That is a direct, mechanical explanation for a low
+capacity ceiling, and the test is cheap: **re-fit the mapper on identity axes only
+(`f0_mean`, `spectral_tilt`, `hnr_db`) and re-measure this bound.**
+
 ## What to do about it, in order of cost
 
 1. **Restore the radius after blending.** Rescale a minted working-space vector to the
