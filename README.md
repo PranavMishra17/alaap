@@ -77,8 +77,19 @@ identity discards are the ones delivery uses — so a direction channel need not
 who is speaking. The exception is `f0_mean`, which is contested at 1.04 and must be
 explicitly protected (`S12`).
 
+**And the output is audibly synthetic — measured, not guessed.** A native listener told
+real recordings from synthesis 7 times out of 7 decisive judgements, while calling two real
+recordings equally real both times. Splitting it: the codec costs something on its own and
+the model costs something on top, in roughly equal measure, so **there is no single
+component to swap**. Most striking, the codec's contribution is invisible to every axis
+this project measures — 0.0 dB of SNR and 0.18 dB of HNR between clips a listener
+distinguished (`S19`).
+
 ### What is not established
 
+- **There is no naturalness gate anywhere in the pipeline.** Drift, consistency, CER and
+  uniqueness are all identity or intelligibility gates, and every one of them passes on
+  audio a listener finds audibly synthetic. That gap is now measured (`S19`) and unfixed.
 - **Very little has been listened to.** The metrics are geometry and ASR. `S11` is a
   blind listening pilot — 8 pairs, controls 4/4 — and it immediately found the
   `uniqueness` floor was too low: voices 0.323 apart were heard as the same person half
