@@ -82,3 +82,6 @@ experiments/**/*run*.log
 
 # Subagent worktrees -- git repos in their own right, never part of this one
 .claude/worktrees/
+
+# ── Landing-page demo clips: the one deliberate audio exception (English, Apache-2.0 engine; ADR-009) ──
+!site/public/audio/*.mp3

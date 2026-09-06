@@ -1,0 +1,20 @@
+---
+// Auto-lists every variant as it appears. Replaced by the chosen variant later.
+const files = Object.keys(import.meta.glob('./variants/*.astro'));
+const slugs = files
+  .map((p) => p.replace('./variants/', '').replace(/\.astro$/, ''))
+  .filter((s) => !s.startsWith('_'))
+  .sort();
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap variants</title>
+  </head>
+  <body style="font: 16px/1.5 system-ui; max-width: 40rem; margin: 3rem auto; padding: 0 1rem;">
+    <h1>Alaap landing page variants</h1>
+    <p>{slugs.length} variants found.</p>
+    <ol>{slugs.map((s) => <li><a href={`/variants/${s}`}>{s}</a></li>)}</ol>
+  </body>
+</html>

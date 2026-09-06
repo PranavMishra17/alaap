@@ -1,0 +1,17 @@
+{
+  "name": "alaap-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 127.0.0.1 --port 4321",
+    "build": "astro build",
+    "preview": "astro preview",
+    "shot": "node scripts/shot.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.3.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}
