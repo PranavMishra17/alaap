@@ -108,8 +108,70 @@ speaker labels as unreliable (EER 20.0% vs 2.46%).
 
 **And leave `novelty` low.** Three experiments now agree: E14 (transport 0.90× → 0.35×), E11 (drift below floor 10% → 40%), and E1's original off-manifold warning. E12's geometric case for raising it is outvoted by everything that measured what the voice actually does.
 
+## E14d — the drop came from `top_k`, not `pca_dims`
+
+Re-running E14 at the fixed settings dropped transport from **0.90× to 0.62×**, which
+looked like the `S9b`/`S10` fix costing description fidelity. But **two** things changed
+in that commit — `pca_dims` and `top_k` (4 → 2) — and E14 varies neither, so its own
+number could not attribute the drop.
+
+### The obvious hypothesis, stated and then refuted
+
+That raising `pca_dims` adds variation the caption never asked for. Sweeping it, same
+mints, same metric:
+
+| `pca_dims` | transport | effective voices |
+|---|---|---|
+| 10 | 1.33× | 8.4 |
+| 25 | 1.43× | 17.9 |
+| 50 | 1.46× | 29.3 |
+| 100 | 1.46× | 43.0 |
+| **150** | **1.46×** | **50.5** |
+
+**Flat from 50 upward while diversity nearly doubles.** The `pca_dims` fix costs nothing;
+the hypothesis is dead.
+
+### `top_k` is the knob that trades
+
+| retrieval | `top_k` | transport | effective voices |
+|---|---|---|---|
+| text | 1 | 0.65× | **57.5** |
+| **text** | **2** | **0.94×** | **53.0** |
+| text | 4 | **1.18×** | 47.5 |
+| text | 6 | 1.30× | 43.0 |
+| *hybrid* | *2* | *1.46×* | *50.5* |
+| *hybrid* | *4* | *1.71×* | *42.6* |
+
+Each step of `top_k` buys roughly **0.2× of transport for 5 effective voices.** That is a
+real trade, it is monotonic, and it is what E14 was seeing.
+
+> **A confound, named because it nearly went unnoticed.** Hybrid retrieval scores anchors
+> partly *by* weighted bin distance — the very quantity `transport` measures — so its
+> figures are inflated by construction. The **text** rows are the ones comparable to E14,
+> which fits without `anchor_bins`. Reporting only the hybrid arm would have made the fix
+> look free on both axes.
+
+### Where that leaves `top_k = 2`
+
+At `top_k=2` transport is **0.94×** — the mapper is very nearly *as* description-consistent
+as reality is, neither more nor less. `top_k=4` sits at 1.18×, i.e. **more deterministic
+than reality**, which this document's own note says is what a function must be, not
+evidence of doing better.
+
+So `top_k=2` costs 0.24× of transport against `top_k=4` and buys 5.5 effective voices,
+landing at almost exactly the real-speaker reference. That is a defensible place to sit,
+and it is now measured rather than assumed — `ADR-010` chose 2 on diversity alone.
+
+**`top_k=1` is pure retrieval**, and its transport of 0.65× is the sanity check on the
+metric: returning real speakers' own vectors should track the real-speaker reference, and
+scoring *below* 1.0 there says the metric is not trivially satisfied.
+
 ## Not established
 
+- **E14d's absolute transport figures are higher than E14's** because E14 fits on half
+  the corpus and tests on the held-out half, while E14d fits and measures on all of it.
+  Compare within a table, not across — the same warning this document already gives for
+  E14 vs E14b.
 - English only, one backend, one mapper configuration. **Two** corpora as of E14c, but the two differ in encoder as well, so corpus and encoder are not separated.
 - E14b answers the "richer description" hypothesis for exactly one new axis (VTL, +15% relative). It says nothing about the others `RESEARCH/05` lists.
 - Bin-space L1 treats every axis and every bin step as equal, and E14b shows that this **materially understates** the description — `f0` alone outscores the five-axis sum. Every ρ in this document is a property of that metric as much as of the captions.

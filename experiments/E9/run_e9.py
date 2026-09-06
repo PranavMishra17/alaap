@@ -171,7 +171,9 @@ for gname, _ in groups:
         "drift_mean": float(np.mean(drifts)), "drift_min": float(np.min(drifts)),
         "exact_match": float(np.mean([a["exact_match_rate"] for a in adh])),
         "bin_distance": float(np.mean([a["mean_bin_distance"] for a in adh])),
-        "anchor_sim": float(np.mean([x["anchor_sim"] for x in sub])),
+        # renamed from anchor_sim when the hybrid path made it a z-score
+        # rather than a cosine -- see MintResult.anchor_score / score_kind
+        "anchor_score": float(np.mean([x["anchor_score"] for x in sub])),
         "duration_mean": float(np.mean(durs)),
     }
 
@@ -203,7 +205,7 @@ row("vocoder drift", "drift_mean")
 row("  worst case", "drift_min")
 row("adherence exact-match", "exact_match", "{:.3f}")
 row("adherence bin-distance", "bin_distance", "{:.3f}", better_high=False)
-row("retrieval anchor similarity", "anchor_sim", "{:.4f}")
+row("retrieval anchor score", "anchor_score", "{:.4f}")
 row("render duration s", "duration_mean", "{:.2f}")
 print()
 print(f"  reference: ECAPA C_same 0.6988 / C_diff 0.2011 on real speech")

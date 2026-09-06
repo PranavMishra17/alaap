@@ -285,7 +285,22 @@ configuration and are annotated, not silently restated.
 
 **Rejected:** rescaling minted vectors to the real-speaker radius. Measured first; it
 moved Vendi 0.161 → 0.161. The radial contraction is a symptom of blending, not the
-mechanism. *(S9b, S10)*
+mechanism.
+
+**`E14d` priced the `top_k` half of this decision, which was originally made on diversity
+alone.** The two knobs behave differently: `pca_dims` is free — transport is flat from 50
+to 150 while effective voices nearly double — but `top_k` genuinely trades, at roughly
+**0.2× of description transport per 5 effective voices**:
+
+| `top_k` | transport | effective |
+|---|---|---|
+| 1 (retrieval) | 0.65× | 57.5 |
+| **2** | **0.94×** | **53.0** |
+| 4 | 1.18× | 47.5 |
+
+`top_k=2` lands at 0.94×, i.e. **as description-consistent as reality itself**; `top_k=4`
+is *more* deterministic than reality. The decision stands, now for a measured reason
+rather than a one-sided one. *(S9b, S10, E14d)*
 
 ---
 
