@@ -133,9 +133,30 @@ is more promising than any of them.
 found the same on acted emotion; `S16` found it on plain read speech.
 
 A description specifying rate and expressiveness is spending two of its five words on
-things that distinguish nobody. That is a direct, mechanical explanation for a low
-capacity ceiling, and the test is cheap: **re-fit the mapper on identity axes only
-(`f0_mean`, `spectral_tilt`, `hnr_db`) and re-measure this bound.**
+things that distinguish nobody.
+
+**`S17` ran the test and it is a real cost — worth about 7 points of the bound:**
+
+| arm | effective | of bound | adherence |
+|---|---|---|---|
+| 5-axis, as shipped | 19.6 | 51% | 85.8% |
+| **3-axis, identity only** | **22.3** | **58%** | **95.8%** |
+| 5-axis, dead axes gated | 18.4 | 48% | 95.4% |
+
+Both diversity and adherence improve, from **25× fewer describable cells** — so the cells
+were never the binding constraint. The third arm shows the damage runs through two
+channels: gating the retrieval weights fixes adherence but not diversity, because
+descriptions differing only in a dead axis then collide and get rejected as duplicates.
+Caption and sampler have to change together.
+
+**But this substitutes a worse ceiling for a smaller one.** Three axes at five bins is 125
+total descriptions, and S17 sampled 80 of them. A catalogue of hundreds is arithmetically
+impossible on that axis set. The finding is *"the description carried dead weight"*, not
+*"use three axes"* — what it needs next is **more resolution** (7 or 9 bins per identity
+axis) or **more genuine identity axes** (`vtl_cm`, if its formant estimate can be fixed).
+
+**And 58% is still not the 87% `S8`'s retrieval reaches.** Dead axes were a real cost;
+they were not the main gap.
 
 ## What to do about it, in order of cost
 

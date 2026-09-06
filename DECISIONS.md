@@ -347,10 +347,19 @@ of the same IndicVoices-R speaker differ on `speaking_rate` (1.32) and `f0_cv` (
 than two speakers do — plain read speech, a different corpus, a different measurement path.
 S12's claim did not need acted emotion to appear; it is a property of the axes.
 
-**Consequence not yet acted on:** captions are written over five axes and two of them
-carry no identity information. `S9` found the described space holds only ~38 effective
-voices, and this is a candidate cause that was not on its list. Re-fitting the mapper on
-identity axes only, then re-measuring the bound, is the cheapest test of it.
+**Consequence, now measured (`S17`):** captions are written over five axes and two of them
+carry no identity information. Dropping them raises effective voices 19.6 → 22.3 (51% → 58%
+of the bound) and adherence 85.8% → 95.8%, from 25× fewer describable cells.
+
+The damage runs through two channels and both must be fixed together: the dead axes skew
+retrieval scoring, *and* they make the sampler generate descriptions that differ only in a
+dead axis, which then collide and are rejected. Gating the weights alone fixes adherence
+and makes diversity worse.
+
+**Not yet a decision to ship three axes.** 3 axes × 5 bins is 125 total descriptions and
+S17 sampled 80 of them; a catalogue of hundreds is impossible on that set. The axis set
+needs more resolution (7–9 bins) or another genuine identity axis before this becomes the
+default. *(S12, S13, S16, S17)*
 
 **Decision.** The direction channel is built on `speaking_rate`, `f0_cv`, `jitter` and
 `shimmer`. **`f0_mean` is off-limits to direction** — at ratio 1.04 emotion moves pitch
