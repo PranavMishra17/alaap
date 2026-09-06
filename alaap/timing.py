@@ -44,9 +44,16 @@ RATE_BOUND = {
     "measured_on": "indic-mio+miocodec-25hz-44.1khz-v2 (S14)",
     # A listener heard the slowest end as "60% just slowed down, 40% genuine
     # slow speech". So the bound is where identity and words survive, NOT where
-    # the result stops sounding like an effect. Callers wanting clean output
-    # should stay well inside it.
+    # the result stops sounding like an effect.
+    #
+    # THIS INNER RANGE IS A GUESS AND S14b FAILED TO MEASURE IT. That listening
+    # test called an UNTOUCHED rate-1.00 control "processed", so it could not
+    # separate the re-timing from the synthesis -- the baseline already sounds
+    # processed to a native listener. Measuring it needs a comparative design
+    # ("which of these sounds MORE processed?"), which is robust to a synthetic
+    # baseline because both sides carry it.
     "listener_clean_range": (0.8, 1.25),
+    "listener_clean_range_measured": False,
 }
 
 

@@ -96,7 +96,27 @@ will not render the original product question.
 
 ## Not established
 
-- **A listener has now heard it, and the verdict is partial.** On the slowest render
+- **⚠️ `S14b` tried to measure the clean range and FAILED ITS OWN CONTROL.** Ten clips
+  across five rates, two of them untouched at rate 1.00, blind and shuffled. The listener
+  called **one of the two untouched controls "processed"**, and 8 of 10 clips overall —
+  including at rate 1.00, where nothing was done to the audio.
+
+  The set was declared unreadable in advance on exactly this condition, so it is discarded
+  as a measurement of the rate knob. Per rate: 0.67 → 0/2 natural, 0.80 → 0/2,
+  **1.00 → 1/2**, 1.25 → 1/2, 1.43 → 0/2. There is no gradient, because the answer is not
+  about rate.
+
+  **What it found instead is worth more than what it was looking for: the baseline render
+  already sounds processed to a native listener.** Untouched Indic-Mio + MioCodec output,
+  no re-timing applied, heard as an artefact. Nothing in this project has measured that,
+  and every naturalness assumption downstream of it is now open.
+
+  **A design that would work.** Single-stimulus naturalness cannot separate the vocoder
+  from the synthesis when the synthesis is itself audible. A *comparative* pair — "which of
+  these two sounds MORE processed, A or B?", with A at rate 1.00 and B at rate X — is
+  robust to a synthetic-sounding baseline, because both sides carry it equally.
+
+- **The earlier single-clip impression stands as an impression, not a measurement.** On the slowest render
   (0.67× rate): *"just slowed down — but not 100%. 60-40: 60% slowed down, 40% slow speech
   effect."* So roughly **40% of it reads as genuine slow speech and 60% as an artefact**,
   at the extreme end of the range. Identity was not questioned — it was described as the
