@@ -50,6 +50,8 @@ Scope §5 promises **"human + heavy stylization — aged, raspy, whispered, brea
 
 ## 3. The one genuine concern
 
+> ⚠️ **This did not reproduce.** A re-run gives 0.4184 vs 0.3848 — the opposite sign. See the re-run section below; n=4 cannot support a worst-case claim.
+
 **Worst-case consistency is meaningfully lower at the extremes: 0.4279 vs 0.5008.**
 
 Means are equal, but the *tail* is worse — some extreme identities are noticeably less self-consistent across lines. With only 4 identities per group this is a weak signal, but it is the direction RESEARCH/12 predicted, and it is the one metric that would actually hurt a shipped game (one character whose voice wanders between lines).
@@ -58,9 +60,53 @@ Means are equal, but the *tail* is worse — some extreme identities are noticea
 
 ---
 
+## 5. Re-run at the fixed settings — the worst-case finding REVERSED
+
+Re-run after `S9b`/`S10` (full basis, `top_k=2`), and after two stale breakages in this
+script were fixed. Same design, same n.
+
+| | old EXTREME | old CENTRAL | **new EXTREME** | **new CENTRAL** |
+|---|---|---|---|---|
+| identity consistency | 0.5924 | 0.5795 | 0.5326 | 0.5161 |
+| — **worst case** | **0.4279** | **0.5008** | **0.4184** | **0.3848** |
+| vocoder drift | 0.5265 | 0.5407 | 0.5279 | 0.5840 |
+| — **worst case** | 0.4494 | 0.3724 | **0.2440** | **0.4425** |
+| adherence exact-match | — | — | 0.583 | 0.229 |
+
+**Both worst-case verdicts flipped sign.**
+
+- Worst-case *consistency* was §3's headline — extremes worse by −0.073. It is now
+  **+0.034 in the extremes' favour**.
+- Worst-case *drift* was extremes-better by +0.077. It is now **−0.198 against them**,
+  and 0.2440 sits below the 0.40 `DRIFT_FLOOR`, so that identity would be rejected and
+  re-minted in the shipped path.
+
+### n=4 was never enough for a worst case
+
+The worst case of four samples *is* one sample. §4 already said the worst-case gap needed
+more samples to be trusted — and §3 recommended an action on it anyway.
+
+Two runs of the same design now give **opposite** worst-case verdicts. That is as clear a
+statement as this design can make that these were noise. Neither direction should be
+believed. **The means, which barely moved and agree across both runs, are what survives:**
+extreme and central identities hold together about equally.
+
+### The action taken on the old finding, and whether it stands
+
+§3 recommended adding a consistency probe to minting, not just drift. That was
+implemented — `CONSISTENCY_FLOOR = 0.43` in `service.py`, checked at mint time.
+
+**It stays, and its justification changes.** It was argued for as *"extremes are riskier"*,
+which does not reproduce. It is worth keeping for the reason that does survive: it rejects
+genuinely unstable identities wherever they arise, and this run produced one at drift
+0.2440, well under its floor. **A floor that catches real failures does not need a
+directional story about which voices cause them.**
+
+---
+
 ## 4. Caveats
 
-- **4 identities per group.** Small. The consistency and drift means are close enough that the "equal" verdict is safe, but the worst-case gap needs more samples to be trusted.
+- **4 identities per group, and a re-run flipped BOTH worst-case verdicts.** See §5. The worst case of four samples is one sample; the means are the part that survives.
 - **The adherence gap is partly a binning artefact** (§2). Do not quote 0.778 as the system's adherence.
 - **Run on 0.6B**, for corpus-consistency with the cached GLOBE embeddings. E10 showed 1.7B discriminates better but drifts the same, so the conclusion should carry.
 - **"Extreme" here means extreme *within GLOBE_V2's range*.** GLOBE is diverse read speech, not character acting — a genuinely aged or theatrical voice is still outside anything the corpus contains. This tests the edge of the manifold we have, not the edge of the promise.
