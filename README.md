@@ -87,9 +87,13 @@ distinguished (`S19`).
 
 ### What is not established
 
-- **There is no naturalness gate anywhere in the pipeline.** Drift, consistency, CER and
-  uniqueness are all identity or intelligibility gates, and every one of them passes on
-  audio a listener finds audibly synthetic. That gap is now measured (`S19`) and unfixed.
+- ~~There is no naturalness gate anywhere in the pipeline.~~ **`S20` built one**, and it
+  separates cleanly — real speech scores 50, this project's renders score 98. Crucially it
+  is *not* a MOS predictor: published MOS models correlate with pitch at r ≈ −0.79 where
+  humans sit at −0.06, which would reject high-pitched voices for a reason people do not
+  share. This one measures −0.021. **But it is blind to the codec's own contribution** —
+  the codec roundtrip scores identically to real speech while a listener told them apart —
+  so it gates output and cannot track progress on half the problem.
 - **Very little has been listened to.** The metrics are geometry and ASR. `S11` is a
   blind listening pilot — 8 pairs, controls 4/4 — and it immediately found the
   `uniqueness` floor was too low: voices 0.323 apart were heard as the same person half

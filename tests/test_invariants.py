@@ -1702,3 +1702,32 @@ class TestVocalTractLength:
         from alaap.acoustics import vocal_tract_length as vtl
         assert np.isnan(vtl(np.array([450.0, 1500.0, np.nan, 3500.0])))
         assert np.isnan(vtl(np.array([450.0, 1500.0])))
+
+
+class TestNaturalnessGate:
+    """
+    S20's gate, locked as properties. The numbers will move with the corpus;
+    what must not move is that it stays a naturalness measure rather than
+    becoming the pitch detector RESEARCH/06 warns about.
+    """
+
+    def test_typical_and_atypical_separate(self):
+        from alaap.metrics import naturalness_isolation
+        rng = np.random.default_rng(0)
+        ref = rng.standard_normal((80, 32))
+        typical = rng.standard_normal((1, 32))
+        far = rng.standard_normal((1, 32)) + 8.0
+        assert naturalness_isolation(typical, ref) < naturalness_isolation(far, ref)
+
+    def test_held_out_reference_scores_mid_range(self):
+        """The validation isolation_pct itself requires: real scores ~50, not ~0 or ~100."""
+        from alaap.metrics import naturalness_isolation
+        rng = np.random.default_rng(1)
+        pool = rng.standard_normal((160, 32))
+        ref, held = pool[:80], pool[80:]
+        s = np.mean([naturalness_isolation(h[None, :], ref) for h in held])
+        assert 25.0 < s < 75.0, f"held-out reference scored {s:.1f}"
+
+    def test_the_documented_floor_is_above_real_speech(self):
+        from alaap.metrics import NATURALNESS_FLOOR, NATURALNESS_REAL_TYPICAL
+        assert NATURALNESS_FLOOR > NATURALNESS_REAL_TYPICAL + 20

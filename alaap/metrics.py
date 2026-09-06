@@ -275,3 +275,48 @@ def cer(reference: str, hypothesis: str) -> float:
     if not r:
         return float("nan")
     return edit_distance(r, h) / len(r)
+
+
+# ------------------------------------------------------------- naturalness
+NATURALNESS_REAL_TYPICAL = 50.0     # held-out real speech, by construction
+NATURALNESS_FLOOR = 75.0            # above this, flagged as synthetic-sounding
+
+
+def naturalness_isolation(X: np.ndarray, reference: np.ndarray) -> float:
+    """
+    How far a clip's self-supervised features sit from real speech, 0-100.
+
+    Thin wrapper over `isolation_pct` that exists to be NAMED, because the
+    project had no naturalness measure at all until S20 and the absence was
+    not visible -- drift, consistency, CER and uniqueness are every one of them
+    identity or intelligibility gates, and all of them pass on audio a listener
+    calls synthetic (S19).
+
+    DELIBERATELY NOT A MOS PREDICTOR. RESEARCH/06 5.2: humans correlate with
+    mean F0 at r = -0.059; DNSMOS at -0.788 and UTMOSv2 at -0.722. A MOS gate
+    would reject high-pitched voices for a reason humans do not share, fighting
+    the diversity axis this project exists to widen.
+
+    `reference` must be features of REAL speech from the same domain, and
+    `X` the same features for the clips being scored. S20 used WavLM base+
+    layer 6, mean-pooled -- ECAPA is wrong here because it is trained to be
+    INVARIANT to channel and quality.
+
+    VALIDATED (S20, 140 IndicVoices-R clips, half as reference):
+
+        held-out real          49.8      typical, as isolation_pct requires
+        S19 real held-out      53.3
+        S19 codec roundtrip    53.3      <- see the limitation below
+        S13 tagged renders     92.1
+        S7 catalog renders     97.9
+        S6 minted renders      98.0
+        correlation with f0    r = -0.021
+        real vs real           d = +0.18, a tie
+
+    THE LIMITATION, which matters as much as the result. The codec roundtrip
+    scores 53.3 -- IDENTICAL to real speech -- and a listener told those apart
+    2 times in 3 (S19). So this detects GENERATED speech and is blind to the
+    codec's own contribution. It can gate output; it cannot measure progress on
+    the codec half of the problem, and a better codec would not move it.
+    """
+    return isolation_pct(np.atleast_2d(X), np.asarray(reference, dtype=np.float64))
