@@ -91,9 +91,15 @@ fix that traded Indic for English would not have been one.
 | **4-axis, identity only** | **625** | 47 | **22.6** | **59%** | 82.5% | 80.0% |
 | 5-axis, dead gated | 3,125 | 33 | 18.4 | 48% | 95.4% | — |
 
-**Describable space rises 125 → 625 while the diversity gain holds (22.6 vs 22.3).** The
-cell ceiling that made the 3-axis result unusable is lifted 5× by adding an axis that
-actually identifies people.
+**Diversity holds at 22.6 against the 3-axis 22.3**, and describable space rises 125 → 625.
+
+> ⚠️ **`S18` later refuted the framing here.** This section presented the 125-cell space as
+> a ceiling that `vtl_cm` lifted 5×. Putting every arm on one axis shows cells were never
+> the constraint: 125 cells gives 22.3 effective voices, 15,625 gives 19.6. **125× more
+> describable space moved capacity by −2.7.** What limits the catalogue is the number of
+> *strong* identity axes, not how many descriptions can be written. The `vtl_cm` fix was
+> worth making — it is the third-best axis in the set — but not for the reason claimed
+> here.
 
 Adherence on the three common axes falls to 82.5%, slightly under the shipped 85.8% —
 `vtl_cm` competes for retrieval weight and is harder to hit (80.0% on its own).
@@ -127,10 +133,18 @@ Two directions remain, in order of cost:
 1. **More bins per axis.** 4 axes × 7 bins is 2,401 cells against 625. The thing to check
    first is whether percentile edges stay meaningful — 141 speakers over 7 bins is ~20 per
    bin, which is thin.
-2. **More identity axes.** `vtl_cm` was found by fixing a broken measurement rather than by
-   inventing anything. `jitter` and `shimmer` are measured but never tested for the
-   within/between property `S16` used, and one of them may be a fifth real axis hiding
-   behind the same kind of bug.
+2. ~~**More identity axes.**~~ **`S18` audited all seventeen measured attributes.**
+   `jitter` and `shimmer` are the only survivors that both separate speakers and are
+   independent of the current set — and adding them makes things **worse** (22.6 → 19.1 →
+   19.6). The within/between screen has a threshold, not a line: the axes in use score
+   0.08–0.59, these score 0.62–0.73, and a weakly-separating axis competes with the strong
+   ones for retrieval weight. It also indicts `hnr_db`, already in the set at 0.59 and
+   failing outright on Tamil (1.32) — removing it costs 0.3 effective voices and gains
+   **15.6 points of adherence**.
+
+3. **Better measurement of the axes already there.** This is what actually worked:
+   `vtl_cm` went from noise to the third-best axis in the set by fixing one formula. No new
+   axis has ever helped; two repaired ones have.
 
 ## Not established
 

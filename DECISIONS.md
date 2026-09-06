@@ -366,9 +366,24 @@ better on all four corpora, English included.
 With `vtl_cm` restored, identity-only runs on **four** axes: 625 describable cells instead
 of 125, effective voices 22.6 against the shipped 19.6, adherence 82.5% against 85.8%.
 
-**No arm dominates** — diversity, adherence and describable space trade against each other,
-and the 4-axis arm wins two of three. That is the recommendation, not a free win, and
-nothing in it has been heard by a listener. *(S12, S13, S16, S17)*
+**`S18` then audited all seventeen measured attributes and settled what the axis set should
+be.** Only `jitter` and `shimmer` both separate speakers and are independent of the current
+set — and adding them makes things worse (22.6 → 19.1 → 19.6 effective voices). The screen
+has a threshold rather than a line: the axes in use score 0.08–0.59 on within/between,
+these score 0.62–0.73, and a weakly-separating axis competes with the strong ones for
+retrieval weight.
+
+It also showed **describable-space size is not what limits the catalogue**: 125 cells give
+22.3 effective voices and 15,625 give 19.6. The number of *strong* identity axes is the
+constraint.
+
+And it indicts an axis already in use. `hnr_db` scores 0.59 — weakest of the four — and
+**fails outright on Tamil (1.32)**. Dropping it costs 0.3 effective voices and gains
+**15.6 points of adherence**.
+
+**Recommended axis set, measured but NOT yet adopted:** `f0_mean`, `spectral_tilt`,
+`vtl_cm`, with `hnr_db` optional and language-dependent. Nothing in it has been heard by a
+listener, and `S6`/`S7` still write five axes. *(S12, S13, S16, S17, S18)*
 
 **Decision.** The direction channel is built on `speaking_rate`, `f0_cv`, `jitter` and
 `shimmer`. **`f0_mean` is off-limits to direction** — at ratio 1.04 emotion moves pitch

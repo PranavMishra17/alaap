@@ -176,14 +176,28 @@ def run(label, axes, gate_dead):
             "nn_median": float(np.median(nn_distances(A))) if len(A) > 2 else np.nan}
 
 
-print(f"[2/4] arm 1 — the 5 shipped caption axes")
+print(f"[2/5] arm 1 — the 5 shipped caption axes")
 r1 = run("5-axis (shipped)", CATALOG_AXES, False)
-print(f"[3/4] arm 2 — identity axes only ({len(IDENTITY)}, now incl. vtl_cm)")
+print(f"[3/5] arm 2 — identity axes only ({len(IDENTITY)}, incl. vtl_cm)")
 r2 = run(f"{len(IDENTITY)}-axis (identity only)", IDENTITY, False)
-print(f"[4/4] arm 3 — 5 axes written, dead ones gated to zero weight")
+print(f"[4/5] arm 3 — 5 axes written, dead ones gated to zero weight")
 r3 = run("5-axis, dead gated", CATALOG_AXES, True)
 
-rows = [r1, r2, r3]
+# S18 audited every measured axis for the within/between property and screened
+# survivors for redundancy against the set already in use. Most survivors are
+# derivatives of axes already here -- f0_std and f0_range restate f0_mean, f3
+# and formant_dispersion restate vtl_cm. Only jitter (redundancy 0.36) and
+# shimmer (0.50) are both separating AND independent, so only they are worth
+# the cost of a wider description.
+print(f"[5/5] arms 4-5 — adding S18's independent candidates")
+r4 = run("5-axis (+shimmer)", IDENTITY + ["shimmer"], False)
+r5 = run("6-axis (+jitter+shimmer)", IDENTITY + ["jitter", "shimmer"], False)
+# hnr_db is the weakest axis IN the set (0.59 mean) and it fails outright on
+# Tamil (1.32). If the threshold is what matters rather than the < 1 line, a
+# set without it should do better, not worse.
+r6 = run("3-axis (-hnr_db)", [a for a in IDENTITY if a != "hnr_db"], False)
+
+rows = [r1, r2, r3, r4, r5, r6]
 json.dump({"bound": BOUND, "rows": rows},
           io.open(os.path.join(OUT, "results.json"), "w", encoding="utf-8"), indent=2)
 
