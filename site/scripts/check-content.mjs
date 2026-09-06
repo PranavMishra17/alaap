@@ -80,10 +80,10 @@ for (const slug of slugs) {
   } catch (e) {
     console.log(`\n## ${slug}\n  fetch failed: ${e.message}`); anyFlag = true; continue;
   }
-  const text = stripHtml(html);
+  const text = stripHtml(html).replace(/CC[- ]BY[- ]4\.0|Apache[- ]2\.0|Qwen3[- ]TTS/g, ' ');
   const lower = text.toLowerCase();
 
-  const numbers = [...text.matchAll(/(?<![\w.])\d[\d,]*(?:\.\d+)?(?![\w.])/g)].map((m) => m[0]);
+  const numbers = [...text.matchAll(/(?<![\w.])\d(?:[\d,]*\d)?(?:\.\d+)?(?![\w.])/g)].map((m) => m[0]);
   const badNumbers = [...new Set(numbers.filter((n) => !ALLOWED_NUMBERS.has(n)))];
   const contexts = badNumbers.map((n) => {
     const i = text.indexOf(n);
@@ -91,7 +91,10 @@ for (const slug of slugs) {
   });
 
   const banned = BANNED.filter((w) => new RegExp(`(?<![a-z])${w.replace(/[-\s]/g, '[-\\s]')}(?![a-z])`, 'i').test(lower));
-  const missing = Object.entries(MANDATORY).filter(([, alts]) => !alts.some((a) => lower.includes(a.toLowerCase()))).map(([k]) => k);
+  const htmlLower = html.toLowerCase();
+  const missing = Object.entries(MANDATORY)
+    .filter(([k, alts]) => !alts.some((a) => (k === 'repo link' ? htmlLower : lower).includes(a.toLowerCase())))
+    .map(([k]) => k);
   const words = text.split(' ').filter(Boolean).length;
   const externals = [...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)/g)].map((m) => new URL(m[1]).host).filter((h) => !/github\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(h));
 

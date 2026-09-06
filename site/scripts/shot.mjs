@@ -1,6 +1,10 @@
 // Screenshot one page with headless Chromium and report console/page errors.
 //
-//   node scripts/shot.mjs <url> <out.png> [--width=1440] [--height=900] [--full] [--dark] [--reduced-motion] [--wait=800]
+//   node scripts/shot.mjs <url> <out.png> [--width=1440] [--height=900] [--full] [--dark] [--reduced-motion] [--wait=800] [--hmr]
+//
+// By default the dev server's hot-reload client and dev toolbar are blocked, so another
+// variant being saved cannot reload the page mid-capture and the toolbar pill stays out of
+// the image. Pass --hmr to allow them.
 //
 // Scrolls through the whole page first so scroll-triggered reveals fire, then returns to the
 // top before capturing. Warns if the page is wider than the viewport (horizontal overflow).
@@ -28,10 +32,18 @@ const ctx = await browser.newContext({
   reducedMotion: opt['reduced-motion'] ? 'reduce' : 'no-preference',
 });
 const page = await ctx.newPage();
+if (!opt.hmr) {
+  await page.route((u) => /\/@vite\/client|\/@id\/astro:dev-toolbar|\/@id\/astro:toolbar|__vite_ping|\/@vite\/env/.test(u.href), (r) => r.abort());
+}
 const problems = [];
-page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') problems.push(`[console.${m.type()}] ${m.text()}`); });
+page.on('requestfailed', (r) => { if (/@vite|astro:dev-toolbar|astro:toolbar|__vite_ping/.test(r.url())) return; });
+page.on('console', (m) => {
+  if (m.type() !== 'error' && m.type() !== 'warning') return;
+  if (!opt.hmr && /net::ERR_FAILED/.test(m.text())) return; // the blocked hot-reload client
+  problems.push(`[console.${m.type()}] ${m.text()}`);
+});
 page.on('pageerror', (e) => problems.push(`[pageerror] ${e.message}`));
-page.on('requestfailed', (r) => problems.push(`[requestfailed] ${r.url()} ${r.failure()?.errorText ?? ''}`));
+page.on('requestfailed', (r) => { if (!/@vite|astro:dev-toolbar|astro:toolbar|__vite_ping/.test(r.url())) problems.push(`[requestfailed] ${r.url()} ${r.failure()?.errorText ?? ''}`); });
 
 const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
 if (!resp || resp.status() >= 400) console.error(`HTTP ${resp?.status()} for ${url}`);

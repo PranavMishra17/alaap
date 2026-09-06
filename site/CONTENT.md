@@ -130,7 +130,7 @@ bad-throat day, no change of microphone, no mood." (S6 RESULTS.md:53–62.)
 ### 5.5 A native speaker confirmed the Hindi says what it should
 "A fluent Hindi speaker has confirmed one rendered line says the target sentence. They were told the
 sentence and asked 'does it say this?', not 'does it sound right?'. That is the check the earlier
-wrong-codec audio failed." Still to be checked: the other three voices and the other two lines.
+faulty audio failed: it sounded fluent and was saying different words." Still to be checked: the other three voices and the other two lines.
 (S6 RESULTS.md:133.) The sentence, displayable: **नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है**
 (S6 RESULTS.md:110). A plain translation, which is ours and not a project claim: "Hello, how are you?
 The weather is very nice today."

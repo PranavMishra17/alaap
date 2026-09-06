@@ -97,6 +97,23 @@ CORPORA = {
 DEV_ONLY = {"indicvoices_r_hi", "indicvoices_r_bn", "indicvoices_r_ta"}
 
 # BCP-47 language of each corpus, where it is single-language.
+def norm_gender(g) -> str | None:
+    """
+    Corpora disagree on case. GLOBE_V2 stores 'female'/'male'; IndicVoices-R
+    stores 'Female'/'Male'. Any filter written as `g in ("Female", "Male")`
+    therefore drops EVERY GLOBE_V2 clip silently and reports a clean zero --
+    which is exactly what happened while validating the vocal-tract-length fix
+    on English, and it looked like missing metadata rather than a case mismatch.
+
+    Returns 'Female', 'Male' or None. Use this rather than comparing strings.
+    """
+    if not g:
+        return None
+    t = str(g).strip().lower()
+    return {"female": "Female", "f": "Female",
+            "male": "Male", "m": "Male"}.get(t)
+
+
 CORPUS_LANG = {"globe_v2": "en", "libritts_r": "en", "libritts_r_train": "en",
                "libritts_r_test": "en", "libritts_r_360": "en",
                "indicvoices_r_hi": "hi", "indicvoices_r_bn": "bn",

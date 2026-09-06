@@ -67,7 +67,12 @@ ap.add_argument("--mints", type=int, default=80)
 ap.add_argument("--seed", type=int, default=0)
 args = ap.parse_args()
 
-IDENTITY = ["f0_mean", "spectral_tilt", "hnr_db"]
+# vtl_cm joins the identity set: the VTL estimator was fixed in this same
+# experiment (dispersion averaged through F2, the vowel-dependent formant,
+# cancelling F1 and F3). Gender separation went +0.11 -> +0.70 on hi,
+# -0.17 -> +1.03 on bn, +0.06 -> +0.44 on ta, +0.11 -> +0.68 on en, so it
+# now clears the d >= 0.30 bar S4/S6 drop axes below.
+IDENTITY = ["f0_mean", "spectral_tilt", "hnr_db", "vtl_cm"]
 DEAD = ["f0_cv", "speaking_rate"]
 
 print(f"[1/4] corpus and the bound ({args.corpus})")
@@ -82,7 +87,6 @@ Z = np.load(os.path.join(S6_OUT, f"mio_emb_{args.corpus}_{args.clips}_"
 n = min(len(Z), len(attrs))
 attrs, metas, Z = attrs[:n], metas[:n], Z[:n]
 binner = Binner.fit(attrs)
-binner.edges.pop("vtl_cm", None)
 full_bins = [binner.bin_one(a) for a in attrs]
 space = SpeakerSpace.fit(Z, n_components=min(64, n - 1))
 E = space.encode(Z)
@@ -97,15 +101,33 @@ BOUND = vb * len(E_spk)
 print(f"      {len(E_spk)} real speakers | bound ~{BOUND:.0f} effective voices")
 
 # ------------------------------------------------------------------- arms
-order = {a: {lab: i for i, lab in enumerate(BIN_LABELS[a])} for a in CATALOG_AXES}
+# over the union: vtl_cm is an identity axis but not one of the five
+# CATALOG_AXES the shipped captions use.
+order = {a: {lab: i for i, lab in enumerate(BIN_LABELS[a])}
+         for a in dict.fromkeys(list(CATALOG_AXES) + IDENTITY)}
+
+
+# Scored on the axes COMMON TO EVERY ARM, not on each arm's own axis set.
+# Scoring each arm over its own axes is not a comparison: the 5-axis arm's
+# cells contain no vtl_cm, so it would be graded on three axes while the
+# 4-axis arm was graded on four, and adding a harder axis to one side lowers
+# its mean whether or not anything got worse. That is how a 95.8% and an 81.9%
+# ended up in the same column on the first run.
+SCORED = ["f0_mean", "spectral_tilt", "hnr_db"]
 
 
 def adherence_identity(cell, bins_of_voice):
-    """Scored on the IDENTITY axes only -- an arm that never writes
-    `speaking_rate` must not be marked down for not writing it."""
     hits = [order[a][cell[a]] == order[a][bins_of_voice[a]]
-            for a in IDENTITY if a in cell and a in bins_of_voice]
+            for a in SCORED if a in cell and a in bins_of_voice]
     return float(np.mean(hits)) if hits else np.nan
+
+
+def adherence_vtl(cell, bins_of_voice):
+    """Reported separately, since only the arm that writes it can be scored."""
+    a = "vtl_cm"
+    if a in cell and a in bins_of_voice:
+        return float(order[a][cell[a]] == order[a][bins_of_voice[a]])
+    return np.nan
 
 
 def run(label, axes, gate_dead):
@@ -124,7 +146,7 @@ def run(label, axes, gate_dead):
 
     cells = sample_cells(args.mints, args.seed, axes=axes)
     descs = [caption_from_bins(c, seed=i) for i, c in enumerate(cells)]
-    V, acc, adh = [], [], []
+    V, acc, adh, vadh = [], [], [], []
     for i, (c, txt) in enumerate(zip(cells, descs)):
         r = m.mint(txt, novelty=0.0, seed=i, top_k=2)
         e = space.encode(r.vector)[0]
@@ -140,7 +162,9 @@ def run(label, axes, gate_dead):
         # where did the minted voice land, in bin terms? nearest real clip's bins
         En = E / np.maximum(np.linalg.norm(E, axis=1, keepdims=True), 1e-12)
         en = e / max(np.linalg.norm(e), 1e-12)
-        adh.append(adherence_identity(c, full_bins[int(np.argmax(En @ en))]))
+        nb = full_bins[int(np.argmax(En @ en))]
+        adh.append(adherence_identity(c, nb))
+        vadh.append(adherence_vtl(c, nb))
     A = np.vstack(acc)
     v = vendi_score(A) if len(A) > 1 else float("nan")
     cells_available = 5 ** len(axes)
@@ -148,13 +172,14 @@ def run(label, axes, gate_dead):
             "accepted": len(A), "vendi": v, "effective": v * len(A),
             "share_of_bound": v * len(A) / BOUND,
             "adherence": float(np.nanmean(adh)),
+            "vtl_adherence": float(np.nanmean(vadh)) if np.isfinite(vadh).any() else np.nan,
             "nn_median": float(np.median(nn_distances(A))) if len(A) > 2 else np.nan}
 
 
-print(f"[2/4] arm 1 — 5 axes, as shipped")
+print(f"[2/4] arm 1 — the 5 shipped caption axes")
 r1 = run("5-axis (shipped)", CATALOG_AXES, False)
-print(f"[3/4] arm 2 — identity axes only")
-r2 = run("3-axis (identity only)", IDENTITY, False)
+print(f"[3/4] arm 2 — identity axes only ({len(IDENTITY)}, now incl. vtl_cm)")
+r2 = run(f"{len(IDENTITY)}-axis (identity only)", IDENTITY, False)
 print(f"[4/4] arm 3 — 5 axes written, dead ones gated to zero weight")
 r3 = run("5-axis, dead gated", CATALOG_AXES, True)
 
@@ -167,15 +192,17 @@ print("=" * 82)
 print(f"S17 — do the two dead caption axes cost capacity? (bound ~{BOUND:.0f})")
 print("=" * 82)
 print(f"  {'arm':<24} {'cells':>7} {'accept':>7} {'effective':>10} "
-      f"{'of bound':>9} {'adherence':>10}")
+      f"{'of bound':>9} {'adherence':>10} {'vtl adh':>9}")
 print("  " + "-" * 72)
 for r in rows:
+    va = r.get("vtl_adherence", float("nan"))
     print(f"  {r['label']:<24} {r['cells']:>7} {r['accepted']:>7} "
           f"{r['effective']:>10.1f} {r['share_of_bound']:>8.0%} "
-          f"{r['adherence']:>10.1%}")
+          f"{r['adherence']:>10.1%} "
+          f"{('%.1f%%' % (va*100)) if np.isfinite(va) else '-':>9}")
 print()
 print("  'cells' is how many distinct descriptions the axis set can express.")
-print("  'adherence' is scored on the identity axes only, so the arms are")
-print("  comparable -- an arm that never writes speaking_rate is not marked")
-print("  down for it.")
+print("  'adherence' is scored on f0_mean / spectral_tilt / hnr_db -- the axes")
+print("  EVERY arm writes -- so the column compares like with like. vtl_cm is")
+print("  reported separately because only one arm asks for it.")
 print("=" * 82)

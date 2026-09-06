@@ -248,20 +248,42 @@ def formants(wav: np.ndarray, sr: int = SR, n: int = 4,
 
 def vocal_tract_length(fmts: np.ndarray) -> float:
     """
-    VTL in cm from formant dispersion (Fitch 1997), c / (2 * mean spacing).
+    VTL in cm, from F1 and F3 only. Males run longer than females.
 
-    Typical adult values run ~13-15 cm for females and ~15-18 cm for males,
-    which is the check that matters -- see the gender validation in tests.
-    Returns NaN if fewer than two formants were estimated.
+    WHY NOT FORMANT DISPERSION, which is the textbook estimator and what this
+    used to do. Fitch's c / (2 * mean spacing) averages the gaps F2-F1 and
+    F3-F2, so it runs the estimate THROUGH F2 -- and F2 is the vowel-dependent
+    formant, swinging roughly 800-2200 Hz between front and back vowels. Its
+    within-speaker spread swamps its between-speaker spread, so averaging it in
+    cancels what F1 and F3 do know. Measured as a gender effect size, where
+    males should read positive:
+
+        corpus     F1      F2      F3   |  dispersion   F1+F3
+        hi      -0.62   +0.08   -0.60   |       +0.11   +0.70
+        bn      -0.99   -0.13   -0.59   |       -0.17   +1.03
+        ta      -0.60   -0.10   -0.41   |       +0.06   +0.44
+        en      -0.71   -0.23   -0.34   |       +0.11   +0.68
+
+    The old estimator was at chance on every corpus and NEGATIVE on Bengali,
+    which is why S4 and S6 dropped the axis as noise (d < 0.30). It was never
+    noise -- it was one bad formant contaminating a mean.
+
+    This is the same failure S16 found for `speaking_rate`: a quantity whose
+    within-speaker variation exceeds its between-speaker variation, averaged in
+    as though it contributed.
+
+    Uniform tube: the k-th resonance sits at (2k-1)c / (4L), so each formant
+    gives its own estimate and the two reliable ones are averaged.
+    Returns NaN if either F1 or F3 is missing.
     """
-    f = np.asarray(fmts, dtype=np.float64)
-    f = f[np.isfinite(f)]
-    if len(f) < 2:
+    f = np.asarray(fmts, dtype=np.float64).reshape(-1)
+    if len(f) < 3 or not (np.isfinite(f[0]) and np.isfinite(f[2])):
         return float("nan")
-    disp = float(np.mean(np.diff(np.sort(f))))
-    if disp <= 1e-6:
+    f1, f3 = float(f[0]), float(f[2])
+    if f1 <= 1e-6 or f3 <= 1e-6:
         return float("nan")
-    return float(_C_CM_PER_S / (2.0 * disp))
+    return float(0.5 * (1.0 * _C_CM_PER_S / (4.0 * f1)
+                        + 5.0 * _C_CM_PER_S / (4.0 * f3)))
 
 
 # ------------------------------------------------------- script-aware phones

@@ -356,10 +356,19 @@ retrieval scoring, *and* they make the sampler generate descriptions that differ
 dead axis, which then collide and are rejected. Gating the weights alone fixes adherence
 and makes diversity worse.
 
-**Not yet a decision to ship three axes.** 3 axes × 5 bins is 125 total descriptions and
-S17 sampled 80 of them; a catalogue of hundreds is impossible on that set. The axis set
-needs more resolution (7–9 bins) or another genuine identity axis before this becomes the
-default. *(S12, S13, S16, S17)*
+**`S17` then found the fourth axis rather than adding bins.** `vtl_cm` was being dropped
+as noise (gender d = +0.11 / −0.17 / +0.06) — but the estimator was broken in exactly the
+way `S16` had just diagnosed for `speaking_rate`. Fitch's formant dispersion averages the
+gaps **through F2**, the vowel-dependent formant, cancelling what F1 and F3 know. Replacing
+it with `½(c/4F₁ + 5c/4F₃)` gives +0.70 / +1.03 / +0.44 / +0.68 across hi, bn, ta and en —
+better on all four corpora, English included.
+
+With `vtl_cm` restored, identity-only runs on **four** axes: 625 describable cells instead
+of 125, effective voices 22.6 against the shipped 19.6, adherence 82.5% against 85.8%.
+
+**No arm dominates** — diversity, adherence and describable space trade against each other,
+and the 4-axis arm wins two of three. That is the recommendation, not a free win, and
+nothing in it has been heard by a listener. *(S12, S13, S16, S17)*
 
 **Decision.** The direction channel is built on `speaking_rate`, `f0_cv`, `jitter` and
 `shimmer`. **`f0_mean` is off-limits to direction** — at ratio 1.04 emotion moves pitch

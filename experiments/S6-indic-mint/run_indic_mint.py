@@ -54,7 +54,7 @@ import torch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from alaap.acoustics import Attributes, Binner
 from alaap.captions import caption_from_bins
-from alaap.data import stream_clips
+from alaap.data import norm_gender, stream_clips
 from alaap.geometry import SpeakerSpace
 from alaap.mapper import RetrievalMapper, TextEncoder
 from alaap.metrics import nn_distances
@@ -127,8 +127,9 @@ binner = Binner.fit(attrs)
 # gender there, so it is noise. Mirror that decision rather than re-deriving it.
 gv = {"Female": [], "Male": []}
 for a, m in zip(attrs, metas):
-    if m.get("gender") in gv and np.isfinite(a.vtl_cm):
-        gv[m["gender"]].append(a.vtl_cm)
+    g = norm_gender(m.get("gender"))
+    if g in gv and np.isfinite(a.vtl_cm):
+        gv[g].append(a.vtl_cm)
 if len(gv["Female"]) >= 20 and len(gv["Male"]) >= 20:
     F, M = np.array(gv["Female"]), np.array(gv["Male"])
     dcoh = (M.mean() - F.mean()) / max(np.sqrt((F.var(ddof=1) + M.var(ddof=1)) / 2), 1e-9)

@@ -1,6 +1,6 @@
-# S17 — describing what cannot identify was costing capacity
+# S17 — two dead caption axes, and one that was never dead
 
-**Run:** 2026-09-06 · IndicVoices-R Hindi · 141 speakers · 80 mints per arm
+**Run:** 2026-09-06 · IndicVoices-R hi/bn/ta + GLOBE_V2 · 80 mints per arm
 **Question:** `S16` showed two of the five caption axes distinguish nobody. Does dropping them help?
 
 ---
@@ -20,67 +20,117 @@ Fewer distinct descriptions can mean fewer distinct voices no matter what the dr
 carried. Two effects pushing opposite ways, which is why this was measured rather than
 applied.
 
-## Result — dropping them improves both diversity and adherence
+## Part 1 — dropping the dead axes helps, on 3 axes
 
 Bound from `S9`: **~38 effective voices** in these 141 real speakers.
 
-| arm | cells | accepted | **effective** | of bound | **adherence** |
+| arm | cells | accepted | **effective** | of bound | adherence |
 |---|---|---|---|---|---|
 | 5-axis, as shipped | 3,125 | 39 | 19.6 | 51% | 85.8% |
-| **3-axis, identity only** | **125** | 50 | **22.3** | **58%** | **95.8%** |
+| **3-axis, identity only** | 125 | 50 | **22.3** | **58%** | **95.8%** |
 | 5-axis, dead axes gated | 3,125 | 33 | 18.4 | 48% | 95.4% |
-
-*(Adherence is scored on the identity axes only, so an arm that never writes
-`speaking_rate` is not marked down for omitting it.)*
 
 **+14% effective voices and +10 points of adherence, from 25× fewer describable cells.**
 The "fewer cells means fewer voices" worry was wrong — the cells were never the binding
 constraint.
 
-## The third arm is the one that explains the mechanism
+### The third arm explains the mechanism
 
 Arm 3 keeps all five axes in the caption but forces the mapper's hybrid weights to zero on
-the two dead ones. If the damage were purely in retrieval scoring, that should have matched
+the two dead ones. If the damage were purely in retrieval scoring, it should have matched
 arm 2.
 
 **It gets the adherence benefit (95.4%) but not the diversity benefit (18.4, worse than
-baseline).**
-
-So the dead axes hurt through **two separate channels**:
+baseline).** So the dead axes hurt through two separate channels:
 
 1. **Retrieval scoring** — they pull anchors toward matches on axes that identify nobody.
-   Zeroing the weights fixes this, and adherence jumps 85.8% → 95.4%.
+   Zeroing the weights fixes this: adherence 85.8% → 95.4%.
 2. **The sampler** — with 5-axis cells and gated weights, two descriptions differing *only*
-   in `speaking_rate` become indistinguishable to the mapper and collide, so they are
-   rejected as duplicates. Acceptance falls to 33 of 80: **a third of the minting budget is
-   spent on descriptions the system can no longer tell apart.**
+   in `speaking_rate` become indistinguishable, collide, and are rejected as duplicates.
+   Acceptance falls to 33 of 80: **a third of the minting budget spent on descriptions the
+   system can no longer tell apart.**
 
-Fixing one channel without the other makes things worse overall. **The caption and the cell
-sampler have to change together.**
+Fixing one channel without the other is worse than fixing neither. **Caption and sampler
+must change together.**
 
-## ⚠️ The win is real and the ceiling it creates is worse
+## Part 2 — `vtl_cm` was never noise, and it lifts the cell ceiling
 
-Three axes at five bins is **125 distinct descriptions in total.** This run sampled 80 of
-them — 64% of the entire describable space — at n=80.
+3 axes × 5 bins is **125 total descriptions**, and this run sampled 80 of them. A catalogue
+of hundreds is arithmetically impossible there — so the 3-axis win came with a worse
+ceiling than the one it removed.
 
-**A catalogue of a few hundred voices is arithmetically impossible on three 5-bin axes.**
-The 5-axis arm had 3,125 cells and was nowhere near exhausting them; the 3-axis arm is
-close to running out at eighty.
+The fix was not more bins but **a fourth real axis**. `vtl_cm` was being dropped by `S4`
+and `S6` as noise (gender separation d = +0.11 / −0.17 / +0.06). It was not noise —
+**the estimator was broken**, and in exactly the way `S16` had just diagnosed for
+`speaking_rate`.
 
-So this result should not be read as "use three axes". It should be read as:
+`vocal_tract_length` used Fitch's formant dispersion, `c / (2 × mean spacing)`, which
+averages the gaps F2−F1 and F3−F2 — running the estimate **through F2**. F2 is the
+vowel-dependent formant, swinging 800–2200 Hz between front and back vowels, so its
+within-speaker spread swamps its between-speaker spread. Averaging it in cancelled what F1
+and F3 knew:
 
-> **The description was carrying dead weight, and removing it helps — but the axis set now
-> needs *more resolution*, not fewer axes.**
+| corpus | F1 | F2 | F3 | dispersion | **F1+F3** |
+|---|---|---|---|---|---|
+| hi | −0.62 | **+0.08** | −0.60 | +0.11 | **+0.70** |
+| bn | −0.99 | **−0.13** | −0.59 | −0.17 | **+1.03** |
+| ta | −0.60 | **−0.10** | −0.41 | +0.06 | **+0.44** |
+| en | −0.71 | **−0.23** | −0.34 | +0.11 | **+0.68** |
 
-The obvious next test is **more bins per axis**: 3 axes × 7 bins is 343 cells, × 9 bins is
-729, without reintroducing anything that fails the identity test. Whether the binner's
-percentile edges stay meaningful at 7 or 9 bins on 141 speakers is the thing to check
-first — that is roughly 15–20 speakers per bin, which is thin.
+*(Gender effect size; males should read positive. English measured on 219 GLOBE_V2 clips.)*
 
-A second option is finding **more identity axes**. `vtl_cm` is the obvious candidate and is
-currently dropped on this corpus because the formant estimate does not separate gender
-(d = +0.11). Fixing that measurement would add a genuine anatomical axis rather than a
-behavioural one.
+The estimator is now the mean of the two single-formant uniform-tube estimates,
+`½(c/4F₁ + 5c/4F₃)`. It beats the old one on **all four corpora**, English included — a
+fix that traded Indic for English would not have been one.
+
+### With `vtl_cm` restored as a fourth identity axis
+
+| arm | cells | accepted | effective | of bound | adherence | vtl adherence |
+|---|---|---|---|---|---|---|
+| 5-axis, as shipped | 3,125 | 39 | 19.6 | 51% | 85.8% | — |
+| **4-axis, identity only** | **625** | 47 | **22.6** | **59%** | 82.5% | 80.0% |
+| 5-axis, dead gated | 3,125 | 33 | 18.4 | 48% | 95.4% | — |
+
+**Describable space rises 125 → 625 while the diversity gain holds (22.6 vs 22.3).** The
+cell ceiling that made the 3-axis result unusable is lifted 5× by adding an axis that
+actually identifies people.
+
+Adherence on the three common axes falls to 82.5%, slightly under the shipped 85.8% —
+`vtl_cm` competes for retrieval weight and is harder to hit (80.0% on its own).
+
+> **A scoring flaw caught on the way.** The first version scored each arm on *its own*
+> axis set, so the 5-axis arm was graded on three axes (its cells carry no `vtl_cm`) while
+> the 4-axis arm was graded on four. Adding a harder axis to one side lowers its mean
+> whether or not anything got worse — that is how a 95.8% and an 81.9% ended up in the same
+> column. All arms are now scored on the three axes every arm writes.
+
+## No arm dominates, and that is the result
+
+| | diversity | adherence | describable space |
+|---|---|---|---|
+| 5-axis shipped | worst | middle | best |
+| 3-axis identity | good | **best** | **worst** |
+| **4-axis identity** | **best** | worst | good |
+
+The 4-axis arm is the one worth shipping — **+15% effective voices at roughly shipped
+adherence, with 5× less wasted description space** — but it is a choice among trade-offs,
+not a free win, and nothing here has been listened to.
+
+## What still is not solved
+
+**59% of the bound is not the 87% `S8`'s retrieval reaches** on the same corpus. Dead axes
+and a broken VTL estimator were both real costs; together they were worth 8 points. They
+were not the main gap.
+
+Two directions remain, in order of cost:
+
+1. **More bins per axis.** 4 axes × 7 bins is 2,401 cells against 625. The thing to check
+   first is whether percentile edges stay meaningful — 141 speakers over 7 bins is ~20 per
+   bin, which is thin.
+2. **More identity axes.** `vtl_cm` was found by fixing a broken measurement rather than by
+   inventing anything. `jitter` and `shimmer` are measured but never tested for the
+   within/between property `S16` used, and one of them may be a fifth real axis hiding
+   behind the same kind of bug.
 
 ## Not established
 
@@ -94,8 +144,14 @@ behavioural one.
 - **The 3-axis arm samples 64% of its own space**, so its acceptance rate of 50/80 is
   flattered by having nearly run out of distinct things to ask for. At larger n it would
   saturate hard, and the 5-axis arm would not.
-- **58% of the bound is still not 87%**, which is what `S8`'s retrieval reaches on the same
-  corpus. Dead axes were a real cost but they were not the main gap.
+- **The VTL absolute values are a uniform-tube idealisation, not anatomy.** The migration
+  moved cached means from ~15.5 cm to ~19.2 cm; real adult tracts are 14–18 cm. Only the
+  ordering is used, since the axis is percentile-binned, but the number should not be
+  quoted as a measurement of anyone's vocal tract.
+- **Cached measurements were migrated, not re-measured.** `scripts/migrate_vtl.py`
+  recomputes `vtl_cm` from the cached formants, which is exact — `vocal_tract_length` is a
+  pure function of them — but the formants themselves were not re-estimated. Originals kept
+  as `*.pre-vtl-fix`.
 
 ## Reproduce
 
