@@ -1,6 +1,7 @@
 # S20 — a naturalness gate that is not a MOS predictor
 
 **Run:** 2026-09-06 · IndicVoices-R Hindi · 140 real clips · 56 synthetic renders · WavLM base+ L6
+**Superseded in part by `S20b`:** the gate now runs at **layer 5**, where it also detects codec degradation.
 **Question:** `S19` found nothing in this project can see what a listener hears. Can anything?
 
 ---
@@ -62,13 +63,19 @@ failing 3 would have been the documented trap in a new implementation.
 
 The separation is not marginal: **real speech at 50%, this project's renders at 98%.**
 
-## ⚠️ WITHDRAWN — the limitation below was not established
+## ⚠️ WITHDRAWN — and then settled the other way
 
-**The section that follows rested on 3 roundtrip clips and `S20b` withdraws it.** With 40
-clips the gap is +7.2 points at this layer, `t = 1.23` — which a test rejects — and
-resampling 3 of those 40 reproduces the "identical" result in **41% of draws**. The gate is
-neither shown to see the codec nor shown to be blind to it; settling it needs ~114 clips
-per side.
+**The section that follows rested on 3 roundtrip clips.** Resampling 3 of 40 reproduces its
+"identical" result in **41% of draws**, so it was an ordinary sampling outcome rather than a
+finding.
+
+`S20b` then settled it at **150 clips per side: the gate DOES see the codec** — the
+roundtrip sits +8.1 points above real speech at `t = 2.59`, at **layer 5**. The gate has
+been moved there and re-validated (all four checks pass, `r(f0) = −0.068` against humans'
+−0.059). Layer 6, used below, comes in at `t = 1.98` and just misses.
+
+So the limitation was not merely unproven — it was **wrong**. This gate can track codec
+progress after all.
 
 What survives unchanged is what the gate was validated for: **flagging generated speech**,
 where the separation is 50 vs 98.

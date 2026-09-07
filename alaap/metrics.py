@@ -298,32 +298,31 @@ def naturalness_isolation(X: np.ndarray, reference: np.ndarray) -> float:
     the diversity axis this project exists to widen.
 
     `reference` must be features of REAL speech from the same domain, and
-    `X` the same features for the clips being scored. S20 used WavLM base+
-    layer 6, mean-pooled -- ECAPA is wrong here because it is trained to be
+    `X` the same features for the clips being scored. Use **WavLM base+ layer
+    5**, mean-pooled -- ECAPA is wrong here because it is trained to be
     INVARIANT to channel and quality.
 
-    VALIDATED (S20, 140 IndicVoices-R clips, half as reference):
+    WHY LAYER 5 AND NOT ANOTHER. S20b swept all twelve at n=150 per side. Early
+    layers encode pitch and are the DNSMOS trap in disguise: layer 0 separates
+    the codec significantly (t = 2.04) at r(f0) = -0.578, which is DNSMOS
+    territory and was rejected for it. Late layers see nothing. Layers 4 and 5
+    both work; layer 5 is chosen because its pitch correlation is -0.054
+    against humans' -0.059, where layer 4 sits at -0.211.
 
-        held-out real          49.8      typical, as isolation_pct requires
-        S19 real held-out      53.3
-        S19 codec roundtrip    53.3      <- see the limitation below
-        S13 tagged renders     92.1
-        S7 catalog renders     97.9
-        S6 minted renders      98.0
-        correlation with f0    r = -0.021
-        real vs real           d = +0.18, a tie
+    VALIDATED (S20 at layer 5, 140 IndicVoices-R clips, half as reference):
 
-    WHAT IT IS VALIDATED FOR: flagging GENERATED speech. 50 vs 94-98 is beyond
-    argument.
+        held-out real          51.6      typical, as isolation_pct requires
+        S13 tagged renders     96.4
+        S14 retimed            97.1
+        S6 minted renders      97.3
+        S7 catalog renders     97.5
+        correlation with f0    r = -0.068      humans -0.059, DNSMOS -0.788
+        real vs real           d = +0.17, a tie
 
-    WHAT IS UNKNOWN, and was briefly written here as fact. S20 reported the
-    codec roundtrip at 53.3 against real's 53.3 and concluded the gate is blind
-    to codec degradation. That rested on THREE roundtrip clips. S20b built 40
-    and found a +7.2 gap at this layer -- but at t = 1.23, which a test
-    rejects, and resampling 3 of the 40 reproduces S20's zero in 41% of draws.
-
-    So the gate is neither shown to see the codec nor shown to be blind to it.
-    Settling it needs ~114 roundtrip clips against ~114 real. Until then, do
-    not use this to track codec improvements in either direction.
+    AND IT DOES SEE THE CODEC, which took three attempts to establish. S20 said
+    it was blind, on 3 clips. S20b's first pass said layer 5 saw it, on 40
+    clips and an effect-size cut with no test. At 150 per side the roundtrip
+    sits +8.1 points above real at t = 2.59 -- so codec degradation IS
+    detectable here, and this can track progress on it.
     """
     return isolation_pct(np.atleast_2d(X), np.asarray(reference, dtype=np.float64))
