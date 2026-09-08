@@ -49,7 +49,14 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from alaap.acoustics import BIN_LABELS, Attributes, Binner
 from alaap.captions import caption_from_bins
-from alaap.catalog import CATALOG_AXES, sample_cells
+# PINNED TO THE V1 SET. This experiment's committed RESULTS.md numbers were
+# measured on the five shipped caption axes, before S17/S18's identity set was
+# adopted (2026-09-08). Following the new default here would silently change
+# what every quoted acceptance count and adherence percentage means. Re-running
+# it on the current set is a DIFFERENT question and deserves its own arm.
+# Arm 1 IS "the five shipped axes"; pointing it at the new default would
+# have made it compare the identity set against itself.
+from alaap.catalog import CATALOG_AXES_V1 as CATALOG_AXES, sample_cells
 from alaap.geometry import SpeakerSpace
 from alaap.mapper import RetrievalMapper, TextEncoder
 from alaap.metrics import nn_distances, vendi_score

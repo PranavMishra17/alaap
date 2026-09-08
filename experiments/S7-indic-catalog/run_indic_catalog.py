@@ -101,6 +101,16 @@ CODEBOOK = 12800
 CORPORA = [c.strip() for c in args.corpus.split(",") if c.strip()]
 TAG = "+".join(c.replace("indicvoices_r_", "") for c in CORPORA)
 
+# The axis set is part of the run's identity, so it is part of the filename.
+# S17/S18's swap changed acceptance, adherence AND the describable space; a
+# re-run that overwrote `catalog_E_hi.npz` would silently invalidate the numbers
+# this experiment's own RESULTS.md quotes. Same lesson as a cache key needing the
+# model id, which this project has learned twice (E0, S2).
+from alaap.catalog import CATALOG_AXES, CATALOG_AXES_V1
+AXTAG = "v1-5axis" if list(CATALOG_AXES) == CATALOG_AXES_V1 else         "id-" + "+".join(a.replace("_mean", "").replace("_cm", "")
+                         .replace("spectral_", "") for a in CATALOG_AXES)
+TAG = f"{TAG}_{AXTAG}"
+
 
 def _s4(c):
     return (f"experiments/S4-indic/out/"

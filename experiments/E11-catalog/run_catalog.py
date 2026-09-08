@@ -107,7 +107,12 @@ os.makedirs(AUD, exist_ok=True)
 # Shared with S7 (the Indic catalog) so both saturation curves are measured on
 # the same cover of bin space. A curve over a different cover is not comparable,
 # and comparing the two backends is the point of running it twice.
-from alaap.catalog import CATALOG_AXES as AXES, sample_cells
+# PINNED TO THE V1 SET. This experiment's committed RESULTS.md numbers were
+# measured on the five shipped caption axes, before S17/S18's identity set was
+# adopted (2026-09-08). Following the new default here would silently change
+# what every quoted acceptance count and adherence percentage means. Re-running
+# it on the current set is a DIFFERENT question and deserves its own arm.
+from alaap.catalog import CATALOG_AXES_V1 as AXES, sample_cells
 
 # ------------------------------------------------------------- 1. the mapper
 print(f"[1/4] rebuilding the mapper from {args.corpus_cache}")

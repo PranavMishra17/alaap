@@ -12,11 +12,44 @@ import numpy as np
 
 from .acoustics import BIN_LABELS
 
-# The axes caption_from_bins actually renders into prose, in the order it
-# renders them. snr/jitter/shimmer are RECORDING-quality axes: a catalog voice
-# should not be described as "very noisy" on purpose, so they are excluded even
-# where the mapper measures them as carrying identity.
-CATALOG_AXES = ["f0_mean", "spectral_tilt", "hnr_db", "f0_cv", "speaking_rate"]
+# The axes caption_from_bins actually renders into prose. snr/jitter/shimmer are
+# RECORDING-quality axes: a catalog voice should not be described as "very noisy"
+# on purpose, so they are excluded even where the mapper measures them as
+# carrying identity.
+#
+# THE V1 SET IS KEPT BECAUSE COMMITTED NUMBERS WERE MEASURED ON IT.
+#
+# `CATALOG_AXES` is read by eight experiments. Changing it in place would leave
+# every RESULTS.md that quotes an acceptance count or an adherence percentage
+# silently describing a run nobody can reproduce -- the same class of mistake as
+# a cache key without a model id, which this project has now made twice (E0, S2).
+# So the old set stays, named, and anything re-run against it says which it used.
+CATALOG_AXES_V1 = ["f0_mean", "spectral_tilt", "hnr_db", "f0_cv", "speaking_rate"]
+
+# The identity set, adopted 2026-09-08 from S17/S18 (and cleared by S21).
+#
+#   f0_cv, speaking_rate  DROPPED. Within-speaker spread EXCEEDS between-speaker
+#       spread on real people -- 1.04 and 1.32 (S16), reproducing S12 on acted
+#       emotion and E15 on three corpora. Two of every five words spent
+#       describing a voice described nothing that separates voices.
+#   hnr_db  DROPPED. Weakest of the four at 0.59, and fails outright on Tamil at
+#       1.32. Measured cost of keeping it: 0.3 effective voices bought for 15.6
+#       points of adherence (S18).
+#   vtl_cm  ADDED. Never noise -- the ESTIMATOR was broken, averaging through
+#       the vowel-dependent F2. Repaired in S17; gender separation went from
+#       ~0 to +0.44..+1.03 on four corpora.
+#
+# S17 measured 19.6 -> 22.3 effective voices and 85.8% -> 98.1% adherence for
+# this swap. BOTH CHANNELS MUST CHANGE TOGETHER: S17 arm 3 kept 5-axis cells and
+# only zeroed the mapper weights, and got the adherence win with a diversity LOSS
+# (18.4, below baseline) because descriptions differing only in a dead axis
+# collide and are rejected as duplicates. Caption and sampler are both driven
+# from here, so they cannot drift apart.
+#
+# CAVEAT TO CARRY (S21): `spectral_tilt` is a usable identity axis but NOT a
+# clean brightness axis -- it reads F0 at r = +0.918 where brightness is fixed
+# by construction. Count this set as ~2.6 independent axes, not 3.
+CATALOG_AXES = ["f0_mean", "spectral_tilt", "vtl_cm"]
 
 
 def sample_cells(n: int, seed: int = 0,
@@ -29,8 +62,28 @@ def sample_cells(n: int, seed: int = 0,
     are uninteresting interiors. The corners come early because E9 found the
     quality cliffs there, and a catalog that never probes them would report a
     saturation number that only holds for ordinary voices.
+
+    RAISES when `n` exceeds the describable space, rather than returning fewer
+    cells than asked for. Adopting the 3-axis identity set (S17/S18) took that
+    space from 3,125 cells to 125, so a caller asking for 300 used to get 125
+    back in silence -- and a saturation curve built on that reads as the CATALOG
+    saturating when really the SAMPLER ran out of things to ask for. S18 flagged
+    that the cell count must bind eventually and left where untested; this makes
+    the boundary say so instead of being absorbed into a result.
+
+    The fix when this fires is more bins per axis or another real axis, NOT
+    catching it -- S18 measured that neither buys capacity at n=80, so a caller
+    hitting this is asking a question the axis set cannot currently answer.
     """
     axes = axes or CATALOG_AXES
+    space = 5 ** len(axes)
+    if n > space:
+        raise ValueError(
+            f"asked for {n} distinct cells but {len(axes)} axes x 5 bins is only "
+            f"{space} describable descriptions ({', '.join(axes)}). Returning "
+            f"{space} silently would make a saturation curve read as the catalog "
+            f"saturating rather than the sampler exhausting. Add bins or an axis."
+        )
     rng = np.random.default_rng(seed)
     cells: list[dict[str, str]] = []
     seen: set[tuple[int, ...]] = set()

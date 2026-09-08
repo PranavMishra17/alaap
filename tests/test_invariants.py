@@ -1615,6 +1615,80 @@ class TestBlendingCostsDiversity:
             f"mint {tail_mint:.4f} vs real {tail_real:.4f}")
 
 
+class TestCatalogAxisSet:
+    """
+    S17/S18's identity axis set, adopted 2026-09-08. These lock the ADOPTION,
+    not the numbers behind it -- the numbers live in those experiments' RESULTS.
+    """
+
+    def test_the_two_dead_axes_are_not_described(self):
+        """
+        `f0_cv` and `speaking_rate` have within-speaker spread LARGER than
+        between-speaker spread on real people (1.04 and 1.32, S16), reproducing
+        S12 on acted emotion and E15 on three corpora. A caption that mentions
+        them spends words on nothing that separates voices.
+        """
+        from alaap.catalog import CATALOG_AXES
+        for dead in ("f0_cv", "speaking_rate"):
+            assert dead not in CATALOG_AXES, (
+                f"{dead} is back in CATALOG_AXES. S16/S12/E15 all measured it as "
+                f"a DELIVERY axis, not an identity one. If new evidence says "
+                f"otherwise, cite it here.")
+
+    def test_the_repaired_vtl_axis_is_described(self):
+        """S17: never noise, the estimator was broken. Third-best axis in the set."""
+        from alaap.catalog import CATALOG_AXES
+        assert "vtl_cm" in CATALOG_AXES
+
+    def test_the_legacy_set_is_still_reachable(self):
+        """
+        Eight experiments quote acceptance counts and adherence percentages
+        measured on the five-axis set. Losing it would make every one of those
+        RESULTS.md unreproducible -- the same class of mistake as a cache key
+        without a model id, made twice already (E0, S2).
+        """
+        from alaap.catalog import CATALOG_AXES, CATALOG_AXES_V1
+        assert CATALOG_AXES_V1 == ["f0_mean", "spectral_tilt", "hnr_db",
+                                   "f0_cv", "speaking_rate"]
+        assert CATALOG_AXES != CATALOG_AXES_V1
+
+    def test_captions_and_sampler_cannot_drift_apart(self):
+        """
+        S17 arm 3 is the reason this matters. Keeping five-axis CELLS while
+        zeroing the mapper's weights on the dead axes got the adherence win and
+        a diversity LOSS -- 18.4 against a 19.6 baseline -- because two
+        descriptions differing only in a dead axis collide and are rejected as
+        duplicates. A third of the minting budget went on descriptions the
+        system could no longer tell apart.
+
+        So: every axis the sampler emits must be one the caption renderer can
+        actually say, and nothing else may appear.
+        """
+        from alaap.captions import ORDER, PHRASES, caption_from_bins
+        from alaap.catalog import CATALOG_AXES, sample_cells
+        for a in CATALOG_AXES:
+            assert a in ORDER, f"{a} is sampled but caption ORDER cannot place it"
+            assert a in PHRASES, f"{a} is sampled but has no phrasing"
+        cells = sample_cells(20, 0)
+        assert all(set(c) == set(CATALOG_AXES) for c in cells)
+        for i, c in enumerate(cells[:5]):
+            assert caption_from_bins(c, seed=i).strip().endswith("."), c
+
+    def test_asking_for_more_cells_than_exist_raises(self):
+        """
+        The cost of the adoption: 3 axes x 5 bins is 125 describable
+        descriptions, down from 3,125. `sample_cells(300)` used to return 125
+        in silence, and a saturation curve built on that reads as the CATALOG
+        saturating when really the SAMPLER exhausted. S18 flagged that the cell
+        count must bind eventually; this makes the boundary announce itself.
+        """
+        from alaap.catalog import CATALOG_AXES, sample_cells
+        space = 5 ** len(CATALOG_AXES)
+        assert len(sample_cells(space, 0)) == space
+        with pytest.raises(ValueError, match="describable"):
+            sample_cells(space + 1, 0)
+
+
 class TestRateDirection:
     """
     S14's rate control, and the properties that made it shippable.
