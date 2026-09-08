@@ -281,6 +281,22 @@ def cer(reference: str, hypothesis: str) -> float:
 NATURALNESS_REAL_TYPICAL = 50.0     # held-out real speech, by construction
 NATURALNESS_FLOOR = 75.0            # above this, flagged as synthetic-sounding
 
+# WHICH WavLM base+ LAYER TO POOL. There is no layer that does both jobs, and
+# S23 is where that stopped being hidden. Numbers are `r` with mean F0 measured
+# WITHIN real speech, where naturalness is constant so any correlation is the
+# metric responding to pitch alone. Humans sit at -0.059, DNSMOS at -0.788.
+#
+#            English r_real   Hindi r_real   codec t (Hindi)
+#   layer 4     +0.297           -0.370          2.72
+#   layer 5     +0.323           -0.154          2.59
+#   layer 6     +0.219           +0.004          1.98
+#   layer 7     +0.043           -0.022          0.28
+#
+# The layers that detect the codec are the ones that also carry pitch. Pick by
+# what the score is FOR:
+NATURALNESS_LAYER = 7          # flagging generated speech; clean in BOTH languages
+NATURALNESS_LAYER_CODEC = 5    # tracking codec degradation; Hindi only, marginal
+
 
 def naturalness_isolation(X: np.ndarray, reference: np.ndarray) -> float:
     """
@@ -297,32 +313,46 @@ def naturalness_isolation(X: np.ndarray, reference: np.ndarray) -> float:
     would reject high-pitched voices for a reason humans do not share, fighting
     the diversity axis this project exists to widen.
 
-    `reference` must be features of REAL speech from the same domain, and
-    `X` the same features for the clips being scored. Use **WavLM base+ layer
-    5**, mean-pooled -- ECAPA is wrong here because it is trained to be
-    INVARIANT to channel and quality.
+    `reference` must be features of REAL speech FROM THE SAME LANGUAGE AND
+    DOMAIN, and `X` the same features for the clips being scored. ECAPA is wrong
+    here because it is trained to be INVARIANT to channel and quality.
 
-    WHY LAYER 5 AND NOT ANOTHER. S20b swept all twelve at n=150 per side. Early
-    layers encode pitch and are the DNSMOS trap in disguise: layer 0 separates
-    the codec significantly (t = 2.04) at r(f0) = -0.578, which is DNSMOS
-    territory and was rejected for it. Late layers see nothing. Layers 4 and 5
-    both work; layer 5 is chosen because its pitch correlation is -0.054
-    against humans' -0.059, where layer 4 sits at -0.211.
+    USE `NATURALNESS_LAYER` (7), mean-pooled, unless you are specifically
+    tracking codec progress. See the table above the constants.
 
-    VALIDATED (S20 at layer 5, 140 IndicVoices-R clips, half as reference):
+    HOW THAT CHANGED, AND WHY (S23). S20b picked layer 5 on two statistics that
+    were both subtly wrong, and neither error showed on Hindi alone:
 
-        held-out real          51.6      typical, as isolation_pct requires
-        S13 tagged renders     96.4
-        S14 retimed            97.1
-        S6 minted renders      97.3
-        S7 catalog renders     97.5
-        correlation with f0    r = -0.068      humans -0.059, DNSMOS -0.788
-        real vs real           d = +0.17, a tie
+      1. Its pitch check used the correlation POOLED over real and synthetic
+         clips. Synthetic clips score ~50 points higher AND have a different F0
+         distribution, so the pooled number partly measures the group split
+         rather than the metric. Within real speech -- where naturalness is
+         constant, so the correlation is unambiguous -- layer 5 reads -0.154 on
+         Hindi (against 0.165, the value distinguishable from zero at n=150:
+         it passes by 0.011) and +0.323 on English, which it FAILS.
+      2. Its real-vs-real control came from ONE arbitrary split of the held-out
+         set. Averaged over 200 splits every layer lands at 0.11-0.13 on Hindi
+         and 0.18-0.20 on English, so the single-split values -- which ranged
+         0.08 to 0.75 -- were noise, and six layers were being failed on it.
 
-    AND IT DOES SEE THE CODEC, which took three attempts to establish. S20 said
-    it was blind, on 3 clips. S20b's first pass said layer 5 saw it, on 40
-    clips and an effect-size cut with no test. At 150 per side the roundtrip
-    sits +8.1 points above real at t = 2.59 -- so codec degradation IS
-    detectable here, and this can track progress on it.
+    VALIDATED at layer 7 on both languages (S23), 150 clips per corpus, half as
+    reference, 56 synthetic renders each:
+
+                       English        Hindi
+        held-out real    46.3%        46.8%     typical, as isolation_pct requires
+        synthetic        99.0%        97.2%
+        separation      t = 14.4     t = 19.8
+        r(f0) in real   +0.043       -0.022     humans -0.059
+        real vs real     0.19         0.11      a tie, over 200 splits
+
+    WHAT MOVING OFF LAYER 5 COSTS. Layer 5 detects MioCodec round-tripping
+    (+8.1 points, t = 2.59, S20b); layer 7 does not (t = 0.28). Codec
+    sensitivity and pitch-independence are in TENSION across layers, and no
+    layer has both. If you need to track codec progress, score that separately
+    on `NATURALNESS_LAYER_CODEC` and read it as Hindi-only.
+
+    STILL NEVER HAS REJECTED ANYTHING. `NATURALNESS_FLOOR` is chosen, not
+    measured, and no render in the project has been gated on it. A gate that
+    has not yet blocked something is a proposal.
     """
     return isolation_pct(np.atleast_2d(X), np.asarray(reference, dtype=np.float64))

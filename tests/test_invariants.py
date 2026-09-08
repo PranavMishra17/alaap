@@ -1846,3 +1846,25 @@ class TestNaturalnessGate:
     def test_the_documented_floor_is_above_real_speech(self):
         from alaap.metrics import NATURALNESS_FLOOR, NATURALNESS_REAL_TYPICAL
         assert NATURALNESS_FLOOR > NATURALNESS_REAL_TYPICAL + 20
+
+    def test_the_two_layer_constants_are_distinct_and_both_named(self):
+        """
+        S23: no WavLM layer both detects the codec and stays pitch-independent.
+        The layers that see the codec are the early-middle ones that also carry
+        pitch, so the choice follows the JOB and both are shipped named rather
+        than one being a hidden default.
+
+        `NATURALNESS_LAYER` (7) is clean in English AND Hindi -- r with F0
+        within real speech +0.043 / -0.022 against humans' -0.059.
+        `NATURALNESS_LAYER_CODEC` (5) detects MioCodec round-tripping at
+        t = 2.59, is marginal on Hindi pitch (-0.154 against a 0.165 bar) and
+        FAILS on English at +0.323.
+
+        Collapsing these back to one constant would re-hide the trade-off,
+        which is what S20b's single default did.
+        """
+        from alaap.metrics import NATURALNESS_LAYER, NATURALNESS_LAYER_CODEC
+        assert NATURALNESS_LAYER != NATURALNESS_LAYER_CODEC, (
+            "one layer cannot serve both jobs -- see S23 RESULTS.md")
+        for v in (NATURALNESS_LAYER, NATURALNESS_LAYER_CODEC):
+            assert isinstance(v, int) and 0 <= v < 12, v

@@ -5,6 +5,36 @@
 
 ---
 
+## ⚠️ CORRECTED BY S23 — layer 5 is no longer the default
+
+`S23` re-scored this sweep with two of its statistics repaired, and both errors are in the
+checks rather than the data:
+
+1. **The pitch correlation was POOLED over real and synthetic clips.** Synthetic clips score
+   ~50 points higher *and* have a different F0 distribution, so the pooled number partly
+   measures the group split. Within real speech — where naturalness is constant, so the
+   correlation is unambiguous — **layer 5 reads −0.154 against a 0.165 bar, passing by
+   0.011**, and **+0.323 on English, which it fails.**
+2. **The real-vs-real control came from ONE arbitrary split.** Over 200 splits every layer
+   lands at 0.11–0.13 here and 0.18–0.20 on English. The single-split values were noise.
+
+Two consequences for what is written below:
+
+- **Layer 4 is a pitch trap** at r = −0.370 within real speech. It is scored −0.211 here,
+  passed, and then lost to layer 5 on that margin. The corrected statistic disqualifies it.
+- **Layer 6 is cleaner than layer 5** (+0.004 vs −0.154) *and* separates synthetic better
+  (t = 22.43 vs 21.51). It lost only on the codec question, at t = 1.98 against a bar of 2.
+
+**What survives unchanged is the codec result**: layer 5 does detect MioCodec round-tripping
+at +8.1 points, t = 2.59. That is why it is kept as `NATURALNESS_LAYER_CODEC`. But the gate's
+default is now **layer 7**, which is clean on pitch in both languages and blind to the codec
+(t = 0.28). **No layer does both** — the layers that see the codec are the ones that carry
+pitch.
+
+
+---
+
+
 ## Three answers to one question, and only the third is supported
 
 This took three attempts, and the first two were both wrong in ways worth recording.

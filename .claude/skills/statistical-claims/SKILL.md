@@ -63,6 +63,41 @@ never as *"there is no difference"*.
 Before comparing two normalised numbers, check they share a denominator. If they do not,
 convert to absolute units first.
 
+## 4b. A correlation pooled across groups measures the groups
+
+If two groups differ on BOTH the thing you correlate and the thing you correlate it with,
+the pooled `r` is partly the group split. Compute it **within** each group.
+
+> **S20b** screened WavLM layers for "is this a pitch detector" using `r(F0, score)` pooled
+> over real and synthetic clips. Synthetic clips score ~50 points higher AND have a
+> different F0 distribution. Within real speech alone -- where naturalness is constant, so
+> the correlation is unambiguous -- the chosen layer moved from -0.054 to **-0.154** on
+> Hindi and to **+0.323** on English, which it fails. The flaw was invisible on one corpus.
+
+Pick the within-group that is **confound-free**, not just any. Within *real* speech works
+because quality is constant there; within *synthetic* does not, because quality genuinely
+varies and may covary with pitch by construction.
+
+**If you change which statistic decides after seeing the numbers, say so in the write-up**
+and report all of them. An a priori argument made second is still worth less than one made
+first, and the reader should get to weigh that.
+
+## 4c. A control from one random split is one sample
+
+> **S20b**'s real-vs-real control split a held-out set in half ONCE. Values ranged 0.08 to
+> 0.75 across layers and six were rejected on it. Averaged over 200 random splits every
+> layer landed at 0.11-0.13. The spread was entirely which half a clip fell in.
+
+Repeat any split-based control over many splits and report the mean. It costs nothing when
+the features are already computed.
+
+## 4d. A threshold that rejects nothing has stopped checking
+
+After fixing a statistic, re-check that its threshold still discriminates. Inheriting a bar
+calibrated for the OLD statistic passed all 12 layers in one S23 pass -- technically a
+"pass" for everything, actually a check that had stopped running. Prefer a bar derived from
+the data (`|r|` distinguishable from zero at this n) over an inherited constant.
+
 ## 5. Compare like with like, or the comparison is of your scoring
 
 > **S17** scored each arm on *its own* axis set, so one arm was graded on three axes and
