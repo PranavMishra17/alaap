@@ -59,6 +59,16 @@ homogeneous.
   pitch and brightness are genuinely correlated, and removing the artefact moved tilt
   CLOSER to `f0_mean`. Measure the repair against the real corpus before adopting it.
 
+- **A repair that improves every screen at once is a redundancy alarm, not a win.**
+  1/3-octave banding took `spectral_tilt` from within/between 0.15 to 0.06 and gender d
+  -0.80 to -2.04, both bootstrapping to CIs excluding zero -- and took its correlation
+  with `f0_mean` from 0.36 to **0.791**. The separation was real and it was F0 wearing a
+  different name. **Check |r| against the axes already in the set BEFORE celebrating.**
+- **Test each change in ISOLATION, not only as a bundle.** S21 tested voiced+power+
+  1/3-octave+band-restriction together and concluded the repair did nothing; the band
+  restriction was cancelling the banding. A null from a bundle is not a null from its
+  parts.
+
 ## Building a synthetic stimulus to test an estimator
 
 - **Additive noise must go through the same filter as the harmonics.** A first version of

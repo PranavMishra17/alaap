@@ -88,6 +88,13 @@ clips each, same code:
    synthetic speech, which was not obvious — the pipeline was built for corpus recordings.
 2. **`spectral_tilt` separates real speakers (0.14) and not Bulbul's (1.09).** Bulbul's
    voices share a timbre. That is a fact about the library, not the instrument.
+
+   > **`S24` re-measured this against the cross-corpus channel confound `S21` warned about
+   > (Bulbul is 22050 Hz, IndicVoices-R 24000 Hz) and the claim survives, sharpened.** Under
+   > a ⅓-octave estimator — which is 63% `f0_mean` — Bulbul separates at 0.11. Under the
+   > shipped, pitch-independent one it does not. Both together say it better than either:
+   > **Bulbul's voices differ in PITCH but share a TIMBRE.** The bandwidth difference is real
+   > and moves nothing: the bright-side skew *grows* under a common band, +0.51 → +1.23 sd.
 3. **`f0_cv` and `speaking_rate` fail on *real speakers*.** Two ordinary clips of the same
    person differ on them more than two people do. **They are not identity axes at all.**
 

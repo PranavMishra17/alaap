@@ -11,20 +11,19 @@ never scrutinised.
 
 ## Verdict
 
-**The shipped estimator fails 3 of 4 pre-committed assertions on synthetics — and repairing
-it changes nothing measurable on real speech.** Both differences bootstrap to CIs that
-include zero.
+**The shipped estimator fails 3 of 4 pre-committed assertions on synthetics — and it is kept
+anyway.** *(Headline revised after `S24`; the original read "repairing it changes nothing
+measurable", which was true of the variant tested here and false in general. See below.)*
 
 | | |
 |---|---|
 | Is the estimator defective? | **Yes.** r(F0) = +0.918 at brightness held constant by construction; +0.70 dB/oct shift on a 16 kHz round-trip |
-| Does repairing it help? | **Not detectably.** within/between −0.037 [−0.130, +0.046]; \|gender d\| +0.173 [−0.277, +0.669] |
-| Action | **Keep the shipped estimator. Document what it is.** |
+| Does repairing it help? | **It helps enormously — by turning the axis into `f0_mean`.** ⅓-octave banding alone takes within/between 0.15 → 0.06 and gender d −0.80 → −2.04, both CIs excluding zero, while taking \|r\| with `f0_mean` from 0.36 to **0.791** (`S24`) |
+| Action | **Keep the shipped estimator** — its 0.36 correlation is the most independent reading available |
 
-**The streak breaks at 3.** `speaking_rate`, `f0_cv` and `vtl_cm` were all cases where the
-check found a defect *that mattered*. This is the first where a real defect has no measurable
-consequence — which is what makes it worth writing down, because the base rate was starting
-to look like a law.
+**The streak of estimator audits that mattered breaks at 3** — `speaking_rate`, `f0_cv` and
+`vtl_cm` were all defects worth fixing. Here the defect is real and the fix is worse than the
+defect, which is a different and more useful kind of answer than "no effect".
 
 ---
 
@@ -135,6 +134,28 @@ so both takes stay with their owner:
 **Neither is a finding.** And note what this design could *not* have resolved: the ratio CI
 is ±0.088 wide, so a real improvement smaller than ~0.09 would have been invisible here. This
 is "not detected at n = 67 speakers", not "there is no difference".
+
+## ⚠️ S24 SHARPENED THIS — the reason above is incomplete
+
+Phase C tested only the bundled `repaired` variant (voiced + power + ⅓-octave + 300–6000 Hz),
+where the **band restriction cancels the banding's effect**. `S24` tested ⅓-octave banding
+ALONE on the same 67 speakers:
+
+| | within/between | gender d | \|r\| with `f0_mean` |
+|---|---|---|---|
+| shipped | 0.15 | −0.80 | 0.361 |
+| **+⅓-octave alone** | **0.06** | **−2.04** | **0.791** |
+| `repaired` (tested here) | 0.13 | −0.95 | 0.418 |
+
+Bootstrap: within/between −0.098 [−0.181, −0.050] and \|gender d\| +1.287 [+0.727, +1.929],
+**both excluding zero**.
+
+So "repairing it changes nothing measurable" is wrong as stated. **Repairing the leverage
+changes a great deal — it turns the axis into `f0_mean`**, taking the correlation from 0.36
+to 0.791 (63% shared variance, against `S18`'s 0.80 rejection line).
+
+**The decision to keep the shipped estimator is unchanged and better supported**: its 0.36
+correlation is the most independent reading available, not one of several equivalent ones.
 
 ## Why the synthetic defect does not show up on real speakers
 

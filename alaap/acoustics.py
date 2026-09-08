@@ -112,12 +112,24 @@ def spectral_tilt(wav: np.ndarray, sr: int = SR) -> float:
             problem (0.15 dB/oct for an appended second), despite this being
             the one axis here that does not use `voiced_mask`.
 
-    KEPT ANYWAY because a repaired version (voiced + power + 1/3-octave bands +
-    300-6000 Hz band) changes nothing measurable on 67 Hindi speakers with two
-    takes each: within/between -0.037 [-0.130, +0.046], |gender d| +0.173
-    [-0.277, +0.669], both CIs including zero. On real speech pitch and
-    brightness are genuinely correlated, and removing the artefact moves this
-    CLOSER to f0_mean (r 0.361 -> 0.418), not further.
+    KEPT ANYWAY, AND S24 SHARPENED WHY. Repairing the leverage does not fail to
+    help -- it helps enormously, by turning the axis into f0_mean. On 67 Hindi
+    speakers with two takes each:
+
+                        within/between   gender d   |r| with f0_mean
+        shipped                   0.15      -0.80              0.361
+        +1/3-octave alone         0.06      -2.04              0.791
+        S21 "repaired" bundle     0.13      -0.95              0.418
+
+    Bootstrap over speakers: within/between -0.098 [-0.181, -0.050] and
+    |gender d| +1.287 [+0.727, +1.929] -- both EXCLUDE zero. A gender d of
+    -2.04 on an axis that shares 63% of its variance with f0_mean is f0_mean's
+    -3.08 leaking through, and S18's redundancy screen rejects at r >= 0.80.
+
+    So the shipped estimator is kept because 0.361 is the most INDEPENDENT
+    reading available, not because the alternatives are equivalent. S21 tested
+    only the bundled variant, where a 300-6000 Hz band restriction cancels the
+    banding's effect, and wrongly concluded the repair does nothing.
 
     So: usable as an identity axis, which is what S18 measured it as. NOT
     readable as "brightness independent of pitch". Count the S18 identity set
