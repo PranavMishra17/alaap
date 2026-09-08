@@ -44,6 +44,35 @@ homogeneous.
 - Absolute VTL from a uniform tube **over-reads** (~19 cm where a phonetician says 15).
   Fine if you percentile-bin it; never quote it as anatomy.
 
+## Spectral tilt
+
+- **OLS over LINEAR FFT bins in log-frequency over-weights both ENDS of the band.** At
+  sr 24000 / n_fft 2048 / 80-8000 Hz, the **27 bins below 500 Hz carry 43% of the
+  leverage** and they are F0 harmonics, not a smooth spectrum. Measured consequence:
+  `r(F0) = +0.918` on synthetic voices whose envelope slope is identical by construction.
+- **Raising the band floor above F0 is the only fix that helps** (+0.918 -> +0.693).
+  Voiced-frame masking and power averaging do nothing for it.
+- **It moves 0.70 dB/oct on a 16 kHz resample round-trip**, against a between-speaker sd
+  of ~2.0. Cross-corpus tilt comparisons are partly comparing microphones.
+- **A defect is not automatically worth fixing.** Repairing all of the above changed
+  nothing on 67 real speakers: within/between -0.037 [-0.130, +0.046]. On real speech
+  pitch and brightness are genuinely correlated, and removing the artefact moved tilt
+  CLOSER to `f0_mean`. Measure the repair against the real corpus before adopting it.
+
+## Building a synthetic stimulus to test an estimator
+
+- **Additive noise must go through the same filter as the harmonics.** A first version of
+  the tilt stimulus added FLAT noise; every variant then failed at `r(f0) ~ +0.97`. A
+  250 Hz voice has 2.8x fewer harmonics across the band than a 90 Hz one, so 2.8x more
+  bins land in the flat inter-harmonic floor and drag the fit toward flat. That is the
+  stimulus, not the estimator.
+- **Measure the estimator's own repeatability before setting a tolerance.** Several draws
+  at each setting. A "spread < 0.5" threshold is meaningless when repeat draws already
+  span 0.4. State that the threshold was mis-specified; do not quietly relax it.
+- **Check the sample rate of cached audio.** Features cached for one model are often
+  resampled for it -- WavLM caches are 16 kHz. Analysing them at the project's 24 kHz
+  puts every frequency 1.5x wrong and can REVERSE a result cleanly enough to look real.
+
 ## Voicing, HNR and the difference between them
 
 - **`voiced_mask` is an energy+ZCR VAD, not a periodicity detector.** With an energy

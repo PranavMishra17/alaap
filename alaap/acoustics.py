@@ -92,6 +92,36 @@ def spectral_tilt(wav: np.ndarray, sr: int = SR) -> float:
     """
     dB/octave slope of the long-term average spectrum. More negative = darker,
     breathier. Not in Data-Speech; built here.
+
+    AUDITED (S21) AND KEPT, BUT IT IS NOT A CLEAN BRIGHTNESS AXIS.
+
+    It fails 3 of 4 properties its name implies. OLS over LINEAR FFT bins in
+    log-frequency puts 43% of its leverage on the 27 bins below 500 Hz, which
+    are F0 harmonics, so:
+
+        A2  r(F0) = +0.918 on synthetic voices whose envelope slope is held
+            CONSTANT by construction. It reads pitch. Raising the band floor
+            above F0 is the only change that helps (+0.918 -> +0.693); voiced
+            masking and power averaging do nothing.
+        A4  a 16 kHz resample round-trip moves it 0.70 dB/oct against a
+            between-speaker sd of ~2.0. CROSS-CORPUS COMPARISONS ARE PARTLY
+            COMPARING MICROPHONES -- relevant to S16 and to any English-vs-Hindi
+            scoring.
+        A1  0.50 dB/oct recovery error on shaped noise, at the tolerance edge.
+        A3  silence contamination was the obvious hypothesis and is NOT a
+            problem (0.15 dB/oct for an appended second), despite this being
+            the one axis here that does not use `voiced_mask`.
+
+    KEPT ANYWAY because a repaired version (voiced + power + 1/3-octave bands +
+    300-6000 Hz band) changes nothing measurable on 67 Hindi speakers with two
+    takes each: within/between -0.037 [-0.130, +0.046], |gender d| +0.173
+    [-0.277, +0.669], both CIs including zero. On real speech pitch and
+    brightness are genuinely correlated, and removing the artefact moves this
+    CLOSER to f0_mean (r 0.361 -> 0.418), not further.
+
+    So: usable as an identity axis, which is what S18 measured it as. NOT
+    readable as "brightness independent of pitch". Count the S18 identity set
+    as ~2.6 independent axes rather than 3.
     """
     import librosa
     S = np.abs(librosa.stft(wav.astype(np.float32), n_fft=2048, hop_length=512))

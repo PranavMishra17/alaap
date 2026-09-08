@@ -890,6 +890,47 @@ class TestFormantsAndVTL:
         b = vocal_tract_length(formants(self._vowel(1.0, f0=200), 24000))
         assert abs(a - b) / max(a, 1e-9) < 0.20, (a, b)
 
+    def test_spectral_tilt_IS_partly_a_restatement_of_pitch(self):
+        """
+        The mirror of the test above, and it locks a KNOWN DEFECT rather than a
+        good property. `spectral_tilt` fits a line over LINEAR FFT bins in
+        log-frequency, which puts 43% of the fit's leverage on the 27 bins below
+        500 Hz -- the first few F0 harmonics. S21 measured r(F0) = +0.918 on
+        synthetic voices whose envelope slope is identical by construction.
+
+        Asserting the defect, deliberately. It was measured and then KEPT, since
+        a repaired estimator changed nothing on 67 real speakers (within/between
+        -0.037, CI [-0.130, +0.046]). Locking it here means a future change that
+        claims to fix it has to come here and say so, instead of the axis
+        quietly becoming a different measurement the way `vtl_cm` once did.
+
+        Same tract, same envelope slope, F0 110 -> 220. If this ever starts
+        passing as an invariance test, that is good news and this test should be
+        REWRITTEN, not deleted.
+        """
+        from alaap.acoustics import spectral_tilt
+        sr, dur = 24000, 2.0
+        t = np.arange(int(sr * dur)) / sr
+        rng = np.random.default_rng(0)
+
+        def voice(f0, slope=-9.0):
+            w = np.zeros_like(t)
+            for k in range(1, int(0.45 * sr / f0) + 1):
+                fk = k * f0
+                w += 10 ** (slope * np.log2(fk / 1000.0) / 20.0) * \
+                    np.sin(2 * np.pi * fk * t + rng.uniform(0, 2 * np.pi))
+            w = w / (w.std() + 1e-9) + 0.05 * rng.standard_normal(len(t))
+            return (w / (np.abs(w).max() + 1e-9) * 0.5).astype(np.float32)
+
+        lo, hi = spectral_tilt(voice(110), sr), spectral_tilt(voice(220), sr)
+        assert np.isfinite(lo) and np.isfinite(hi)
+        assert hi > lo + 0.3, (
+            f"spectral_tilt read {lo:.2f} at F0 110 and {hi:.2f} at F0 220 on an "
+            f"IDENTICAL envelope slope. S21 says the higher-pitched voice must "
+            f"read flatter by a clear margin. If that gap has closed, the "
+            f"estimator changed -- see S21 RESULTS.md before editing this."
+        )
+
     def test_missing_formants_are_nan_not_invented(self):
         from alaap.acoustics import formants, vocal_tract_length
         assert np.isnan(vocal_tract_length(np.array([np.nan, np.nan])))
