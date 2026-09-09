@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alaap — Architecture</title>
+<style>
+:root{
+  --bg:#fbfaf8; --fg:#1c1a17; --muted:#6b6660; --line:#c9c3ba;
+  --box:#ffffff; --box2:#f1ece4; --edge:#a89f92;
+  --a1:#2f6f8f; --a1b:#e3f0f6;   /* blue  - data / identity */
+  --a2:#8a5a2b; --a2b:#f7ecdf;   /* amber - model / frozen  */
+  --a3:#5b7f3a; --a3b:#eaf2e0;   /* green - measurement     */
+  --a4:#8a3f5c; --a4b:#f8e7ee;   /* plum  - gates / risk    */
+  --ok:#3f7a4a; --warn:#a8621b; --bad:#a33a3a;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141312; --fg:#e9e5df; --muted:#9c958c; --line:#3a3733;
+  --box:#1e1c1a; --box2:#262320; --edge:#5a544c;
+  --a1:#7fb8d4; --a1b:#1b2b33; --a2:#d6a06a; --a2b:#302620;
+  --a3:#9fc47a; --a3b:#212b1c; --a4:#d489a6; --a4b:#301f27;
+  --ok:#7fbc8c; --warn:#d99a55; --bad:#d97a7a;
+}}
+:root[data-theme="dark"]{
+  --bg:#141312; --fg:#e9e5df; --muted:#9c958c; --line:#3a3733;
+  --box:#1e1c1a; --box2:#262320; --edge:#5a544c;
+  --a1:#7fb8d4; --a1b:#1b2b33; --a2:#d6a06a; --a2b:#302620;
+  --a3:#9fc47a; --a3b:#212b1c; --a4:#d489a6; --a4b:#301f27;
+  --ok:#7fbc8c; --warn:#d99a55; --bad:#d97a7a;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);
+  font:15px/1.6 ui-serif,Georgia,'Iowan Old Style',serif;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 120px}
+header{padding:56px 0 28px;border-bottom:1px solid var(--line);margin-bottom:8px}
+h1{font-size:34px;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:23px;margin:56px 0 4px;letter-spacing:-.01em;scroll-margin-top:20px}
+h3{font-size:17px;margin:30px 0 4px;color:var(--fg)}
+.sub{color:var(--muted);margin:0;font-size:15px}
+.lede{color:var(--muted);margin:2px 0 18px;font-size:14.5px;max-width:76ch}
+code,.mono{font-family:var(--mono);font-size:.88em;
+  background:var(--box2);padding:1px 5px;border-radius:4px}
+nav{background:var(--box2);border:1px solid var(--line);border-radius:10px;
+  padding:16px 20px;margin:22px 0 10px}
+nav b{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+nav ol{margin:8px 0 0;padding-left:20px;columns:2;column-gap:34px}
+nav li{margin:3px 0;break-inside:avoid}
+nav a{color:var(--a1);text-decoration:none}
+nav a:hover{text-decoration:underline}
+figure{margin:14px 0 0;padding:18px 14px 10px;background:var(--box);
+  border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+figcaption{color:var(--muted);font-size:13.5px;margin-top:10px;padding:0 6px;max-width:88ch}
+svg{display:block;margin:0 auto;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.note{border-left:3px solid var(--a2);background:var(--a2b);padding:12px 16px;
+  border-radius:0 8px 8px 0;margin:18px 0;font-size:14.5px}
+.ok{color:var(--ok);font-weight:600} .warn{color:var(--warn);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+/* --- svg primitives --- */
+.b{fill:var(--box);stroke:var(--edge);stroke-width:1.4}
+.b1{fill:var(--a1b);stroke:var(--a1);stroke-width:1.4}
+.b2{fill:var(--a2b);stroke:var(--a2);stroke-width:1.4}
+.b3{fill:var(--a3b);stroke:var(--a3);stroke-width:1.4}
+.b4{fill:var(--a4b);stroke:var(--a4);stroke-width:1.4}
+.dash{stroke-dasharray:5 4}
+.t{fill:var(--fg);font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;
+  text-anchor:middle;dominant-baseline:middle}
+.tm{fill:var(--muted);font-family:ui-sans-serif,system-ui,sans-serif;font-size:11px;
+  text-anchor:middle;dominant-baseline:middle}
+.tc{fill:var(--fg);font-family:var(--mono);font-size:11px;
+  text-anchor:middle;dominant-baseline:middle}
+.tl{text-anchor:start} .tr{text-anchor:end}
+.hd{fill:var(--muted);font-family:ui-sans-serif,system-ui,sans-serif;font-size:10.5px;
+  letter-spacing:.1em;text-anchor:middle;text-transform:uppercase}
+.ln{stroke:var(--edge);stroke-width:1.5;fill:none;marker-end:url(#arw)}
+.ln2{stroke:var(--a1);stroke-width:1.8;fill:none;marker-end:url(#arw1)}
+.ln3{stroke:var(--a4);stroke-width:1.8;fill:none;marker-end:url(#arw4)}
+.plain{stroke:var(--edge);stroke-width:1.2;fill:none}
+.grp{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:4 4}
+</style>
+</head>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--edge)"/></marker>
+  <marker id="arw1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--a1)"/></marker>
+  <marker id="arw4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0 0 L10 5 L0 10 z" fill="var(--a4)"/></marker>
+</defs></svg>
+
+<div class="wrap">
+<header>
+  <h1>Alaap — how the whole thing fits together</h1>
+  <p class="sub">Fourteen diagrams, system level down to individual estimator. Companion to
+  <span class="mono">learning/00-SANITY-CHECK.md</span> and <span class="mono">learning/01-STUDY-GUIDE.md</span>.</p>
+</header>
+
+<nav>
+  <b>Contents</b>
+  <ol>
+    <li><a href="#ctx">System context — what goes in and out</a></li>
+    <li><a href="#tower">The two-tower thesis</a></li>
+    <li><a href="#mint">The mint pipeline, in full</a></li>
+    <li><a href="#render">The render pipeline</a></li>
+    <li><a href="#gates">The gate stack</a></li>
+    <li><a href="#rev">Reversibility: measure → bin → caption → re-measure</a></li>
+    <li><a href="#geom">Speaker-space geometry</a></li>
+    <li><a href="#axes">The attribute taxonomy</a></li>
+    <li><a href="#backend">Two backends, one interface</a></li>
+    <li><a href="#codec">Inside MioCodec — the content/identity split</a></li>
+    <li><a href="#dir">The Direction channel</a></li>
+    <li><a href="#mods">Module map</a></li>
+    <li><a href="#exp">Experiment lineage</a></li>
+    <li><a href="#stages">Plan stages, with real status</a></li>
+  </ol>
+</nav>
+
+<!-- ============================================================ 1 -->
+<h2 id="ctx">1 · System context</h2>
+<p class="lede">The product promise in one picture. A person writes a sentence describing a
+character; a voice that has never existed comes back, and it stays that same voice across
+every line of a script.</p>
+<figure>
+<svg viewBox="0 0 1060 300" role="img" aria-label="System context diagram">
+  <text class="hd" x="130" y="18">input</text>
+  <text class="hd" x="530" y="18">alaap</text>
+  <text class="hd" x="930" y="18">output</text>
+
+  <rect class="b1" x="30" y="42" width="200" height="56" rx="9"/>
+  <text class="t" x="130" y="62">description</text>
+  <text class="tm" x="130" y="80">“a warm, low-pitched mentor”</text>
+
+  <rect class="b1" x="30" y="122" width="200" height="56" rx="9"/>
+  <text class="t" x="130" y="142">script</text>
+  <text class="tm" x="130" y="160">400 lines of dialogue</text>
+
+  <rect class="b1" x="30" y="202" width="200" height="56" rx="9"/>
+  <text class="t" x="130" y="222">direction, per line</text>
+  <text class="tm" x="130" y="240">emotion · rate</text>
+
+  <rect class="grp" x="290" y="34" width="480" height="234" rx="12"/>
+  <rect class="b2" x="320" y="60" width="180" height="52" rx="9"/>
+  <text class="t" x="410" y="78">mapper</text>
+  <text class="tm" x="410" y="96">description → vector</text>
+
+  <rect class="b4" x="320" y="132" width="180" height="52" rx="9"/>
+  <text class="t" x="410" y="150">identity store</text>
+  <text class="tm" x="410" y="168">vector + seed clip</text>
+
+  <rect class="b2" x="320" y="204" width="180" height="52" rx="9"/>
+  <text class="t" x="410" y="222">renderer</text>
+  <text class="tm" x="410" y="240">FROZEN TTS</text>
+
+  <rect class="b3" x="560" y="96" width="180" height="52" rx="9"/>
+  <text class="t" x="650" y="114">gates</text>
+  <text class="tm" x="650" y="132">drift · CER · unique</text>
+
+  <rect class="b4" x="560" y="168" width="180" height="52" rx="9"/>
+  <text class="t" x="650" y="186">watermark</text>
+  <text class="tm" x="650" y="204">AudioSeal, every file</text>
+
+  <rect class="b1" x="830" y="82" width="200" height="56" rx="9"/>
+  <text class="t" x="930" y="102">audio, per line</text>
+  <text class="tm" x="930" y="120">OGG/Vorbis</text>
+
+  <rect class="b1" x="830" y="162" width="200" height="56" rx="9"/>
+  <text class="t" x="930" y="182">manifest.json</text>
+  <text class="tm" x="930" y="200">game-engine ready</text>
+
+  <path class="ln" d="M230 70 L316 82"/>
+  <path class="ln" d="M230 150 L316 220"/>
+  <path class="ln" d="M230 230 L316 236"/>
+  <path class="ln2" d="M410 112 L410 128"/>
+  <path class="ln2" d="M410 184 L410 200"/>
+  <path class="ln" d="M500 216 C536 216 540 140 556 124"/>
+  <path class="ln" d="M650 148 L650 164"/>
+  <path class="ln" d="M740 194 L826 190"/>
+  <path class="ln" d="M740 118 L826 112"/>
+</svg>
+<figcaption><b>The frozen box is the whole idea.</b> The TTS model is never trained. All the
+learning lives in the mapper, which produces a speaker vector the frozen model already knows
+how to consume. Watermarking is not a launch task — it happens on render #1
+(invariant <span class="mono">I7</span>, EU Art. 50(2)).</figcaption>
+</figure>
+
+<!-- ============================================================ 2 -->
+<h2 id="tower">2 · The two-tower thesis</h2>
+<p class="lede">Why this architecture at all, and the one experiment that had to pass before
+anything else was worth building.</p>
+<figure>
+<svg viewBox="0 0 1000 340" role="img" aria-label="Two-tower architecture">
+  <text class="hd" x="230" y="20">tower A · learned</text>
+  <text class="hd" x="760" y="20">tower B · frozen</text>
+
+  <rect class="b1" x="40" y="46" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="69">description text</text>
+  <path class="ln" d="M115 92 L115 116"/>
+  <rect class="b1" x="40" y="118" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="136">text encoder</text>
+  <text class="tm" x="115" y="152">sentence-transformer</text>
+  <path class="ln" d="M115 164 L115 188"/>
+  <rect class="b2" x="40" y="190" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="208">mapper head</text>
+  <text class="tm" x="115" y="224">retrieval · MDN · flow</text>
+  <path class="ln" d="M115 236 L115 260"/>
+  <rect class="b1" x="40" y="262" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="280">speaker vector</text>
+  <text class="tc" x="115" y="296">(2048,) or (128,)</text>
+
+  <path class="ln2" d="M196 285 L520 285 L520 214"/>
+  <text class="tm" x="360" y="272">the ONLY channel between the towers</text>
+
+  <rect class="grp" x="560" y="34" width="400" height="272" rx="12"/>
+  <rect class="b" x="600" y="56" width="150" height="42" rx="8"/>
+  <text class="t" x="675" y="77">text to speak</text>
+  <rect class="b2" x="600" y="122" width="320" height="46" rx="8"/>
+  <text class="t" x="760" y="140">acoustic LM  ·  weights never updated</text>
+  <text class="tm" x="760" y="156">Qwen3-TTS 1.7B  /  Indic-Mio</text>
+  <path class="ln" d="M675 98 L675 118"/>
+  <path class="ln" d="M760 168 L760 192"/>
+  <rect class="b2" x="600" y="194" width="320" height="46" rx="8"/>
+  <text class="t" x="760" y="212">codec decoder</text>
+  <text class="tm" x="760" y="228">tokens + identity → waveform</text>
+  <path class="ln" d="M760 240 L760 264"/>
+  <rect class="b1" x="660" y="266" width="200" height="40" rx="8"/>
+  <text class="t" x="760" y="286">audio</text>
+
+  <path class="ln3 dash" d="M860 286 C960 286 980 60 210 44" />
+  <text class="tm" x="470" y="30">closed loop: re-extract the vector from the render (drift)</text>
+</svg>
+<figcaption><b>E1 was the gate.</b> If the speaker space were a discriminative
+<em>d-vector</em> space it would resist synthesised priors — TacoSpawn measured
+<span class="mono">g2s 0.35</span> vs <span class="mono">s2s 0.20</span>
+(<a href="https://arxiv.org/abs/2111.05095">arXiv:2111.05095</a>). E1 returned
+<span class="ok">g2s ≈ s2s</span>, so the space is navigable and Tower A is worth training.
+The dashed return path is why <span class="mono">drift</span> is a gate: the vector that goes
+in is not the vector that comes out (Panariello et al., Interspeech 2023).</figcaption>
+</figure>
+
+<!-- ============================================================ 3 -->
+<h2 id="mint">3 · The mint pipeline, in full</h2>
+<p class="lede">Every box here is real code in <span class="mono">alaap/mapper.py</span> and
+<span class="mono">alaap/service.py</span>. This is the path a description takes to become a
+stored identity.</p>
+<figure>
+<svg viewBox="0 0 1100 470" role="img" aria-label="Mint pipeline">
+  <rect class="b1" x="20" y="30" width="150" height="44" rx="8"/>
+  <text class="t" x="95" y="46">description</text>
+  <text class="tm" x="95" y="62">free text</text>
+
+  <path class="ln" d="M170 52 L206 52"/>
+  <rect class="b" x="208" y="30" width="160" height="44" rx="8"/>
+  <text class="t" x="288" y="46">target_bins_from_text</text>
+  <text class="tm" x="288" y="62">prose → bin labels</text>
+
+  <path class="ln" d="M170 60 C186 60 190 128 206 128"/>
+  <rect class="b" x="208" y="106" width="160" height="44" rx="8"/>
+  <text class="t" x="288" y="122">TextEncoder</text>
+  <text class="tm" x="288" y="138">MiniLM sentence emb.</text>
+
+  <path class="ln" d="M368 52 C400 52 404 92 420 92"/>
+  <path class="ln" d="M368 128 C400 128 404 100 420 100"/>
+  <rect class="b2" x="422" y="74" width="160" height="46" rx="8"/>
+  <text class="t" x="502" y="92">retrieve()</text>
+  <text class="tm" x="502" y="110">hybrid: bins + cosine</text>
+
+  <rect class="b3" x="422" y="150" width="160" height="60" rx="8"/>
+  <text class="t" x="502" y="168">anchor corpus</text>
+  <text class="tm" x="502" y="185">real speakers, measured</text>
+  <text class="tm" x="502" y="199">+ their vectors</text>
+  <path class="ln" d="M502 148 L502 124"/>
+
+  <path class="ln" d="M582 97 L618 97"/>
+  <rect class="b2" x="620" y="74" width="150" height="46" rx="8"/>
+  <text class="t" x="695" y="92">blend top_k = 2</text>
+  <text class="tm" x="695" y="110">SLERP, unit norm</text>
+
+  <path class="ln" d="M770 97 L806 97"/>
+  <rect class="b2" x="808" y="74" width="150" height="46" rx="8"/>
+  <text class="t" x="883" y="92">novelty · ε</text>
+  <text class="tm" x="883" y="110">default 0.0</text>
+
+  <path class="ln" d="M883 120 L883 152"/>
+  <rect class="b1" x="808" y="154" width="150" height="46" rx="8"/>
+  <text class="t" x="883" y="172">speaker vector</text>
+  <text class="tm" x="883" y="190">candidate</text>
+
+  <text class="hd" x="550" y="248">gates — all must pass</text>
+  <rect class="grp" x="60" y="262" width="980" height="112" rx="12"/>
+
+  <rect class="b4" x="86" y="286" width="164" height="66" rx="8"/>
+  <text class="t" x="168" y="304">uniqueness</text>
+  <text class="tc" x="168" y="322">≥ 0.30 · 0.45</text>
+  <text class="tm" x="168" y="340">vs every accepted voice</text>
+
+  <rect class="b4" x="272" y="286" width="164" height="66" rx="8"/>
+  <text class="t" x="354" y="304">render a probe</text>
+  <text class="tm" x="354" y="322">frozen TTS</text>
+  <text class="tm" x="354" y="340">3 lines</text>
+
+  <rect class="b4" x="458" y="286" width="164" height="66" rx="8"/>
+  <text class="t" x="540" y="304">drift</text>
+  <text class="tc" x="540" y="322">≥ 0.40</text>
+  <text class="tm" x="540" y="340">intended vs re-extracted</text>
+
+  <rect class="b4" x="644" y="286" width="164" height="66" rx="8"/>
+  <text class="t" x="726" y="304">consistency</text>
+  <text class="tc" x="726" y="322">≥ 0.43</text>
+  <text class="tm" x="726" y="340">across sentences, ECAPA</text>
+
+  <rect class="b4" x="830" y="286" width="164" height="66" rx="8"/>
+  <text class="t" x="912" y="304">CER</text>
+  <text class="tm" x="912" y="322">ASR intelligibility</text>
+  <text class="tm" x="912" y="340">words still correct?</text>
+
+  <path class="ln" d="M883 200 C883 236 260 244 190 282"/>
+  <path class="ln" d="M550 374 L550 404"/>
+  <rect class="b1" x="400" y="406" width="300" height="48" rx="9"/>
+  <text class="t" x="550" y="424">IdentityStore.put()</text>
+  <text class="tm" x="550" y="442">vector + seed clip + backend_id + version + params</text>
+</svg>
+<figcaption><b>Two things here are counter-intuitive and both were measured.</b>
+<span class="mono">top_k = 2</span> rather than 1: blending two anchors beats pure retrieval,
+but blending four contracts toward the centroid and <em>loses</em> diversity.
+<span class="mono">novelty = 0.0</span>: pushing minted vectors away from real anchors makes
+them <em>more</em> central, not less (S9). And the store keeps a <b>seed clip as well as a
+vector</b> — invariant <span class="mono">I2</span> — because an encoder change orphaned every
+stored vector once already.</figcaption>
+</figure>
+
+<!-- ============================================================ 4 -->
+<h2 id="render">4 · The render pipeline</h2>
+<p class="lede">Identity is fixed; performance is per line and never enters the identity
+record. That separation is invariant <span class="mono">I5</span>.</p>
+<figure>
+<svg viewBox="0 0 1060 300" role="img" aria-label="Render pipeline">
+  <rect class="b1" x="30" y="40" width="150" height="46" rx="8"/>
+  <text class="t" x="105" y="58">identity_id</text>
+  <text class="tm" x="105" y="76">stored, immutable</text>
+  <rect class="b1" x="30" y="112" width="150" height="46" rx="8"/>
+  <text class="t" x="105" y="130">line text</text>
+  <rect class="b1" x="30" y="184" width="150" height="60" rx="8"/>
+  <text class="t" x="105" y="202">Direction</text>
+  <text class="tm" x="105" y="220">emotion α·τ</text>
+  <text class="tm" x="105" y="236">rate 0.67–1.43</text>
+
+  <path class="ln" d="M180 63 L246 96"/>
+  <path class="ln" d="M180 135 L246 122"/>
+  <rect class="b2" x="248" y="96" width="170" height="52" rx="8"/>
+  <text class="t" x="333" y="114">frozen TTS</text>
+  <text class="tm" x="333" y="132">vector + text → audio</text>
+
+  <path class="ln" d="M180 206 C214 206 224 150 246 140"/>
+  <text class="tm" x="196" y="176">α·τ added to the</text>
+  <text class="tm" x="196" y="190">vector, at render</text>
+
+  <path class="ln" d="M418 122 L454 122"/>
+  <rect class="b2" x="456" y="96" width="150" height="52" rx="8"/>
+  <text class="t" x="531" y="114">retime()</text>
+  <text class="tm" x="531" y="132">phase vocoder</text>
+
+  <path class="ln" d="M606 122 L642 122"/>
+  <rect class="b4" x="644" y="96" width="150" height="52" rx="8"/>
+  <text class="t" x="719" y="114">AudioSeal</text>
+  <text class="tm" x="719" y="132">watermark embed</text>
+
+  <path class="ln" d="M794 122 L830 122"/>
+  <rect class="b1" x="832" y="84" width="190" height="46" rx="8"/>
+  <text class="t" x="927" y="102">line audio</text>
+  <text class="tm" x="927" y="120">OGG/Vorbis</text>
+  <rect class="b1" x="832" y="152" width="190" height="46" rx="8"/>
+  <text class="t" x="927" y="170">provenance record</text>
+  <text class="tm" x="927" y="188">hash · params · backend</text>
+  <path class="ln" d="M719 148 C760 148 800 172 828 174"/>
+</svg>
+<figcaption><b>Why the phase vocoder and not resampling.</b> Naive resampling shifts F0 by
+−54.7/+91.3 Hz and collapses speaker identity to ECAPA 0.10 — a different person. A phase
+vocoder changes duration while preserving pitch. <b>Why OGG and not Opus:</b> Opus removes the
+AudioSeal watermark; Vorbis survives at 0.95 detection, and is the Unity/FMOD/Wwise
+default.</figcaption>
+</figure>
+
+<!-- ============================================================ 5 -->
+<h2 id="gates">5 · The gate stack</h2>
+<p class="lede">Five gates, four of them calibrated on a corpus rather than chosen. Each
+answers a different question, and the project spent nineteen experiments not noticing that
+none of them asked about naturalness.</p>
+<figure>
+<svg viewBox="0 0 1040 360" role="img" aria-label="Gate stack">
+  <text class="hd" x="150" y="20">identity</text>
+  <text class="hd" x="520" y="20">content</text>
+  <text class="hd" x="880" y="20">quality</text>
+
+  <rect class="b4" x="30" y="40" width="240" height="70" rx="9"/>
+  <text class="t" x="150" y="60">drift  ≥ 0.40</text>
+  <text class="tm" x="150" y="79">is the rendered voice the one</text>
+  <text class="tm" x="150" y="94">we asked for?</text>
+
+  <rect class="b4" x="30" y="126" width="240" height="70" rx="9"/>
+  <text class="t" x="150" y="146">consistency  ≥ 0.43</text>
+  <text class="tm" x="150" y="165">same person across</text>
+  <text class="tm" x="150" y="180">different sentences?</text>
+
+  <rect class="b4" x="30" y="212" width="240" height="86" rx="9"/>
+  <text class="t" x="150" y="232">uniqueness  ≥ 0.30</text>
+  <text class="tc" x="150" y="251">0.45 on MioCodec</text>
+  <text class="tm" x="150" y="270">is this a voice we already</text>
+  <text class="tm" x="150" y="285">have?  ← moved by S11</text>
+
+  <rect class="b3" x="400" y="90" width="240" height="86" rx="9"/>
+  <text class="t" x="520" y="110">CER</text>
+  <text class="tm" x="520" y="129">does it say the words?</text>
+  <text class="tm" x="520" y="146">ASR transcript vs prompt</text>
+  <text class="tm" x="520" y="163">minting costs −0.012 CER</text>
+
+  <rect class="b3" x="760" y="90" width="250" height="86" rx="9"/>
+  <text class="t" x="885" y="110">naturalness  &lt; 75</text>
+  <text class="tm" x="885" y="129">WavLM layer 7 distance</text>
+  <text class="tm" x="885" y="146">to the real-speech manifold</text>
+  <text class="tm" x="885" y="163">real ≈ 50 · renders ≈ 97</text>
+
+  <rect class="grp" x="380" y="212" width="630" height="110" rx="10"/>
+  <text class="hd" x="695" y="234">the trap this avoids</text>
+  <text class="tm" x="695" y="256">DNSMOS correlates with mean F0 at r = −0.788; UTMOSv2 at −0.722.</text>
+  <text class="tm" x="695" y="274">Humans correlate at −0.059. A MOS gate would reject high-pitched voices</text>
+  <text class="tm" x="695" y="292">for a reason humans do not share — fighting the diversity axis directly.</text>
+  <text class="tm" x="695" y="310">Invariant I9. RESEARCH/06 §5.2.</text>
+
+  <path class="ln" d="M270 75 C330 75 340 116 396 122"/>
+  <path class="ln" d="M270 161 L396 140"/>
+  <path class="ln" d="M640 133 L756 133"/>
+</svg>
+<figcaption><b>The naturalness gate is a proposal, not a gate.</b> It has never rejected
+anything — the floor of 75 was chosen, not measured. Everything to its left <em>has</em>
+blocked renders. Note also that drift/consistency/uniqueness/CER all pass on audio a listener
+calls synthetic (S19): they are identity and intelligibility gates, and the absence of a
+quality gate was invisible for nineteen experiments precisely because nothing was
+<em>named</em> one.</figcaption>
+</figure>
+
+<!-- ============================================================ 6 -->
+<h2 id="rev">6 · Reversibility — the property that makes captions checkable</h2>
+<p class="lede">Most caption datasets ask an audio model to <em>describe</em> a voice. You
+cannot verify that. Alaap measures first and writes prose from the measurements, so a claim
+can be checked by re-measuring the render.</p>
+<figure>
+<svg viewBox="0 0 1020 330" role="img" aria-label="Reversibility loop">
+  <rect class="b1" x="40" y="46" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="69">real audio</text>
+  <path class="ln" d="M190 69 L226 69"/>
+  <rect class="b3" x="228" y="46" width="160" height="46" rx="8"/>
+  <text class="t" x="308" y="64">measure()</text>
+  <text class="tm" x="308" y="82">17 numeric attributes</text>
+  <path class="ln" d="M388 69 L424 69"/>
+  <rect class="b3" x="426" y="46" width="160" height="46" rx="8"/>
+  <text class="t" x="506" y="64">Binner</text>
+  <text class="tm" x="506" y="82">percentile to 5 labels</text>
+  <path class="ln" d="M586 69 L622 69"/>
+  <rect class="b" x="624" y="46" width="180" height="46" rx="8"/>
+  <text class="t" x="714" y="64">caption_from_bins()</text>
+  <text class="tm" x="714" y="82">low-pitched, bright, ...</text>
+
+  <path class="ln2" d="M714 92 L714 132"/>
+  <rect class="b2" x="600" y="134" width="228" height="46" rx="8"/>
+  <text class="t" x="714" y="152">mapper fit, then mint</text>
+  <text class="tm" x="714" y="170">caption and vector pairs</text>
+
+  <path class="ln2" d="M714 180 L714 218"/>
+  <rect class="b1" x="624" y="220" width="180" height="46" rx="8"/>
+  <text class="t" x="714" y="243">generated audio</text>
+
+  <path class="ln3" d="M624 243 L400 243"/>
+  <rect class="b3" x="228" y="220" width="160" height="46" rx="8"/>
+  <text class="t" x="308" y="238">measure() again</text>
+  <text class="tm" x="308" y="256">identical code path</text>
+  <path class="ln3" d="M308 220 C308 180 240 120 300 96"/>
+  <text class="tm" x="146" y="170">ADHERENCE =</text>
+  <text class="tm" x="146" y="187">do the re-measured bins</text>
+  <text class="tm" x="146" y="204">match what was asked for?</text>
+
+  <rect class="grp" x="40" y="286" width="940" height="34" rx="8"/>
+  <text class="tm" x="510" y="304">Data-Speech computes 9 columns from 5 tools. Six of Alaap's attributes (jitter, shimmer, HNR, spectral tilt, formants, VTL) are not among them and had to be built.</text>
+</svg>
+<figcaption><b>This loop is why the estimator audits mattered.</b> If
+<span class="mono">measure()</span> is wrong, the caption is wrong, the mapper learns the wrong
+association, and adherence scores it against the same wrong measurement — so nothing ever
+complains. S17 found <span class="mono">vtl_cm</span> broken this way: it had been silently
+dropped as "noise" by two experiments before anyone checked the formula.</figcaption>
+</figure>
+
+<!-- ============================================================ 7 -->
+<h2 id="geom">7 · Speaker-space geometry</h2>
+<p class="lede">You cannot treat a speaker embedding space as isotropic. This is invariant
+<span class="mono">I1</span>, and ignoring it collapses every identity onto one voice.</p>
+<figure>
+<svg viewBox="0 0 1040 330" role="img" aria-label="Speaker space geometry">
+  <rect class="b1" x="30" y="60" width="170" height="60" rx="8"/>
+  <text class="t" x="115" y="80">raw vectors Z</text>
+  <text class="tm" x="115" y="98">(N, 2048) or (N, 128)</text>
+  <text class="tm" x="115" y="112">per-dim ranges span 3 OOM</text>
+
+  <path class="ln" d="M200 90 L236 90"/>
+  <rect class="b2" x="238" y="60" width="170" height="60" rx="8"/>
+  <text class="t" x="323" y="80">mean-centre</text>
+  <text class="tm" x="323" y="98">79.5% of every vector</text>
+  <text class="tm" x="323" y="112">is a shared constant (E3)</text>
+
+  <path class="ln" d="M408 90 L444 90"/>
+  <rect class="b2" x="446" y="60" width="170" height="60" rx="8"/>
+  <text class="t" x="531" y="80">per-dim rescale</text>
+  <text class="tm" x="531" y="98">GVD -6.50 to -0.14</text>
+  <text class="tm" x="531" y="112">arXiv:2207.04834</text>
+
+  <path class="ln" d="M616 90 L652 90"/>
+  <rect class="b2" x="654" y="60" width="170" height="60" rx="8"/>
+  <text class="t" x="739" y="80">PCA basis</text>
+  <text class="tm" x="739" y="98">the working space</text>
+  <text class="tm" x="739" y="112">full dims = best (S9b)</text>
+
+  <path class="ln" d="M824 90 L860 90"/>
+  <rect class="b1" x="862" y="60" width="150" height="60" rx="8"/>
+  <text class="t" x="937" y="82">encode() /</text>
+  <text class="t" x="937" y="100">decode()</text>
+
+  <circle class="b" cx="180" cy="230" r="62"/>
+  <text class="tm" x="180" y="176">the shell</text>
+  <circle cx="180" cy="230" r="3" fill="var(--a1)"/>
+  <circle cx="152" cy="204" r="3" fill="var(--a1)"/>
+  <circle cx="214" cy="218" r="3" fill="var(--a1)"/>
+  <circle cx="196" cy="262" r="3" fill="var(--a1)"/>
+  <circle cx="146" cy="252" r="3" fill="var(--a1)"/>
+  <text class="tm" x="180" y="308">real speakers sit at a radius</text>
+
+  <text class="tm" x="418" y="186">SLERP, not LERP</text>
+  <path class="plain" d="M300 250 C340 210 380 208 420 230"/>
+  <path class="plain dash" d="M300 250 L420 230"/>
+  <text class="tm" x="418" y="204">preserves the norm</text>
+  <text class="tm" x="360" y="272">arXiv:2508.19210</text>
+
+  <rect class="grp" x="520" y="164" width="500" height="130" rx="10"/>
+  <text class="hd" x="770" y="186">why this is not decoration</text>
+  <text class="tm" x="770" y="210">Averaging two speaker vectors in a sparse region costs +60% relative WER</text>
+  <text class="tm" x="770" y="228">(10.94% vs 6.83%, Interspeech 2020). "Elderly" and "raspy" ARE sparse regions.</text>
+  <text class="tm" x="770" y="252">Extrapolation past the shell is "not particularly meaningful" (ICASSP 2024).</text>
+  <text class="tm" x="770" y="276">So: interpolate, stay on the shell, and never average unweighted.</text>
+</svg>
+<figcaption>Interpolation between real speakers is well supported — 1,225 pairwise
+interpolations held WER at 6.42–7.35% (Interspeech 2021). Extrapolation is not. That is why
+<span class="mono">novelty</span> defaults to <span class="mono">0.0</span> and why the mapper
+blends anchors rather than inventing points.</figcaption>
+</figure>
+
+<!-- ============================================================ 8 -->
+<h2 id="axes">8 · The attribute taxonomy</h2>
+<p class="lede">Seventeen things are measured. Only three describe a voice, and working out
+which three took five experiments.</p>
+<figure>
+<svg viewBox="0 0 1040 400" role="img" aria-label="Attribute taxonomy">
+  <text class="hd" x="180" y="22">identity axes, in use</text>
+  <text class="hd" x="518" y="22">delivery, not identity</text>
+  <text class="hd" x="861" y="22">recording / unused</text>
+
+  <rect class="b3" x="40" y="40" width="280" height="52" rx="8"/>
+  <text class="t" x="180" y="58">f0_mean</text>
+  <text class="tm" x="180" y="76">within/between 0.08 · gender d -3.08</text>
+
+  <rect class="b3" x="40" y="102" width="280" height="66" rx="8"/>
+  <text class="t" x="180" y="120">spectral_tilt</text>
+  <text class="tm" x="180" y="138">0.19, but reads F0 at r = +0.918</text>
+  <text class="tm" x="180" y="154">count the set as ~2.6 axes, not 3</text>
+
+  <rect class="b3" x="40" y="178" width="280" height="66" rx="8"/>
+  <text class="t" x="180" y="196">vtl_cm</text>
+  <text class="tm" x="180" y="214">0.21, was "noise" until the</text>
+  <text class="tm" x="180" y="230">estimator was fixed (S17)</text>
+
+  <rect class="b" x="40" y="254" width="280" height="66" rx="8"/>
+  <text class="t" x="180" y="272">hnr_db — dropped</text>
+  <text class="tm" x="180" y="290">0.59, fails on Tamil at 1.32</text>
+  <text class="tm" x="180" y="306">0.3 voices for 15.6pp adherence</text>
+
+  <rect class="b4" x="368" y="40" width="300" height="56" rx="8"/>
+  <text class="t" x="518" y="58">speaking_rate  1.32</text>
+  <text class="tm" x="518" y="78">three independent routes agree</text>
+
+  <rect class="b4" x="368" y="106" width="300" height="56" rx="8"/>
+  <text class="t" x="518" y="124">f0_cv  1.04</text>
+  <text class="tm" x="518" y="144">"expressiveness" is not identity</text>
+
+  <rect class="b" x="368" y="172" width="300" height="72" rx="8"/>
+  <text class="t" x="518" y="190">jitter 0.73 · shimmer 0.62</text>
+  <text class="tm" x="518" y="210">pass the &lt; 1.0 screen and still HURT</text>
+  <text class="tm" x="518" y="228">the screen has a threshold, not a line</text>
+
+  <rect class="b" x="716" y="40" width="290" height="56" rx="8"/>
+  <text class="t" x="861" y="58">snr_db</text>
+  <text class="tm" x="861" y="78">excluded by design — it is the room</text>
+
+  <rect class="b" x="716" y="106" width="290" height="138" rx="8"/>
+  <text class="t" x="861" y="126">measured but unused</text>
+  <text class="tm" x="861" y="150">f0_std · f0_range · duration_s</text>
+  <text class="tm" x="861" y="170">voiced_frac · f1 · f2 · f3</text>
+  <text class="tm" x="861" y="190">formant_dispersion</text>
+  <text class="tm" x="861" y="216">redundant with an axis already</text>
+  <text class="tm" x="861" y="232">in use, or not identity at all</text>
+
+  <rect class="grp" x="40" y="330" width="966" height="56" rx="10"/>
+  <text class="t" x="523" y="352">the screen: within-speaker variance over between-speaker variance, on two takes of one person</text>
+  <text class="tm" x="523" y="372">much less than 1 = identity · greater than 1 = one person varies more than people differ · 0.6 to 0.8 = passes and still hurts</text>
+</svg>
+<figcaption><b>Describable-space size is not the constraint.</b> S18 put every arm on one
+axis: 125 describable cells give 22.3 effective voices; 15,625 give 19.6. <b>125× more
+description moved capacity by −2.7.</b> What limits the catalogue is the number of
+<em>strong</em> axes — and no new axis has ever helped, while two repaired ones have.</figcaption>
+</figure>
+
+<!-- ============================================================ 9 -->
+<h2 id="backend">9 · Two backends, one interface</h2>
+<p class="lede">English and Indic differ in model, codec, sample rate and vector width. The
+renderer adapter has carried an Indic implementation since S6 — because if the interface
+cannot express Indic, the interface is wrong (ADR-003, guard 2).</p>
+<figure>
+<svg viewBox="0 0 1040 340" role="img" aria-label="Two backends behind one interface">
+  <rect class="b2" x="380" y="30" width="280" height="54" rx="9"/>
+  <text class="t" x="520" y="48">Renderer (protocol)</text>
+  <text class="tm" x="520" y="68">mint_vector · render(vec, text, direction)</text>
+
+  <path class="ln" d="M470 84 C420 110 300 110 250 122"/>
+  <path class="ln" d="M570 84 C620 110 740 110 790 122"/>
+
+  <rect class="grp" x="40" y="118" width="420" height="196" rx="12"/>
+  <text class="hd" x="250" y="138">english</text>
+  <rect class="b1" x="70" y="150" width="360" height="44" rx="8"/>
+  <text class="t" x="250" y="166">Qwen3-TTS-12Hz-1.7B-Base</text>
+  <text class="tm" x="250" y="183">Apache-2.0 end to end · 4.09 GB · fits 6 GB</text>
+  <rect class="b" x="70" y="204" width="170" height="44" rx="8"/>
+  <text class="t" x="155" y="220">vector</text>
+  <text class="tc" x="155" y="237">(2048,)</text>
+  <rect class="b" x="260" y="204" width="170" height="44" rx="8"/>
+  <text class="t" x="345" y="220">sample rate</text>
+  <text class="tc" x="345" y="237">24 000 Hz</text>
+  <rect class="b" x="70" y="258" width="360" height="48" rx="8"/>
+  <text class="tm" x="250" y="276">the SOLE identity input — x_vector_only_mode</text>
+  <text class="tm" x="250" y="294">pgvector HNSW caps at 2000 dims: 2048 EXCEEDS it</text>
+
+  <rect class="grp" x="580" y="118" width="420" height="196" rx="12"/>
+  <text class="hd" x="790" y="138">indic</text>
+  <rect class="b1" x="610" y="150" width="360" height="44" rx="8"/>
+  <text class="t" x="790" y="166">SPRINGLab/Indic-Mio + MioCodec</text>
+  <text class="tm" x="790" y="183">DEV ONLY — trained on Expresso (CC-BY-NC-4.0)</text>
+  <rect class="b" x="610" y="204" width="170" height="44" rx="8"/>
+  <text class="t" x="695" y="220">vector</text>
+  <text class="tc" x="695" y="237">(128,)</text>
+  <rect class="b" x="800" y="204" width="170" height="44" rx="8"/>
+  <text class="t" x="885" y="220">sample rate</text>
+  <text class="tc" x="885" y="237">44 100 Hz</text>
+  <rect class="b4" x="610" y="258" width="360" height="48" rx="8"/>
+  <text class="tm" x="790" y="276">public_servable = false, ENFORCED IN CODE (I3)</text>
+  <text class="tm" x="790" y="294">a rule living in a README is violated by a config change</text>
+</svg>
+<figcaption><b>Invariant I4, five for five.</b> Every Indic licence chain checked was
+mis-declared upstream: IndicF5→F5-TTS, SPRING_F5→F5-TTS, VoiceSculptor→Llasa-3B,
+Zonos→VoxBlink2, Indic-Mio→Emilia/Expresso. A licence declaration on a derived artefact is a
+claim, not evidence.</figcaption>
+</figure>
+
+<!-- ============================================================ 10 -->
+<h2 id="codec">10 · Inside MioCodec — the content / identity split</h2>
+<p class="lede">This split is what makes the Indic experiments cheap. It is also where the
+project's most expensive bug lived.</p>
+<figure>
+<svg viewBox="0 0 1040 330" role="img" aria-label="MioCodec content and identity split">
+  <rect class="b1" x="40" y="60" width="150" height="46" rx="8"/>
+  <text class="t" x="115" y="83">audio 44.1 kHz</text>
+  <path class="ln" d="M190 83 L226 83"/>
+  <rect class="b2" x="228" y="52" width="160" height="62" rx="8"/>
+  <text class="t" x="308" y="72">encode()</text>
+  <text class="tm" x="308" y="90">return_content=True</text>
+  <text class="tm" x="308" y="105">return_global=True</text>
+
+  <path class="ln" d="M388 68 L436 46"/>
+  <path class="ln" d="M388 98 L436 122"/>
+  <rect class="b3" x="438" y="20" width="220" height="48" rx="8"/>
+  <text class="t" x="548" y="38">content tokens</text>
+  <text class="tm" x="548" y="56">25 Hz — WHAT is said</text>
+  <rect class="b1" x="438" y="100" width="220" height="48" rx="8"/>
+  <text class="t" x="548" y="118">global embedding</text>
+  <text class="tm" x="548" y="136">(128,) — WHO says it</text>
+
+  <path class="ln" d="M658 44 C700 44 706 76 742 82"/>
+  <path class="ln" d="M658 124 C700 124 706 92 742 88"/>
+  <rect class="b2" x="744" y="60" width="150" height="52" rx="8"/>
+  <text class="t" x="819" y="78">decode()</text>
+  <text class="tm" x="819" y="96">both args 1-D</text>
+  <path class="ln" d="M894 86 L930 86"/>
+  <rect class="b1" x="932" y="62" width="90" height="46" rx="8"/>
+  <text class="t" x="977" y="85">audio</text>
+
+  <rect class="grp" x="40" y="180" width="960" height="130" rx="10"/>
+  <text class="hd" x="520" y="202">the bug that cost a week</text>
+  <text class="tm" x="520" y="228">Two FSQ codecs, both with levels [8,8,8,5,5] = 12 800 entries, SHARE NO CODEBOOK.</text>
+  <text class="tm" x="520" y="248">Every index is accepted. Nothing raises. The output is fluent, natural Hindi —</text>
+  <text class="tm" x="520" y="268">saying completely different words. A fluent listener passed it, because they were</text>
+  <text class="tm" x="520" y="288">asked "does this sound right?" instead of "does this say X?"</text>
+</svg>
+<figcaption><b>Why forty voices cost the same LM time as one.</b> Content tokens are generated
+<em>once</em> and decoded through every speaker vector: <span class="mono">L</span> LM
+generations + <span class="mono">N×L</span> codec decodes, not <span class="mono">N×L</span>
+LM generations. That is the two-tower split being real in the weights — and it makes voice
+comparisons exact, since every voice says an identical waveform of content.</figcaption>
+</figure>
+
+<!-- ============================================================ 11 -->
+<h2 id="dir">11 · The Direction channel</h2>
+<p class="lede">Per-line performance on a backend with no <span class="mono">instruct</span>
+input. Three mechanisms were tried; one works, one is bounded, one is inert.</p>
+<figure>
+<svg viewBox="0 0 1040 320" role="img" aria-label="Direction channel">
+  <rect class="b1" x="30" y="40" width="200" height="46" rx="8"/>
+  <text class="t" x="130" y="58">Direction</text>
+  <text class="tm" x="130" y="76">emotion · intensity · rate</text>
+
+  <path class="ln" d="M230 56 L282 56"/>
+  <rect class="b3" x="284" y="30" width="290" height="66" rx="8"/>
+  <text class="t" x="429" y="48">emotion: x + alpha·tau, on the VECTOR</text>
+  <text class="tm" x="429" y="68">tau fitted over 4+ speakers, CREMA-D</text>
+  <text class="tm" x="429" y="84">dEECS +0.29 · LM steering ~0 S-SIM cost</text>
+  <path class="ln" d="M574 63 L620 63"/>
+  <rect class="b" x="622" y="40" width="140" height="46" rx="8"/>
+  <text class="t" x="692" y="63" style="fill:var(--ok)">WORKS</text>
+
+  <path class="ln" d="M230 70 C258 70 256 148 282 148"/>
+  <rect class="b3" x="284" y="122" width="290" height="66" rx="8"/>
+  <text class="t" x="429" y="140">rate: retime() on the WAVEFORM</text>
+  <text class="tm" x="429" y="160">phase vocoder, 0.67 to 1.43x</text>
+  <text class="tm" x="429" y="176">clean range still a GUESS — S14d pending</text>
+  <path class="ln" d="M574 155 L620 155"/>
+  <rect class="b" x="622" y="132" width="140" height="46" rx="8"/>
+  <text class="t" x="692" y="155" style="fill:var(--warn)">BOUNDED</text>
+
+  <path class="ln" d="M230 78 C254 78 252 244 282 244"/>
+  <rect class="b4" x="284" y="218" width="290" height="66" rx="8"/>
+  <text class="t" x="429" y="236">emotion tags in the TEXT</text>
+  <text class="tm" x="429" y="256">&lt;happy&gt; &lt;whisper&gt; and word stress</text>
+  <text class="tm" x="429" y="272">0 of 9 are tokens — in the model AND its base</text>
+  <path class="ln" d="M574 251 L620 251"/>
+  <rect class="b" x="622" y="228" width="140" height="46" rx="8"/>
+  <text class="t" x="692" y="251" style="fill:var(--bad)">INERT</text>
+
+  <rect class="grp" x="796" y="30" width="214" height="254" rx="10"/>
+  <text class="hd" x="903" y="52">invariant I5</text>
+  <text class="tm" x="903" y="80">Identity stores</text>
+  <text class="tm" x="903" y="98">TIMBRE ONLY.</text>
+  <text class="tm" x="903" y="124">Mint from neutral,</text>
+  <text class="tm" x="903" y="142">store neutral,</text>
+  <text class="tm" x="903" y="160">add alpha·tau at render.</text>
+  <text class="tm" x="903" y="192">Emotion baked into</text>
+  <text class="tm" x="903" y="210">identity makes drama</text>
+  <text class="tm" x="903" y="228">impossible and breaks</text>
+  <text class="tm" x="903" y="246">consistency across a</text>
+  <text class="tm" x="903" y="264">character's 400 lines.</text>
+</svg>
+<figcaption><b>The text channel carries no direction at all</b> (S13/S13b), filed upstream as
+Report 4. The listener's verdict on tagged renders was blunt: <em>"they are all the same
+speaker — all warm but no distinct feeling at all."</em> What survives is a genuinely useful
+property: identity is provably robust to whatever the text says.</figcaption>
+</figure>
+
+<!-- ============================================================ 12 -->
+<h2 id="mods">12 · Module map</h2>
+<p class="lede">Sixteen modules in <span class="mono">alaap/</span>. Arrows are imports, so
+they point from a module to the one it depends on. Nothing below the line touches a model.</p>
+<figure>
+<svg viewBox="0 0 1040 470" role="img" aria-label="Module dependency map">
+  <text class="hd" x="520" y="20">orchestration</text>
+  <rect class="b2" x="380" y="32" width="280" height="50" rx="9"/>
+  <text class="t" x="520" y="50">service.py</text>
+  <text class="tm" x="520" y="68">VoiceService — mint · render · render_script</text>
+
+  <text class="hd" x="520" y="112">the four things it composes</text>
+  <rect class="b1" x="52" y="126" width="200" height="50" rx="8"/>
+  <text class="t" x="152" y="144">mapper.py</text>
+  <text class="tm" x="152" y="162">retrieve · mint · MintResult</text>
+  <rect class="b1" x="286" y="126" width="200" height="50" rx="8"/>
+  <text class="t" x="386" y="144">renderer.py</text>
+  <text class="tm" x="386" y="162">backend adapters</text>
+  <rect class="b1" x="520" y="126" width="200" height="50" rx="8"/>
+  <text class="t" x="620" y="144">identity.py</text>
+  <text class="tm" x="620" y="162">IdentityStore, SQLite</text>
+  <rect class="b1" x="754" y="126" width="234" height="50" rx="8"/>
+  <text class="t" x="871" y="144">watermark.py + provenance.py</text>
+  <text class="tm" x="871" y="162">AudioSeal · hashes · params</text>
+
+  <path class="ln" d="M470 82 L200 122"/>
+  <path class="ln" d="M492 82 L400 122"/>
+  <path class="ln" d="M548 82 L616 122"/>
+  <path class="ln" d="M578 82 L820 122"/>
+
+  <text class="hd" x="520" y="212">measurement and representation</text>
+  <rect class="b3" x="52" y="226" width="200" height="66" rx="8"/>
+  <text class="t" x="152" y="244">acoustics.py</text>
+  <text class="tm" x="152" y="262">measure · Binner · BIN_LABELS</text>
+  <text class="tm" x="152" y="278">f0 · formants · tilt · HNR · VTL</text>
+  <rect class="b3" x="286" y="226" width="200" height="66" rx="8"/>
+  <text class="t" x="386" y="244">geometry.py</text>
+  <text class="tm" x="386" y="262">SpeakerSpace</text>
+  <text class="tm" x="386" y="278">centre · rescale · PCA · shell</text>
+  <rect class="b3" x="520" y="226" width="200" height="66" rx="8"/>
+  <text class="t" x="620" y="244">metrics.py</text>
+  <text class="tm" x="620" y="262">vendi · isolation_pct · CER</text>
+  <text class="tm" x="620" y="278">naturalness · CALIBRATION</text>
+  <rect class="b3" x="754" y="226" width="234" height="66" rx="8"/>
+  <text class="t" x="871" y="244">encoder.py</text>
+  <text class="tm" x="871" y="262">ECAPA — the INDEPENDENT judge</text>
+  <text class="tm" x="871" y="278">never the thing being optimised</text>
+
+  <path class="ln" d="M152 176 L152 222"/>
+  <path class="ln" d="M340 176 C300 200 250 206 220 222"/>
+  <path class="ln" d="M620 176 L620 222"/>
+  <path class="ln" d="M871 176 L871 222"/>
+
+  <text class="hd" x="520" y="326">inputs and vocabulary</text>
+  <rect class="b" x="52" y="340" width="200" height="60" rx="8"/>
+  <text class="t" x="152" y="358">data.py</text>
+  <text class="tm" x="152" y="376">stream_clips · CORPORA</text>
+  <text class="tm" x="152" y="392">DEV_ONLY · norm_gender</text>
+  <rect class="b" x="286" y="340" width="200" height="60" rx="8"/>
+  <text class="t" x="386" y="358">captions.py</text>
+  <text class="tm" x="386" y="376">PHRASES · ORDER</text>
+  <text class="tm" x="386" y="392">caption_from_bins · reverse</text>
+  <rect class="b" x="520" y="340" width="200" height="60" rx="8"/>
+  <text class="t" x="620" y="358">catalog.py</text>
+  <text class="tm" x="620" y="376">CATALOG_AXES (+ _V1)</text>
+  <text class="tm" x="620" y="392">sample_cells · saturation</text>
+  <rect class="b" x="754" y="340" width="234" height="60" rx="8"/>
+  <text class="t" x="871" y="358">timing.py</text>
+  <text class="tm" x="871" y="376">retime · clamp_rate</text>
+  <text class="tm" x="871" y="392">RATE_BOUND 0.67–1.43</text>
+
+  <path class="ln" d="M152 292 L152 336"/>
+  <path class="ln" d="M386 292 L386 336"/>
+  <path class="ln" d="M600 292 L620 336"/>
+  <path class="ln" d="M386 176 C700 200 830 300 871 336"/>
+
+  <rect class="grp" x="52" y="418" width="936" height="42" rx="8"/>
+  <text class="tm" x="520" y="440">Everything below "orchestration" is importable and testable with NO model loaded. 135 invariant tests exercise this layer; that is why they run in 2 minutes.</text>
+</svg>
+<figcaption><b>The one structural rule worth copying.</b> <span class="mono">encoder.py</span>
+(ECAPA) is deliberately never the thing being optimised — it is the independent judge. Drift
+and consistency are scored by a model that has never seen MioCodec, so a good score cannot be
+an artefact of the generator agreeing with itself.</figcaption>
+</figure>
+
+<!-- ============================================================ 13 -->
+<h2 id="exp">13 · Experiment lineage</h2>
+<p class="lede">Thirty-five experiments. What matters is not the count but which ones
+<em>changed a decision</em> — and how many later ones exist only to check an earlier one.</p>
+<figure>
+<svg viewBox="0 0 1040 520" role="img" aria-label="Experiment lineage">
+  <text class="hd" x="120" y="20">foundations</text>
+  <rect class="b1" x="30" y="32" width="180" height="120" rx="9"/>
+  <text class="tc" x="120" y="52">E3  scaling</text>
+  <text class="tc" x="120" y="72">E1  navigability</text>
+  <text class="tc" x="120" y="92">E2  vocoder drift</text>
+  <text class="tc" x="120" y="112">E4  calibration</text>
+  <text class="tc" x="120" y="132">E5  watermark</text>
+
+  <path class="ln" d="M210 92 L250 92"/>
+  <text class="hd" x="360" y="20">the working system</text>
+  <rect class="b1" x="252" y="32" width="216" height="120" rx="9"/>
+  <text class="tc" x="360" y="52">E0  direction / tau</text>
+  <text class="tc" x="360" y="72">E9  extremes hold</text>
+  <text class="tc" x="360" y="92">E10 1.7B is better</text>
+  <text class="tc" x="360" y="112">S2  retrieval mapper</text>
+  <text class="tc" x="360" y="132">E11 English catalog</text>
+
+  <path class="ln" d="M468 92 L508 92"/>
+  <text class="hd" x="620" y="20">indic port</text>
+  <rect class="b1" x="510" y="32" width="216" height="120" rx="9"/>
+  <text class="tc" x="618" y="52">S4  indic captions</text>
+  <text class="tc" x="618" y="72">S5  MioCodec split</text>
+  <text class="tc" x="618" y="92">S6  minting works</text>
+  <text class="tc" x="618" y="112">S7  catalog saturates</text>
+  <text class="tc" x="618" y="132">S8  retrieval 87%</text>
+
+  <path class="ln" d="M726 92 L766 92"/>
+  <rect class="b4" x="768" y="32" width="240" height="120" rx="9"/>
+  <text class="hd" x="888" y="20">the wall</text>
+  <text class="tm" x="888" y="56">~22 effective voices</text>
+  <text class="tm" x="888" y="76">against a bound of ~38</text>
+  <text class="tm" x="888" y="102">minting 58%</text>
+  <text class="tm" x="888" y="122">retrieval 87%</text>
+  <text class="tm" x="888" y="142">THE PRODUCT ANSWER</text>
+
+  <text class="hd" x="520" y="196">four attempts to break the wall — all measured, all failed</text>
+  <rect class="grp" x="30" y="206" width="978" height="74" rx="10"/>
+  <rect class="b" x="52" y="222" width="220" height="44" rx="8"/>
+  <text class="t" x="162" y="238">more novelty</text>
+  <text class="tm" x="162" y="256">S9 — makes voices MORE central</text>
+  <rect class="b" x="288" y="222" width="220" height="44" rx="8"/>
+  <text class="t" x="398" y="238">more corpus</text>
+  <text class="tm" x="398" y="256">S7 — 141 to 432 spk, zero change</text>
+  <rect class="b" x="524" y="222" width="220" height="44" rx="8"/>
+  <text class="t" x="634" y="238">more bins</text>
+  <text class="tm" x="634" y="256">S18 — 125x cells, -2.7 voices</text>
+  <rect class="b" x="760" y="222" width="226" height="44" rx="8"/>
+  <text class="t" x="873" y="238">more axes</text>
+  <text class="tm" x="873" y="256">S18 — all 17 audited, none help</text>
+
+  <text class="hd" x="520" y="316">so: better measurement of the axes we have</text>
+  <rect class="grp" x="30" y="326" width="978" height="86" rx="10"/>
+  <rect class="b3" x="52" y="342" width="290" height="56" rx="8"/>
+  <text class="t" x="197" y="360">S17 · vtl_cm repaired</text>
+  <text class="tm" x="197" y="380">gender d ~0 to +0.44..+1.03</text>
+  <rect class="b3" x="358" y="342" width="290" height="56" rx="8"/>
+  <text class="t" x="503" y="360">S22 · axis set adopted</text>
+  <text class="tm" x="503" y="380">the ONE shipped change</text>
+  <rect class="b" x="664" y="342" width="322" height="56" rx="8"/>
+  <text class="t" x="825" y="360">S21 · S24 · spectral_tilt</text>
+  <text class="tm" x="825" y="380">defective, and the repair is worse — LEVER CLOSED</text>
+
+  <text class="hd" x="520" y="446">the instrument track — audits of the audits</text>
+  <rect class="grp" x="30" y="456" width="978" height="52" rx="10"/>
+  <text class="tm" x="520" y="478">S11 · S15 · S19 · S20 · S20b · S23 · S14b · S14c   —   naturalness gate, listening sets, layer sweeps, control failures</text>
+  <text class="tm" x="520" y="496">Six of the last eight outputs are caveats rather than capabilities. Rigorous, honest, and not product.</text>
+</svg>
+<figcaption><b>Read left to right, then down.</b> The top row is a working system built in
+about four days. Everything below it is one question — "why only 22 voices?" — answered four
+different ways, all negative, plus an instrument track that grew out of distrusting the
+answers. The right-hand box holds the finding that should have redirected the project:
+<b>retrieval reaches 87% where minting reaches 58%</b>.</figcaption>
+</figure>
+
+<!-- ============================================================ 14 -->
+<h2 id="stages">14 · Plan stages, with real status</h2>
+<p class="lede">The same picture as <span class="mono">RESEARCH/GRAND-PLAN.md</span> §3, with
+every box coloured by what is actually committed.</p>
+<figure>
+<svg viewBox="0 0 1040 440" role="img" aria-label="Stage status board">
+  <text class="hd" x="80" y="22">track A · ML</text>
+  <rect class="b3" x="30" y="36" width="150" height="58" rx="9"/>
+  <text class="t" x="105" y="54">S0 foundations</text>
+  <text class="tm" x="105" y="72">7 of 10 experiments</text>
+  <text class="tm" x="105" y="86" style="fill:var(--warn)">E6 E7 E8 not run</text>
+
+  <path class="ln" d="M180 65 L214 65"/>
+  <rect class="b3" x="216" y="36" width="150" height="58" rx="9"/>
+  <text class="t" x="291" y="58">S1 identity</text>
+  <text class="tm" x="291" y="78" style="fill:var(--ok)">DONE · verified</text>
+
+  <path class="ln" d="M366 65 L400 65"/>
+  <rect class="b3" x="402" y="36" width="150" height="58" rx="9"/>
+  <text class="t" x="477" y="58">S2 retrieval</text>
+  <text class="tm" x="477" y="78" style="fill:var(--ok)">DONE</text>
+
+  <path class="ln" d="M552 65 L586 65"/>
+  <rect class="b" x="588" y="36" width="150" height="58" rx="9"/>
+  <text class="t" x="663" y="58">S3 generative</text>
+  <text class="tm" x="663" y="78" style="fill:var(--bad)">NOT STARTED</text>
+
+  <path class="ln" d="M738 65 L772 65"/>
+  <rect class="b" x="774" y="36" width="110" height="58" rx="9"/>
+  <text class="t" x="829" y="58">S4 data v2</text>
+  <text class="tm" x="829" y="78" style="fill:var(--warn)">partial</text>
+
+  <path class="ln" d="M884 65 L908 65"/>
+  <rect class="b3" x="910" y="36" width="110" height="58" rx="9"/>
+  <text class="t" x="965" y="58">S5 indic</text>
+  <text class="tm" x="965" y="78" style="fill:var(--ok)">PASSED</text>
+
+  <text class="tm" x="520" y="122">the identity-store schema is the contract between the tracks — Track B is supposed to start at S1</text>
+  <path class="ln3" d="M291 96 C291 140 520 140 520 168"/>
+
+  <text class="hd" x="80" y="196">track B · platform</text>
+  <rect class="b4" x="30" y="210" width="180" height="70" rx="9"/>
+  <text class="t" x="120" y="230">S6 inference service</text>
+  <text class="tm" x="120" y="250">"mint + render OVER HTTP"</text>
+  <text class="tm" x="120" y="268" style="fill:var(--bad)">NOT STARTED</text>
+
+  <path class="ln" d="M210 245 L244 245"/>
+  <rect class="b" x="246" y="210" width="180" height="70" rx="9"/>
+  <text class="t" x="336" y="230">S7 GPU hosting</text>
+  <text class="tm" x="336" y="250">p95 latency · $/min</text>
+  <text class="tm" x="336" y="268" style="fill:var(--bad)">NOT STARTED</text>
+
+  <path class="ln" d="M426 245 L460 245"/>
+  <rect class="b" x="462" y="210" width="180" height="70" rx="9"/>
+  <text class="t" x="552" y="230">S8 web app</text>
+  <text class="tm" x="552" y="250">a stranger mints, unaided</text>
+  <text class="tm" x="552" y="268" style="fill:var(--bad)">NOT STARTED</text>
+
+  <path class="ln" d="M642 245 L676 245"/>
+  <rect class="b" x="678" y="210" width="160" height="70" rx="9"/>
+  <text class="t" x="758" y="230">S9 multi-tenant</text>
+  <text class="tm" x="758" y="256" style="fill:var(--bad)">NOT STARTED</text>
+
+  <path class="ln" d="M838 245 L862 245"/>
+  <rect class="b" x="864" y="210" width="156" height="70" rx="9"/>
+  <text class="t" x="942" y="230">S10 release</text>
+  <text class="tm" x="942" y="256" style="fill:var(--bad)">NOT STARTED</text>
+
+  <rect class="grp" x="30" y="306" width="990" height="118" rx="12"/>
+  <text class="hd" x="525" y="328">minimum shippable thing = S0 + S1 + S6 + S7 + cut-down S8</text>
+  <rect class="b3" x="60" y="342" width="150" height="34" rx="7"/>
+  <text class="t" x="135" y="359" style="fill:var(--ok)">S0 ✓</text>
+  <rect class="b3" x="222" y="342" width="150" height="34" rx="7"/>
+  <text class="t" x="297" y="359" style="fill:var(--ok)">S1 ✓</text>
+  <rect class="b4" x="384" y="342" width="150" height="34" rx="7"/>
+  <text class="t" x="459" y="359" style="fill:var(--bad)">S6 ✗</text>
+  <rect class="b4" x="546" y="342" width="150" height="34" rx="7"/>
+  <text class="t" x="621" y="359" style="fill:var(--bad)">S7 ✗</text>
+  <rect class="b4" x="708" y="342" width="150" height="34" rx="7"/>
+  <text class="t" x="783" y="359" style="fill:var(--bad)">S8 ✗</text>
+  <text class="tm" x="525" y="396">The plan's own words: "Protect it. The most likely failure mode of this project is that</text>
+  <text class="tm" x="525" y="412">S2/S3 research swallows the calendar and nothing ever ships."</text>
+</svg>
+<figcaption><b>Note the naming collision.</b> <span class="mono">experiments/S6</span>…
+<span class="mono">S10</span> on disk are <em>Indic</em> experiments; the plan's S6–S10 are the
+platform track above. Day to day the directory listing looks like progress through the
+stages. It is not the same S6 — and that is part of why a five-stage gap stayed
+invisible.</figcaption>
+</figure>
+
+<h2>Where to go next</h2>
+<table>
+  <tr><th>if you want</th><th>read</th></tr>
+  <tr><td>the honest state of the project and what to do about it</td><td><span class="mono">learning/00-SANITY-CHECK.md</span></td></tr>
+  <tr><td>to understand the maths and ML behind any box above</td><td><span class="mono">learning/01-STUDY-GUIDE.md</span></td></tr>
+  <tr><td>why a specific decision was made</td><td><span class="mono">DECISIONS.md</span> — 13 ADRs</td></tr>
+  <tr><td>the evidence behind a claim</td><td><span class="mono">RESEARCH/</span> — 13 domain files + <span class="mono">SOURCES.md</span></td></tr>
+  <tr><td>what a given experiment actually found</td><td><span class="mono">experiments/&lt;id&gt;/RESULTS.md</span></td></tr>
+</table>
+</div>
+</body>
+</html>
