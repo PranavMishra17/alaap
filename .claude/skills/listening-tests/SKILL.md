@@ -45,6 +45,37 @@ real" one out of two real recordings is answering on room tone or accent, not na
 **A failed control is a result about your instrument, and often more valuable than the
 result you wanted.**
 
+## 2b. Size the CONTROLS, not just the test pairs
+
+The rule in section 6 applies to controls first, and S14c is where that was learned.
+
+> **S14c** discarded on "both positive controls answered confidently". The listener said
+> "can't tell" on 25% of pairs, so **two** controls both coming back confident happens by
+> chance `0.75² ≈ 56%` of the time. A discard condition that fires on a coin flip is not
+> a discard condition.
+
+**Compute the false-positive rate of every discard condition before sending the set.**
+Three controls gives 0.42, four gives 0.32 -- state the number in the write-up rather than
+implying the condition is sharp.
+
+## 2c. "Baseline shared" is a property of the PAIR, not of the design
+
+A comparative design cancels a shared baseline only if both sides actually carry the *same*
+baseline. Vary the voice or the sentence to hide some other cue and you have un-shared it.
+
+> **S14b** used same-sentence/same-voice: baseline shared, but duration identified the
+> re-timed clip. **S14c** varied both to hide duration -- and its positive controls, two
+> untouched clips of different voices, both got a confident answer.
+
+|  | duration cue hidden | baseline shared |
+|---|---|---|
+| same sentence + voice | no | yes |
+| different sentence + voice | yes | no |
+
+**When you cannot have both, change the question.** S14d drops "which was manipulated"
+entirely and pairs `1/m` against `m` on one voice and one line: neither is the original, so
+length answers nothing and the baseline is identical rather than merely shared.
+
 ## 3. Blind properly
 
 - Shuffle pair order **and** A/B order within each pair.
