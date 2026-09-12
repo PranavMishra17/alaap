@@ -9,7 +9,7 @@
 // project claim.
 import { readdirSync } from 'node:fs';
 
-const BASE = 'http://127.0.0.1:4321';
+const BASE = process.env.SITE_BASE ?? 'http://127.0.0.1:4321';
 
 // §9 allowlist, as the digit tokens that may appear in page text.
 const ALLOWED_NUMBERS = new Set([
