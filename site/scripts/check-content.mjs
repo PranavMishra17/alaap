@@ -112,7 +112,7 @@ for (const slug of slugs) {
     .filter(([k, alts]) => !alts.some((a) => (k === 'repo link' ? htmlLower : lower).includes(a.toLowerCase())))
     .map(([k]) => k);
   const words = text.split(' ').filter(Boolean).length;
-  const externals = [...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)/g)].map((m) => new URL(m[1]).host).filter((h) => !/github\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(h));
+  const externals = [...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)/g)].map((m) => new URL(m[1]).host).filter((h) => !/github\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|pranavmishra17\.github\.io/.test(h));
 
   console.log(`\n## ${slug}  (${words} words${tech ? `, plus a #technical section of ${stripHtml(tech).split(' ').filter(Boolean).length} words audited for marketing words only` : ''})`);
   if (techBanned.length) { anyFlag = true; console.log(`  marketing words inside #technical: ${techBanned.join(', ')}`); }
