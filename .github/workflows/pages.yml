@@ -1,0 +1,48 @@
+# Publishes the site to GitHub Pages: main → /alaap/, the design-lab branch → /alaap/lab/.
+# The same workflow file lives on both branches so a push to either rebuilds both.
+name: pages
+on:
+  push:
+    branches: [main, design-lab]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, path: main }
+      - uses: actions/checkout@v4
+        with: { ref: design-lab, path: lab }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: main/site/package-lock.json
+      - name: build main → /alaap
+        working-directory: main/site
+        env: { ASTRO_BASE: /alaap }
+        run: npm ci --no-audit --no-fund && npx astro build
+      - name: build design-lab → /alaap/lab
+        working-directory: lab/site
+        env: { ASTRO_BASE: /alaap/lab }
+        run: npm ci --no-audit --no-fund && npx astro build
+      - name: assemble
+        run: mkdir -p main/site/dist/lab && cp -r lab/site/dist/. main/site/dist/lab/ && touch main/site/dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: main/site/dist }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
