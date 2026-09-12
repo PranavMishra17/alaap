@@ -80,8 +80,24 @@ for (const slug of slugs) {
   } catch (e) {
     console.log(`\n## ${slug}\n  fetch failed: ${e.message}`); anyFlag = true; continue;
   }
-  const text = stripHtml(html).replace(/CC[- ]BY[- ]4\.0|Apache[- ]2\.0|Qwen3[- ]TTS/g, ' ');
+  // A <section id="technical"> (the engineer's view) is audited separately: only the marketing
+  // words are banned there; its numbers and vocabulary come from learning/architecture.html.
+  const techStart = html.search(/<section[^>]*\bid="technical"/i);
+  let tech = '';
+  if (techStart >= 0) {
+    // the section ends at its own closing tag: count nested <section> opens after the start
+    let depth = 0, i = techStart;
+    const re = /<\/?section\b[^>]*>/gi; re.lastIndex = techStart;
+    let m;
+    while ((m = re.exec(html))) { depth += m[0][1] === '/' ? -1 : 1; if (depth === 0) { i = m.index + m[0].length; break; } }
+    tech = depth === 0 ? html.slice(techStart, i) : html.slice(techStart);
+  }
+  const htmlMain = tech ? html.replace(tech, ' ') : html;
+  const text = stripHtml(htmlMain).replace(/CC[- ]BY[- ]4\.0|Apache[- ]2\.0|Qwen3[- ]TTS/g, ' ');
   const lower = text.toLowerCase();
+  const MARKETING = BANNED.slice(BANNED.indexOf('revolutionary'));
+  const techLower = stripHtml(tech).toLowerCase();
+  const techBanned = tech ? MARKETING.filter((w) => new RegExp(`(?<![a-z])${w.replace(/[-\s]/g, '[-\\s]')}(?![a-z])`, 'i').test(techLower)) : [];
 
   const numbers = [...text.matchAll(/(?<![\w.])\d(?:[\d,]*\d)?(?:\.\d+)?(?![\w.])/g)].map((m) => m[0]);
   const badNumbers = [...new Set(numbers.filter((n) => !ALLOWED_NUMBERS.has(n)))];
@@ -98,11 +114,12 @@ for (const slug of slugs) {
   const words = text.split(' ').filter(Boolean).length;
   const externals = [...html.matchAll(/(?:src|href)=["'](https?:\/\/[^"']+)/g)].map((m) => new URL(m[1]).host).filter((h) => !/github\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(h));
 
-  console.log(`\n## ${slug}  (${words} words)`);
+  console.log(`\n## ${slug}  (${words} words${tech ? `, plus a #technical section of ${stripHtml(tech).split(' ').filter(Boolean).length} words audited for marketing words only` : ''})`);
+  if (techBanned.length) { anyFlag = true; console.log(`  marketing words inside #technical: ${techBanned.join(', ')}`); }
   if (contexts.length) { anyFlag = true; console.log('  numbers off the allowlist (review each):'); for (const c of contexts) console.log(`    ${c}`); }
   if (banned.length) { anyFlag = true; console.log(`  banned words: ${banned.join(', ')}`); }
   if (missing.length) { anyFlag = true; console.log(`  mandatory items not found: ${missing.join('; ')}`); }
   if (externals.length) { anyFlag = true; console.log(`  external hosts beyond fonts/github: ${[...new Set(externals)].join(', ')}`); }
-  if (!contexts.length && !banned.length && !missing.length && !externals.length) console.log('  clean');
+  if (!contexts.length && !banned.length && !missing.length && !externals.length && !techBanned.length) console.log('  clean');
 }
 process.exit(anyFlag ? 1 : 0);
