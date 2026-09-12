@@ -1,6 +1,6 @@
 // Screenshot one page with headless Chromium and report console/page errors.
 //
-//   node scripts/shot.mjs <url> <out.png> [--width=1440] [--height=900] [--full] [--dark] [--reduced-motion] [--wait=800] [--hmr]
+//   node scripts/shot.mjs <url> <out.png> [--width=1440] [--height=900] [--full] [--dark] [--reduced-motion] [--wait=800] [--hmr] [--autoplay]
 //
 // By default the dev server's hot-reload client and dev toolbar are blocked, so another
 // variant being saved cannot reload the page mid-capture and the toolbar pill stays out of
@@ -24,7 +24,8 @@ if (!url || !out) {
 const width = Number(opt.width ?? 1440);
 const height = Number(opt.height ?? 900);
 
-const browser = await chromium.launch();
+// --autoplay lets a page's own ?autoplay hook start audio (and an AudioContext) without a gesture, for mid-playback captures.
+const browser = await chromium.launch(opt.autoplay ? { args: ['--autoplay-policy=no-user-gesture-required'] } : {});
 const ctx = await browser.newContext({
   viewport: { width, height },
   deviceScaleFactor: 1,
