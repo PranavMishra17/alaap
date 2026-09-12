@@ -21,16 +21,13 @@
 
 **Natural-language character description → a persistent, reusable voice identity → arbitrary dialogue rendered in that voice.** English and Indian languages, at quality usable in games and dramatic content.
 
-> *Alaap* — the opening improvisation in Hindustani classical music, where a voice explores its full range before the composition begins.
-
-
 > **In development.** This is a working research system, not a product: there is no signup, no hosted service
 > and no API. It runs end to end on one laptop GPU, and every number in this repository comes from a run you can
 > repeat. The honest limits are listed below and on the site, not hidden.
 
 ### Contribute, or get in touch
 
-The most useful things a stranger can do for this project right now, in order:
+The most useful things one can do for this project right now, in order:
 
 1. **Listen.** If you are a fluent speaker of Hindi, Bengali or Tamil: a handful of "does this say *X*?" checks on
    rendered lines is worth more than any automatic score. Open an issue and say which language.
