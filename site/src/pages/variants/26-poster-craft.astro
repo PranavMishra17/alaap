@@ -135,12 +135,12 @@ const ld = {
       </nav>
 
       <div class="landing">
-      <section class="band band--neel cast" id="cast" aria-labelledby="cast-h">
+      <section class="band band--kajal cast" id="cast" aria-labelledby="cast-h">
         <h2 class="bill" id="cast-h"><span class="bill-hi painted" lang="hi">कलाकार</span> <span class="bill-en">The cast: three voices, minted from nothing but the line under each name</span></h2>
         <p class="band-intro">Each name has a seed clip, the short reference recording the system stores with every identity when it is minted. Pre-rendered on 2026-09-05; nothing on this page generates a voice live.</p>
         <ul class="stars">
           {characters.map((ch) => { const s = seedOf(ch.id); return (
-            <li class="star" data-player>
+            <li class={`star ch-${ch.id}`} data-player>
               <h3 class="star-name" id={`${ch.id}-name`}>{cap(ch.id)}</h3>
               <p class="star-desc">Given only: <q>{ch.description}</q></p>
               <button type="button" class="play" id={`${ch.id}-play`} data-play aria-pressed="false" aria-labelledby={`${ch.id}-name ${ch.id}-play`}><span class="tri" aria-hidden="true"></span><span class="play-txt">Play</span><span class="play-sub">seed clip · {s.seconds} s</span></button>
@@ -167,12 +167,12 @@ const ld = {
         <div class="panel" id="lang-en" role="tabpanel" aria-labelledby="tab-en" tabindex="0">
           <div class="deck">
             <button type="button" class="play play--big" data-play-scene aria-pressed="false"><span class="tri" aria-hidden="true"></span><span class="play-txt">Play the scene</span><span class="play-sub">all five lines, in order</span></button>
-            <ol class="where" aria-hidden="true"><li></li><li></li><li></li><li></li><li></li></ol>
+            <ol class="where" aria-hidden="true">{scene.map((c) => <li class={`ch-${c.character}`}></li>)}</ol>
             <p class="now">Five lines. Each has its own play button; this one plays them in order.</p>
           </div>
           <ol class="lines">
             {scene.map((c) => (
-              <li class="line" data-player>
+              <li class={`line ch-${c.character}`} data-player>
                 <span class="who">{cap(c.character)}</span>
                 <button type="button" class="play" data-play aria-pressed="false" aria-label={`Play. ${cap(c.character)}: ${c.text}`}><span class="tri" aria-hidden="true"></span><span class="play-txt" aria-hidden="true">Play</span></button>
                 <p class="words">“{c.text}” <span class="dur">{c.seconds} s</span> {c.experimentalEmotionSetting ? <span class="slip slip--tag">experimental emotion setting, unvalidated</span> : <span class="tag-plain">no direction</span>}</p>
@@ -200,14 +200,14 @@ const ld = {
               <p class="now">Two clips, one after the other. Each also has its own button.</p>
             </div>
             <ol class="lines lines--pair">
-              <li class="line" data-player>
+              <li class="line ch-mentor" data-player>
                 <span class="who">Mentor<small>English · ships</small></span>
                 <button type="button" class="play" data-play aria-pressed="false" aria-label={`Play. Mentor, the English seed clip: ${seedOf('mentor').text}`}><span class="tri" aria-hidden="true"></span><span class="play-txt" aria-hidden="true">Play</span></button>
                 <p class="words">“{seedOf('mentor').text}” <span class="dur">{seedOf('mentor').seconds} s</span></p>
                 <canvas class="wave" aria-hidden="true"></canvas>
                 <audio preload="none" controls src={seedOf('mentor').src}></audio>
               </li>
-              <li class="line line--hi" data-player>
+              <li class="line line--hi ch-guru" data-player>
                 <span class="who">Guru<small>Hindi · review only</small></span>
                 <button type="button" class="play" data-play aria-pressed="false" aria-describedby="hi-caveat" aria-label={`Play. Guru, Hindi line 1, ${hiClip('guru', 0).seconds} seconds: ${hiClip('guru', 0).text}`}><span class="tri" aria-hidden="true"></span><span class="play-txt" aria-hidden="true">Play</span></button>
                 <p class="words"><span lang="hi">“{hiClip('guru', 0).text}”</span> <span class="slip slip--tag">asked “does it say this?”, a fluent Hindi speaker said yes</span></p>
@@ -220,7 +220,7 @@ const ld = {
           </section>
           <div class="hi-cast">
             {indicVoices.map((v) => (
-              <section class="hv" aria-labelledby={`hv-${v.id}`}>
+              <section class={`hv ch-${v.id}`} aria-labelledby={`hv-${v.id}`}>
                 <header class="hv-head">
                   <h3 class="who hv-name" id={`hv-${v.id}`}>{cap(v.id)}</h3>
                   <p class="hv-same">{v.sameDescriptionAs ? <>same description as <b>{cap(v.sameDescriptionAs)}</b></> : 'Hindi only'}</p>
@@ -229,7 +229,7 @@ const ld = {
                 </header>
                 <ol class="lines lines--hi">
                   {[0, 1, 2].map((i) => { const c = hiClip(v.id, i); return (
-                    <li class="line line--hi" data-player>
+                    <li class={`line line--hi ch-${v.id}`} data-player>
                       <button type="button" class="play" data-play aria-pressed="false" aria-describedby="hi-caveat" aria-label={`Play. ${cap(v.id)}, Hindi line ${i + 1}, ${c.seconds} seconds: ${c.text}`}><span class="tri" aria-hidden="true"></span><span class="play-txt" aria-hidden="true">Play</span></button>
                       <p class="words"><span lang="hi">“{c.text}”</span>{c.nativeSpeakerChecked && <span class="slip slip--tag">checked by a fluent Hindi speaker: it says this</span>}</p>
                       <p class="gloss">Our translation: “{c.english}”</p>
@@ -456,12 +456,18 @@ const ld = {
   .band { position: relative; padding: clamp(2.2rem, 4.5vw, 3rem) var(--gutter) clamp(2.4rem, 5vw, 3.5rem); background: var(--paint); color: var(--ink); }
   .band::before { content: ''; position: absolute; left: -40px; right: -40px; top: -20px; height: 40px; background: var(--paint); filter: url(#brush); pointer-events: none; z-index: 1; }
   .band::after { content: ''; position: absolute; left: -42px; right: -38px; top: -23px; height: 40px; background: var(--reg); filter: url(#brush); pointer-events: none; z-index: 0; }
-  .masthead::before, .masthead::after, .cast::before, .cast::after { display: none; }
+  .masthead::before, .masthead::after, .cast::before, .cast::after, .scene::before, .scene::after { display: none; }
   .band--haldi { --paint: var(--haldi); --ink: var(--kajal); --shout: var(--sindoor); --shadow: var(--neel); --stroke: var(--kajal); --reg: var(--sindoor); --wave: var(--neel); --wave-lit: var(--sindoor); --focus: var(--kajal); }
   .band--neel { --paint: var(--neel); --ink: var(--chuna); --shout: var(--haldi); --shadow: var(--sindoor); --stroke: var(--kajal); --reg: var(--haldi); --wave: var(--haldi); --wave-lit: var(--chuna); --focus: var(--chuna); }
   .band--kajal { --paint: var(--kajal); --ink: var(--chuna); --shout: var(--haldi); --shadow: var(--sindoor); --stroke: transparent; --reg: var(--sindoor); --wave: var(--haldi); --wave-lit: var(--gulabi); --focus: var(--haldi); }
   .band--sindoor { --paint: var(--sindoor); --ink: var(--chuna); --shout: var(--chuna); --shadow: var(--kajal); --stroke: transparent; --reg: var(--kajal); --focus: var(--chuna); }
   .band--chuna { --paint: var(--chuna); --ink: var(--kajal); --shout: var(--kajal); --shadow: var(--haldi); --stroke: transparent; --reg: var(--haldi); --focus: var(--kajal); }
+  /* character enamels on the stage: one colour per voice, carried by the card, the name, the bars, the lit bars and the playing state.
+     --ch the enamel · --ch-lit the played bars · --ch-shadow the name's offset on the card · --ch-ink the enamel as small text on kajal · --who-shadow the name's offset on kajal */
+  .ch-mentor, .ch-guru { --ch: var(--haldi); --ch-lit: var(--sindoor); --ch-shadow: var(--chuna); }
+  .ch-scout, .ch-student { --ch: var(--gulabi); --ch-lit: var(--chuna); --ch-shadow: var(--chuna); }
+  .ch-innkeeper, .ch-narrator { --ch: var(--chuna); --ch-lit: var(--sindoor); --ch-shadow: var(--haldi); }
+  .ch-elder { --ch: var(--sindoor); --ch-lit: var(--haldi); --ch-shadow: var(--kajal); --ch-ink: var(--haldi); --who-shadow: var(--haldi); }
 
   /* painted lettering: fill, a black brush outline, a hard offset shadow in a second enamel */
   .painted { color: var(--shout); -webkit-text-stroke: .035em var(--stroke); paint-order: stroke fill; text-shadow: .06em .06em 0 var(--shadow); filter: url(#brush-soft); }
@@ -505,6 +511,7 @@ const ld = {
   .prog-list a:hover { background: rgba(244,238,221,.1); }
   .prog-list a[aria-current] { background: var(--haldi); color: var(--kajal); }
   .prog-list a[aria-current] [lang="hi"], .prog-list--tech a[aria-current]::before { color: var(--kajal); }
+  .prog-list--tech a[aria-current] { background: var(--gulabi); }
   .prog :focus-visible { outline-offset: -4px; }
   .view { display: flex; align-items: center; gap: .4rem; padding: 0 var(--gutter) 0 .9rem; border-left: 2px solid rgba(244,238,221,.25); }
   .view-a { padding: .4rem .65rem .35rem; border: 2px solid rgba(244,238,221,.45); font: 700 .78rem/1 var(--cond); text-transform: uppercase; letter-spacing: .08em; text-decoration: none; white-space: nowrap; }
@@ -554,16 +561,19 @@ const ld = {
 
   /* 2 · cast */
   .stars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.4rem; }
-  .star { --wave: var(--haldi); --wave-lit: var(--chuna); display: flex; flex-direction: column; padding: 1.1rem 1.2rem 1.2rem; background: rgba(0,0,0,.28); }
-  .star.is-playing { background: var(--haldi); color: var(--kajal); --wave: var(--neel); --wave-lit: var(--sindoor); --focus: var(--kajal); }
-  .star-name { font: 400 clamp(2.2rem, 3.6vw, 2.8rem)/1.1 var(--display); color: var(--haldi); text-shadow: .05em .05em 0 var(--sindoor); }
-  .is-playing .star-name { color: var(--kajal); text-shadow: .05em .05em 0 var(--chuna); }
+  .star { --ink: var(--kajal); --wave: var(--kajal); --wave-lit: var(--ch-lit); --focus: var(--kajal); display: flex; flex-direction: column; padding: 1.1rem 1.2rem 1.2rem; background: var(--ch); color: var(--kajal); }
+  .star.is-playing { box-shadow: -6px 6px 0 0 var(--sindoor); transform: translate(3px, -3px); }
+  .star.ch-scout.is-playing { box-shadow: -6px 6px 0 0 var(--haldi); }
+  .star-name { font: 400 clamp(2.2rem, 3.6vw, 2.8rem)/1.1 var(--display); color: var(--kajal); text-shadow: .05em .05em 0 var(--ch-shadow); }
+  .star .play { background: var(--kajal); color: var(--chuna); border-color: var(--kajal); box-shadow: 3px 3px 0 var(--ch-lit); }
+  .star .play:hover, .star .play[aria-pressed="true"] { background: var(--chuna); color: var(--kajal); border-color: var(--kajal); }
   .star-desc { flex: 1; margin: .5rem 0 .9rem; font-size: 1.05rem; line-height: 1.4; }
   .star .play { align-self: flex-start; }
   .star .wave { height: 48px; margin: .8rem 0 .4rem; }
   .star .words { font-size: var(--t-small); }
 
   /* 3 · the scene: a language switch, then one instrument */
+  .scene { padding-top: .4rem; }
   .langs { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.2rem; margin-bottom: 1.6rem; }
   .langs-label { font: 600 1rem/1 var(--cond); text-transform: uppercase; letter-spacing: .08em; color: var(--haldi); }
   .tabs { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -579,16 +589,19 @@ const ld = {
   .deck { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'btn where' 'btn now'; gap: .35rem 1.4rem; align-items: center; margin-bottom: 1.2rem; }
   .deck .play { grid-area: btn; }
   .where { grid-area: where; display: flex; gap: .35rem; align-self: end; }
-  .where li { width: 2.2rem; height: .85rem; border: 2px solid var(--haldi); }
-  .where li.is-done { background: rgba(242,180,30,.5); }
-  .where li.is-now { background: var(--haldi); }
+  .where li { width: 2.2rem; height: .85rem; border: 2px solid var(--ch, var(--haldi)); }
+  .where li.is-done { background: rgba(242,180,30,.5); background: color-mix(in srgb, var(--ch, var(--haldi)) 50%, transparent); }
+  .where li.is-now { background: var(--ch, var(--haldi)); }
   .now { grid-area: now; align-self: start; font: 500 1rem/1.35 var(--cond); color: var(--chuna); }
   .deck--pair { grid-template-areas: 'btn now'; }
   .deck--pair .now { align-self: center; }
   .lines { border-top: 3px solid var(--haldi); }
   .line { display: grid; grid-template-columns: 6.5rem 5.4rem minmax(0, 1fr); grid-template-areas: 'who play words' 'who play wave'; column-gap: 1rem; row-gap: .25rem; align-items: start; padding: .8rem 0; border-bottom: 3px solid var(--haldi); }
+  .line { --wave: var(--ch, var(--haldi)); --wave-lit: var(--ch-lit, var(--gulabi)); }
+  .line.ch-innkeeper, .line.ch-narrator { --wave-lit: var(--haldi); }
   .line.is-playing { background: rgba(242,180,30,.12); box-shadow: 0 0 0 .6rem rgba(242,180,30,.12); }
-  .who { grid-area: who; font: 400 1.5rem/1.1 var(--display); color: var(--haldi); text-shadow: .05em .05em 0 var(--sindoor); padding-top: .2rem; }
+  .line.is-playing { background: color-mix(in srgb, var(--ch, var(--haldi)) 12%, transparent); box-shadow: 0 0 0 .6rem color-mix(in srgb, var(--ch, var(--haldi)) 12%, transparent); }
+  .who { grid-area: who; font: 400 1.5rem/1.1 var(--display); color: var(--ch, var(--haldi)); text-shadow: .05em .05em 0 var(--who-shadow, var(--sindoor)); padding-top: .2rem; }
   .who small { display: block; margin-top: .3rem; font: 600 .72rem/1.2 var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--chuna); text-shadow: none; }
   .line .play { grid-area: play; min-width: 5.4rem; justify-content: center; }
   .line .words { grid-area: words; font-size: 1.12rem; padding-top: .3rem; }
@@ -613,9 +626,9 @@ const ld = {
   .gloss { grid-area: gloss; font: 400 var(--t-small)/1.4 var(--body); color: #D9D3C3; }
   .missing { grid-area: missing; }
   .hi-cast { display: grid; gap: 1.6rem; margin-top: 2rem; }
-  .hv { display: grid; grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr); gap: .6rem 2rem; padding-top: 1.2rem; border-top: 3px solid var(--haldi); }
+  .hv { display: grid; grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr); gap: .6rem 2rem; padding-top: 1.2rem; border-top: 3px solid var(--ch, var(--haldi)); }
   .hv-name { font-size: 2rem; }
-  .hv-same { margin-top: .2rem; font: 600 .85rem/1.3 var(--cond); text-transform: uppercase; letter-spacing: .08em; color: var(--haldi); }
+  .hv-same { margin-top: .2rem; font: 600 .85rem/1.3 var(--cond); text-transform: uppercase; letter-spacing: .08em; color: var(--ch-ink, var(--ch, var(--haldi))); }
   .hv-desc { margin-top: .6rem; font-size: 1.05rem; line-height: 1.4; }
   .hv-head .slip { max-width: 30ch; font-size: .95rem; }
   .lines--hi { border-top: 0; }
@@ -720,9 +733,14 @@ const ld = {
   .tmap .tm-fig figcaption h3 { text-shadow: .05em .05em 0 var(--haldi); }
   .tmap .tm-node { isolation: isolate; background: transparent; border: 0; box-shadow: none; padding: .65rem .85rem .7rem; }
   .tmap .tm-node::after { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--chuna); border: 3px solid var(--kajal); box-shadow: 4px 4px 0 var(--haldi); filter: url(#brush-box); }
-  .tmap .tm-node--learned::after { box-shadow: 4px 4px 0 var(--neel); }
-  .tmap .tm-node--frozen::after { box-shadow: 4px 4px 0 var(--kajal); background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(23,20,15,.08) 7px 9px); }
-  .tmap .tm-node--gate::after { box-shadow: 4px 4px 0 var(--sindoor); }
+  .tmap .tm-node--learned, .tmap .tm-node--gate { color: var(--chuna); }
+  .tmap .tm-node--learned::after { background: var(--sindoor); box-shadow: 4px 4px 0 var(--neel); }
+  .tmap .tm-node--frozen::after { box-shadow: 4px 4px 0 var(--neel); background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(23,20,15,.08) 7px 9px); }
+  .tmap .tm-node--frozen::before { background: var(--neel); }
+  .tmap .tm-node--gate::after { background: var(--kajal); box-shadow: 4px 4px 0 var(--sindoor); }
+  .tmap .tm-node--gate::before { background: var(--haldi); color: var(--kajal); }
+  .tmap .tm-node--proposal::after { border-color: var(--gulabi); }
+  .tmap .tm-node--proposal::before { background: var(--gulabi); color: var(--kajal); }
   .tmap :is(.tm-node--key, .tm-node--done)::after { background-color: var(--haldi); }
   .tmap .tm-node--key::after { box-shadow: 4px 4px 0 var(--sindoor); }
   .tmap :is(.tm-node--proposal, .tm-node--dropped)::after { border-style: dashed; box-shadow: none; }
@@ -730,10 +748,13 @@ const ld = {
   .tmap .tm-node--sm::after { box-shadow: 3px 3px 0 var(--haldi); }
   .tmap .tm-node::before { z-index: 1; font-size: .66rem; }
   .tmap .tm-node i { opacity: 1; color: #3D382E; }
+  .tmap :is(.tm-node--learned, .tm-node--gate) i { color: var(--chuna); }
   .tmap .tm-arr:not(.tm-arr--loop) { background: currentColor; -webkit-mask: var(--arrow) center / contain no-repeat; mask: var(--arrow) center / contain no-repeat; }
   .tmap .tm-arr:not(.tm-arr--loop) use { display: none; }
   .tmap .tm-lane { border-width: 3px; }
-  .tmap .tm-lane--learned { border-color: var(--neel); }
+  .tmap .tm-lane--learned { border-color: var(--sindoor); }
+  .tmap .tm-lane--learned .tm-lane-t { color: var(--sindoor); }
+  .tmap .tm-lane--frozen { border-color: var(--neel); }
   .tmap .tm-lane-t { color: var(--neel); }
   .tmap .tm-slip { max-width: min(54ch, 100%); font-size: 1rem; filter: drop-shadow(2px 3px 0 rgba(0,0,0,.42)); }
   .tmap .tm-slip::before { background: #FFF9EA; clip-path: var(--torn); }
@@ -815,11 +836,12 @@ const ld = {
     .painted, .band::before, .band::after, .prog::after, .hb::before, .tmap .tm-node::after, .tmap .tm-title { filter: none; }
     .tag-plain, .missing, .licence, .gloss { color: var(--chuna); }
     .tmap .tm-node i { color: var(--kajal); }
+    .tmap :is(.tm-node--learned, .tm-node--gate) i { color: var(--chuna); }
     .tmap .tm-node--dropped { opacity: 1; }
     .tabs [role="tab"], .prog-list a, .view-a, .prog-top, .view { border-color: var(--chuna); }
     .play, .tabs [role="tab"], .btn, .view-a { border-width: 4px; }
     .tab-sub { opacity: 1; }
-    .where li.is-done { background: rgba(242,180,30,.7); }
+    .where li.is-done { background: rgba(242,180,30,.7); background: color-mix(in srgb, var(--ch, var(--haldi)) 70%, transparent); }
   }
 </style>
 
