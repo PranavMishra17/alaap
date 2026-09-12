@@ -1,8 +1,46 @@
+<p align="center">
+  <a href="https://pranavmishra17.github.io/alaap/"><img src="docs/site/banner.png" alt="Alaap · आलाप — Describe a character. Get a voice nobody has recorded. Keep it." width="100%"></a>
+</p>
+
+<p align="center">
+  <a href="https://pranavmishra17.github.io/alaap/"><b>Live site</b></a> ·
+  <a href="https://pranavmishra17.github.io/alaap/lab/"><b>Design lab</b></a> ·
+  <a href="https://pranavmishra17.github.io/alaap/#technical"><b>Technical map</b></a> ·
+  <a href="RESEARCH/00-EXECUTIVE-VERDICT.md"><b>Research verdict</b></a> ·
+  <a href="DECISIONS.md"><b>Decisions</b></a>
+</p>
+
+<p align="center">
+  <img alt="status: in development" src="https://img.shields.io/badge/status-in%20development-F2B41E?labelColor=17140F&style=flat-square">
+  <img alt="licence: research-only" src="https://img.shields.io/badge/licence-research--only-C6201A?labelColor=17140F&style=flat-square">
+  <img alt="languages: English · Hindi · Bengali · Tamil" src="https://img.shields.io/badge/languages-English%20%C2%B7%20Hindi%20%C2%B7%20Bengali%20%C2%B7%20Tamil-1F3E92?labelColor=17140F&style=flat-square">
+  <img alt="tests: 114 invariants" src="https://img.shields.io/badge/tests-114%20invariants-F4EEDD?labelColor=17140F&style=flat-square">
+</p>
+
 # Alaap · आलाप
 
 **Natural-language character description → a persistent, reusable voice identity → arbitrary dialogue rendered in that voice.** English and Indian languages, at quality usable in games and dramatic content.
 
 > *Alaap* — the opening improvisation in Hindustani classical music, where a voice explores its full range before the composition begins.
+
+
+> **In development.** This is a working research system, not a product: there is no signup, no hosted service
+> and no API. It runs end to end on one laptop GPU, and every number in this repository comes from a run you can
+> repeat. The honest limits are listed below and on the site, not hidden.
+
+### Contribute, or get in touch
+
+The most useful things a stranger can do for this project right now, in order:
+
+1. **Listen.** If you are a fluent speaker of Hindi, Bengali or Tamil: a handful of "does this say *X*?" checks on
+   rendered lines is worth more than any automatic score. Open an issue and say which language.
+2. **Correct.** If a claim here is wrong, [an issue with a primary source](https://github.com/PranavMishra17/alaap/issues)
+   is more useful than almost anything else.
+3. **Point at clean data.** An Indian-language speech corpus with a licence that allows commercial use, or a
+   commercial system to measure against, would each move a documented blocker.
+
+Reach me through [github.com/PranavMishra17](https://github.com/PranavMishra17) — issues and discussions on this repo
+are the front door.
 
 ---
 
