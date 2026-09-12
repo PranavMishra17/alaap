@@ -1,0 +1,423 @@
+---
+// The technical map: the engineer's view of Alaap, distilled from learning/architecture.html
+// (fourteen sections) into painted flow diagrams that reflow at phone width. Shared by the
+// pass-3 poster variants; each variant paints it with its own tokens (--haldi, --sindoor, --neel,
+// --kajal, --chuna, --display, --cond, --body). Numbers and vocabulary here come from
+// learning/architecture.html and are permitted ONLY inside this section (see notes/_pass3-brief.md).
+import { links } from '../content/alaap';
+interface Props { id?: string; heading?: string }
+const { id = 'technical', heading = 'The technical map' } = Astro.props;
+const secs = [
+  ['ctx', '1', 'The whole system'], ['tower', '2', 'Two towers'], ['mint', '3', 'Minting'], ['render', '4', 'Rendering'],
+  ['gates', '5', 'The gates'], ['rev', '6', 'Checkable captions'], ['geom', '7', 'The speaker space'], ['axes', '8', 'What describes a voice'],
+  ['backend', '9', 'Two engines'], ['codec', '10', 'Content and identity'], ['dir', '11', 'Direction'], ['mods', '12', 'Modules'],
+  ['exp', '13', 'Experiments'], ['stages', '14', 'Plan status'],
+];
+---
+<section class="tmap" id={id} aria-labelledby={`${id}-h`}>
+  <svg class="tm-defs" aria-hidden="true" width="0" height="0" focusable="false">
+    <defs>
+      <symbol id="tm-arrow" viewBox="0 0 48 24"><path d="M2 12h38M30 3l12 9-12 9" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="tm-loop" viewBox="0 0 48 24"><path d="M44 12H10M10 12c-6 0-6-9 0-9h22M18 21l-8-9 8-9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 4"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="tm-head">
+    <p class="tm-kicker">For engineers · every number here is from <code>learning/architecture.html</code> in the repository</p>
+    <h2 id={`${id}-h`} class="tm-title">{heading}</h2>
+    <p class="tm-lede">How the whole thing fits together: what is learned, what is frozen, where the checks sit, and what was tried that did not work. Read top to bottom, or jump.</p>
+    <nav class="tm-nav" aria-label="Sections of the technical map">
+      <ol>{secs.map(([k, n, t]) => <li><a href={`#${id}-${k}`}><span class="tm-n">{n}</span>{t}</a></li>)}</ol>
+    </nav>
+  </header>
+
+  <!-- 1 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-ctx`}>
+    <figcaption><span class="tm-n">1</span><h3>What happens when someone describes a character?</h3><p>The product promise in one picture. A sentence goes in; a voice that has never existed comes back, and it stays that voice across every line of a script.</p></figcaption>
+    <div class="tm-flow">
+      <div class="tm-lane tm-lane--in"><p class="tm-lane-t">input</p>
+        <div class="tm-node"><b>description</b><i>&ldquo;a warm, low-pitched mentor&rdquo;</i></div>
+        <div class="tm-node"><b>script</b><i>400 lines of dialogue</i></div>
+        <div class="tm-node"><b>direction, per line</b><i>emotion · rate</i></div>
+      </div>
+      <svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-lane tm-lane--core"><p class="tm-lane-t">alaap</p>
+        <div class="tm-node tm-node--learned"><b>mapper</b><i>description → speaker vector · the only part that learns</i></div>
+        <div class="tm-node"><b>identity store</b><i>vector + seed clip + engine version</i></div>
+        <div class="tm-node tm-node--frozen"><b>renderer</b><i>frozen TTS · never trained</i></div>
+        <div class="tm-node tm-node--gate"><b>gates</b><i>drift · CER · unique</i></div>
+        <div class="tm-node"><b>watermark</b><i>AudioSeal, every file, from render #1</i></div>
+      </div>
+      <svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-lane tm-lane--out"><p class="tm-lane-t">output</p>
+        <div class="tm-node"><b>audio, per line</b><i>OGG/Vorbis</i></div>
+        <div class="tm-node"><b>manifest.json</b><i>game-engine ready</i></div>
+      </div>
+    </div>
+    <p class="tm-note">The frozen box is the whole idea. The speech model is never trained; all the learning lives in the mapper, which produces a speaker vector the frozen model already knows how to consume. Watermarking is not a launch task: it happens on the first render (invariant I7).</p>
+  </figure>
+
+  <!-- 2 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-tower`}>
+    <figcaption><span class="tm-n">2</span><h3>Why is the speech engine frozen?</h3><p>Two towers. One learns, one never changes, and exactly one channel connects them.</p></figcaption>
+    <div class="tm-flow tm-flow--towers">
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">tower A · learned</p>
+        <div class="tm-node"><b>description text</b></div>
+        <svg class="tm-arr tm-arr--down"><use href="#tm-arrow"/></svg>
+        <div class="tm-node"><b>text encoder</b><i>sentence-transformer</i></div>
+        <svg class="tm-arr tm-arr--down"><use href="#tm-arrow"/></svg>
+        <div class="tm-node tm-node--learned"><b>mapper head</b><i>retrieval · MDN · flow</i></div>
+      </div>
+      <div class="tm-channel"><div class="tm-node tm-node--key"><b>speaker vector</b><i>(2048,) or (128,)</i><em>the only channel between the towers</em></div></div>
+      <div class="tm-lane tm-lane--frozen"><p class="tm-lane-t">tower B · frozen</p>
+        <div class="tm-node"><b>text to speak</b></div>
+        <svg class="tm-arr tm-arr--down"><use href="#tm-arrow"/></svg>
+        <div class="tm-node tm-node--frozen"><b>acoustic LM</b><i>Qwen3-TTS 1.7B / Indic-Mio · weights never updated</i></div>
+        <svg class="tm-arr tm-arr--down"><use href="#tm-arrow"/></svg>
+        <div class="tm-node tm-node--frozen"><b>codec decoder</b><i>tokens + identity → waveform</i></div>
+        <svg class="tm-arr tm-arr--down"><use href="#tm-arrow"/></svg>
+        <div class="tm-node"><b>audio</b></div>
+      </div>
+    </div>
+    <p class="tm-loopline"><svg class="tm-arr tm-arr--loop"><use href="#tm-loop"/></svg> closed loop: re-extract the vector from the render, and measure the drift</p>
+    <p class="tm-note">E1 was the gate for everything else. A discriminative speaker space would resist synthesised vectors (TacoSpawn measured generated-to-synth 0.35 against synth-to-synth 0.20). E1 returned the two roughly equal, so the space is navigable and tower A was worth training. The dashed return path is why drift is a gate: the vector that goes in is not the vector that comes out.</p>
+  </figure>
+
+  <!-- 3 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-mint`}>
+    <figcaption><span class="tm-n">3</span><h3>How does a sentence become a stored identity?</h3><p>Every box is real code in <code>alaap/mapper.py</code> and <code>alaap/service.py</code>.</p></figcaption>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node"><b>description</b><i>free text</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>target bins from text</b><i>prose → bin labels</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>text encoder</b><i>MiniLM sentence embedding</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--learned"><b>retrieve()</b><i>hybrid: bins + cosine, against the anchor corpus of real, measured speakers</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>blend top_k = 2</b><i>SLERP, unit norm · novelty ε = 0.0</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--key"><b>candidate speaker vector</b></div>
+    </div>
+    <p class="tm-sub">gates — all must pass</p>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node tm-node--gate"><b>uniqueness ≥ 0.30</b><i>0.45 on MioCodec · against every accepted voice</i></div>
+      <div class="tm-node tm-node--frozen"><b>render a probe</b><i>frozen TTS · 3 lines</i></div>
+      <div class="tm-node tm-node--gate"><b>drift ≥ 0.40</b><i>intended vs re-extracted</i></div>
+      <div class="tm-node tm-node--gate"><b>consistency ≥ 0.43</b><i>across sentences, ECAPA</i></div>
+      <div class="tm-node tm-node--gate"><b>CER</b><i>ASR intelligibility: words still correct?</i></div>
+      <svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--key"><b>IdentityStore.put()</b><i>vector + seed clip + backend id + version + params</i></div>
+    </div>
+    <p class="tm-note">Two things here are counter-intuitive and both were measured. <b>top_k = 2</b> rather than 1: blending two anchors beats pure retrieval, but blending four contracts toward the centroid and loses diversity. <b>novelty = 0.0</b>: pushing minted vectors away from real anchors makes them more central, not less (S9). The store keeps a seed clip as well as a vector (invariant I2) because an encoder change orphaned every stored vector once already.</p>
+  </figure>
+
+  <!-- 4 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-render`}>
+    <figcaption><span class="tm-n">4</span><h3>Why does the same character stay the same person?</h3><p>Identity is fixed; performance is per line and never enters the identity record. That separation is invariant I5.</p></figcaption>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node tm-node--key"><b>identity id</b><i>stored, immutable</i></div>
+      <div class="tm-node"><b>line text</b></div>
+      <div class="tm-node"><b>Direction</b><i>emotion α·τ · rate 0.67–1.43</i></div>
+      <svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--frozen"><b>frozen TTS</b><i>vector + text → audio · α·τ is added to the vector at render</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>retime()</b><i>phase vocoder</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>AudioSeal</b><i>watermark embed</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>line audio</b><i>OGG/Vorbis</i></div>
+      <div class="tm-node"><b>provenance record</b><i>hash · params · backend</i></div>
+    </div>
+    <p class="tm-note"><b>Why a phase vocoder and not resampling.</b> Naive resampling shifts F0 by −54.7 / +91.3 Hz and collapses speaker identity to ECAPA 0.10: a different person. A phase vocoder changes duration while preserving pitch. <b>Why OGG and not Opus.</b> Opus removes the AudioSeal watermark; Vorbis survives at 0.95 detection, and is the Unity / FMOD / Wwise default.</p>
+  </figure>
+
+  <!-- 5 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-gates`}>
+    <figcaption><span class="tm-n">5</span><h3>What does each gate actually ask?</h3><p>Five gates, four of them calibrated on a corpus rather than chosen. The project spent nineteen experiments not noticing that none of them asked about naturalness.</p></figcaption>
+    <div class="tm-flow tm-flow--towers tm-flow--three">
+      <div class="tm-lane"><p class="tm-lane-t">identity</p>
+        <div class="tm-node tm-node--gate"><b>drift ≥ 0.40</b><i>is the rendered voice the one we asked for?</i></div>
+        <div class="tm-node tm-node--gate"><b>consistency ≥ 0.43</b><i>same person across different sentences?</i></div>
+        <div class="tm-node tm-node--gate"><b>uniqueness ≥ 0.30</b><i>0.45 on MioCodec · is this a voice we already have? (moved by S11)</i></div>
+      </div>
+      <div class="tm-lane"><p class="tm-lane-t">content</p>
+        <div class="tm-node tm-node--gate"><b>CER</b><i>does it say the words? ASR transcript vs prompt · minting costs −0.012 CER</i></div>
+      </div>
+      <div class="tm-lane"><p class="tm-lane-t">quality</p>
+        <div class="tm-node tm-node--proposal"><b>naturalness &lt; 75</b><i>WavLM layer-7 distance to the real-speech manifold · real ≈ 50, renders ≈ 97 · a proposal, never a gate</i></div>
+      </div>
+    </div>
+    <div class="tm-slip"><b>The trap this avoids.</b> DNSMOS correlates with mean F0 at r = −0.788; UTMOSv2 at −0.722. Humans correlate at −0.059. A MOS gate would reject high-pitched voices for a reason humans do not share, fighting the diversity axis directly. Invariant I9.</div>
+    <p class="tm-note">The naturalness gate has never rejected anything: the floor of 75 was chosen, not measured. Everything to its left has blocked renders. Drift, consistency, uniqueness and CER all pass on audio a listener calls synthetic (S19): they are identity and intelligibility gates, and the absence of a quality gate was invisible for nineteen experiments precisely because nothing was named one.</p>
+  </figure>
+
+  <!-- 6 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-rev`}>
+    <figcaption><span class="tm-n">6</span><h3>How can a caption be checked at all?</h3><p>Most caption datasets ask an audio model to describe a voice; that cannot be verified. Alaap measures first and writes prose from the measurements, so a claim can be checked by re-measuring the render.</p></figcaption>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node"><b>real audio</b></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>measure()</b><i>17 numeric attributes</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>Binner</b><i>percentile → 5 labels</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>caption_from_bins()</b><i>low-pitched, bright, …</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--learned"><b>mapper fit, then mint</b><i>caption and vector pairs</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>generated audio</b></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>measure() again</b><i>identical code path</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--gate"><b>adherence</b><i>do the re-measured bins match what was asked for?</i></div>
+    </div>
+    <div class="tm-slip">Data-Speech computes 9 columns from 5 tools. Six of Alaap&rsquo;s attributes (jitter, shimmer, HNR, spectral tilt, formants, VTL) are not among them and had to be built.</div>
+    <p class="tm-note">This loop is why the estimator audits mattered. If <code>measure()</code> is wrong, the caption is wrong, the mapper learns the wrong association, and adherence scores it against the same wrong measurement, so nothing ever complains. S17 found <code>vtl_cm</code> broken this way: it had been silently dropped as &ldquo;noise&rdquo; by two experiments before anyone checked the formula.</p>
+  </figure>
+
+  <!-- 7 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-geom`}>
+    <figcaption><span class="tm-n">7</span><h3>Why can&rsquo;t two voices just be averaged?</h3><p>A speaker-embedding space is not isotropic. That is invariant I1, and ignoring it collapses every identity onto one voice.</p></figcaption>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node"><b>raw vectors Z</b><i>(N, 2048) or (N, 128) · per-dimension ranges span 3 orders of magnitude</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>mean-centre</b><i>79.5% of every vector is a shared constant (E3)</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>per-dimension rescale</b><i>GVD −6.50 to −0.14</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>PCA basis</b><i>the working space · full dims = best (S9b)</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--key"><b>the shell</b><i>real speakers sit at a radius · SLERP, not LERP, preserves the norm</i></div>
+    </div>
+    <div class="tm-slip"><b>Why this is not decoration.</b> Averaging two speaker vectors in a sparse region costs +60% relative WER (10.94% vs 6.83%). &ldquo;Elderly&rdquo; and &ldquo;raspy&rdquo; are sparse regions. Extrapolation past the shell is &ldquo;not particularly meaningful&rdquo;. So: interpolate, stay on the shell, never average unweighted.</div>
+    <p class="tm-note">Interpolation between real speakers is well supported: 1,225 pairwise interpolations held WER at 6.42–7.35%. Extrapolation is not. That is why novelty defaults to 0.0 and why the mapper blends anchors rather than inventing points.</p>
+  </figure>
+
+  <!-- 8 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-axes`}>
+    <figcaption><span class="tm-n">8</span><h3>Which measurements actually describe a voice?</h3><p>Seventeen things are measured. Only three describe a voice, and working out which three took five experiments.</p></figcaption>
+    <div class="tm-flow tm-flow--towers tm-flow--three">
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">identity axes, in use</p>
+        <div class="tm-node tm-node--key"><b>f0_mean</b><i>within/between 0.08 · gender d −3.08</i></div>
+        <div class="tm-node tm-node--key"><b>spectral_tilt</b><i>0.19, but reads F0 at r = +0.918 · count the set as ~2.6 axes, not 3</i></div>
+        <div class="tm-node tm-node--key"><b>vtl_cm</b><i>0.21 · was &ldquo;noise&rdquo; until the estimator was fixed (S17)</i></div>
+        <div class="tm-node tm-node--dropped"><b>hnr_db — dropped</b><i>0.59, fails on Tamil at 1.32 · 0.3 voices for 15.6 pp adherence</i></div>
+      </div>
+      <div class="tm-lane"><p class="tm-lane-t">delivery, not identity</p>
+        <div class="tm-node"><b>speaking_rate 1.32</b><i>three independent routes agree</i></div>
+        <div class="tm-node"><b>f0_cv 1.04</b><i>&ldquo;expressiveness&rdquo; is not identity</i></div>
+        <div class="tm-node"><b>jitter 0.73 · shimmer 0.62</b><i>pass the &lt; 1.0 screen and still hurt: the screen has a threshold, not a line</i></div>
+      </div>
+      <div class="tm-lane"><p class="tm-lane-t">recording / unused</p>
+        <div class="tm-node tm-node--dropped"><b>snr_db</b><i>excluded by design: it is the room</i></div>
+        <div class="tm-node tm-node--dropped"><b>f0_std · f0_range · duration · voiced_frac · f1 · f2 · f3 · formant_dispersion</b><i>redundant with an axis in use, or not identity at all</i></div>
+      </div>
+    </div>
+    <div class="tm-slip"><b>The screen:</b> within-speaker variance over between-speaker variance, on two takes of one person. Much less than 1 = identity. Greater than 1 = one person varies more than people differ. 0.6 to 0.8 = passes and still hurts.</div>
+    <p class="tm-note">Describable-space size is not the constraint. S18 put every arm on one axis: 125 describable cells give 22.3 effective voices; 15,625 give 19.6. 125× more description moved capacity by −2.7. What limits the catalogue is the number of strong axes, and no new axis has ever helped, while two repaired ones have.</p>
+  </figure>
+
+  <!-- 9 ───────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-backend`}>
+    <figcaption><span class="tm-n">9</span><h3>Why are the clips on this page English?</h3><p>English and Indic differ in model, codec, sample rate and vector width. The renderer adapter has carried an Indic implementation since S6, because if the interface cannot express Indic, the interface is wrong (ADR-003).</p></figcaption>
+    <div class="tm-node tm-node--key tm-node--wide"><b>Renderer (protocol)</b><i>mint_vector · render(vec, text, direction)</i></div>
+    <div class="tm-flow tm-flow--towers">
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">english · ships</p>
+        <div class="tm-node"><b>Qwen3-TTS-12Hz-1.7B-Base</b><i>Apache-2.0 end to end · 4.09 GB · fits 6 GB</i></div>
+        <div class="tm-node"><b>vector (2048,)</b><i>the sole identity input · pgvector HNSW caps at 2000 dims: 2048 exceeds it</i></div>
+        <div class="tm-node"><b>sample rate 24 000 Hz</b></div>
+      </div>
+      <div class="tm-lane tm-lane--frozen"><p class="tm-lane-t">indic · dev only</p>
+        <div class="tm-node"><b>SPRINGLab/Indic-Mio + MioCodec</b><i>trained on Expresso (CC-BY-NC-4.0)</i></div>
+        <div class="tm-node"><b>vector (128,)</b></div>
+        <div class="tm-node"><b>sample rate 44 100 Hz</b></div>
+        <div class="tm-node tm-node--gate"><b>public_servable = false</b><i>enforced in code (I3): a rule living in a README is violated by a config change</i></div>
+      </div>
+    </div>
+    <div class="tm-slip"><b>Invariant I4, five for five.</b> Every Indic licence chain checked was mis-declared upstream: IndicF5 → F5-TTS, SPRING_F5 → F5-TTS, VoiceSculptor → Llasa-3B, Zonos → VoxBlink2, Indic-Mio → Emilia/Expresso. A licence declaration on a derived artefact is a claim, not evidence.</div>
+  </figure>
+
+  <!-- 10 ──────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-codec`}>
+    <figcaption><span class="tm-n">10</span><h3>Where do &ldquo;what is said&rdquo; and &ldquo;who says it&rdquo; split?</h3><p>Inside MioCodec. This split is what makes the Indic experiments cheap. It is also where the project&rsquo;s most expensive bug lived.</p></figcaption>
+    <div class="tm-flow tm-flow--wrap">
+      <div class="tm-node"><b>audio 44.1 kHz</b></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--frozen"><b>encode()</b><i>return_content · return_global</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>content tokens</b><i>25 Hz · WHAT is said</i></div>
+      <div class="tm-node tm-node--key"><b>global embedding</b><i>(128,) · WHO says it</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node tm-node--frozen"><b>decode()</b><i>both, 1-D</i></div><svg class="tm-arr"><use href="#tm-arrow"/></svg>
+      <div class="tm-node"><b>audio</b></div>
+    </div>
+    <div class="tm-slip"><b>The bug that cost a week.</b> Two FSQ codecs, both with levels [8,8,8,5,5] = 12 800 entries, share no codebook. Every index is accepted. Nothing raises. The output is fluent, natural Hindi, saying completely different words. A fluent listener passed it, because they were asked &ldquo;does this sound right?&rdquo; instead of &ldquo;does this say X?&rdquo;.</div>
+    <p class="tm-note"><b>Why forty voices cost the same LM time as one.</b> Content tokens are generated once and decoded through every speaker vector: L LM generations + N×L codec decodes, not N×L LM generations. That is the two-tower split being real in the weights, and it makes voice comparisons exact, since every voice says an identical waveform of content.</p>
+  </figure>
+
+  <!-- 11 ──────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-dir`}>
+    <figcaption><span class="tm-n">11</span><h3>Can a line be directed?</h3><p>Per-line performance on an engine with no instruction input. Three mechanisms were tried: one works, one is bounded, one is inert.</p></figcaption>
+    <div class="tm-flow tm-flow--towers tm-flow--three">
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">works</p><div class="tm-node tm-node--key"><b>emotion: x + α·τ, on the vector</b><i>τ fitted over 4+ speakers, CREMA-D · dEECS +0.29 · ~0 similarity cost</i></div></div>
+      <div class="tm-lane"><p class="tm-lane-t">bounded</p><div class="tm-node"><b>rate: retime() on the waveform</b><i>phase vocoder, 0.67 to 1.43× · clean range still a guess, S14d pending</i></div></div>
+      <div class="tm-lane tm-lane--frozen"><p class="tm-lane-t">inert</p><div class="tm-node tm-node--dropped"><b>emotion tags in the text</b><i>&lt;happy&gt; &lt;whisper&gt; and word stress · 0 of 9 are tokens, in the model and its base</i></div></div>
+    </div>
+    <div class="tm-slip"><b>Invariant I5.</b> Identity stores timbre only. Mint from neutral, store neutral, add α·τ at render. Emotion baked into identity makes drama impossible and breaks consistency across a character&rsquo;s 400 lines.</div>
+    <p class="tm-note">The text channel carries no direction at all (S13 / S13b), filed upstream as Report 4. The listener&rsquo;s verdict on tagged renders: &ldquo;they are all the same speaker — all warm but no distinct feeling at all.&rdquo; What survives is a genuinely useful property: identity is provably robust to whatever the text says.</p>
+  </figure>
+
+  <!-- 12 ──────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-mods`}>
+    <figcaption><span class="tm-n">12</span><h3>What is in the code?</h3><p>Sixteen modules in <code>alaap/</code>. Arrows point from a module to the one it depends on. Nothing below the top layer touches a model.</p></figcaption>
+    <div class="tm-lane tm-lane--wide"><p class="tm-lane-t">orchestration</p>
+      <div class="tm-flow tm-flow--wrap">
+        <div class="tm-node tm-node--key"><b>service.py</b><i>VoiceService: mint · render · render_script</i></div>
+        <div class="tm-node"><b>mapper.py</b><i>retrieve · mint · MintResult</i></div>
+        <div class="tm-node tm-node--frozen"><b>renderer.py</b><i>backend adapters</i></div>
+        <div class="tm-node"><b>identity.py</b><i>IdentityStore, SQLite</i></div>
+        <div class="tm-node"><b>watermark.py + provenance.py</b><i>AudioSeal · hashes · params</i></div>
+      </div>
+    </div>
+    <div class="tm-lane tm-lane--wide"><p class="tm-lane-t">measurement and representation</p>
+      <div class="tm-flow tm-flow--wrap">
+        <div class="tm-node"><b>acoustics.py</b><i>measure · Binner · BIN_LABELS · f0 · formants · tilt · HNR · VTL</i></div>
+        <div class="tm-node"><b>geometry.py</b><i>SpeakerSpace: centre · rescale · PCA · shell</i></div>
+        <div class="tm-node"><b>metrics.py</b><i>vendi · isolation_pct · CER · naturalness · CALIBRATION</i></div>
+        <div class="tm-node tm-node--gate"><b>encoder.py</b><i>ECAPA, the independent judge · never the thing being optimised</i></div>
+      </div>
+    </div>
+    <div class="tm-lane tm-lane--wide"><p class="tm-lane-t">inputs and vocabulary</p>
+      <div class="tm-flow tm-flow--wrap">
+        <div class="tm-node"><b>data.py</b><i>stream_clips · CORPORA · DEV_ONLY · norm_gender</i></div>
+        <div class="tm-node"><b>captions.py</b><i>PHRASES · ORDER · caption_from_bins · reverse</i></div>
+        <div class="tm-node"><b>catalog.py</b><i>CATALOG_AXES · sample_cells · saturation</i></div>
+        <div class="tm-node"><b>timing.py</b><i>retime · clamp_rate · RATE_BOUND 0.67–1.43</i></div>
+      </div>
+    </div>
+    <p class="tm-note">Everything below &ldquo;orchestration&rdquo; is importable and testable with no model loaded. 135 invariant tests exercise this layer; that is why they run in 2 minutes. The one structural rule worth copying: <code>encoder.py</code> is deliberately never the thing being optimised. Drift and consistency are scored by a model that has never seen MioCodec, so a good score cannot be an artefact of the generator agreeing with itself.</p>
+  </figure>
+
+  <!-- 13 ──────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-exp`}>
+    <figcaption><span class="tm-n">13</span><h3>What was tried, and what changed a decision?</h3><p>Thirty-five experiments. What matters is not the count but which ones changed a decision, and how many later ones exist only to check an earlier one.</p></figcaption>
+    <div class="tm-lane tm-lane--wide"><p class="tm-lane-t">foundations, then the working system, then the Indic port</p>
+      <div class="tm-flow tm-flow--wrap tm-flow--tight">
+        <div class="tm-node tm-node--sm"><b>E3</b><i>scaling</i></div><div class="tm-node tm-node--sm"><b>E1</b><i>navigability</i></div><div class="tm-node tm-node--sm"><b>E2</b><i>vocoder drift</i></div><div class="tm-node tm-node--sm"><b>E4</b><i>calibration</i></div><div class="tm-node tm-node--sm"><b>E5</b><i>watermark</i></div>
+        <div class="tm-node tm-node--sm"><b>E0</b><i>direction / τ</i></div><div class="tm-node tm-node--sm"><b>E9</b><i>extremes hold</i></div><div class="tm-node tm-node--sm"><b>E10</b><i>1.7B is better</i></div><div class="tm-node tm-node--sm"><b>S2</b><i>retrieval mapper</i></div><div class="tm-node tm-node--sm"><b>E11</b><i>English catalog</i></div>
+        <div class="tm-node tm-node--sm"><b>S4</b><i>indic captions</i></div><div class="tm-node tm-node--sm"><b>S5</b><i>MioCodec split</i></div><div class="tm-node tm-node--sm"><b>S6</b><i>minting works</i></div><div class="tm-node tm-node--sm"><b>S7</b><i>catalog saturates</i></div><div class="tm-node tm-node--sm"><b>S8</b><i>retrieval 87%</i></div>
+      </div>
+    </div>
+    <div class="tm-flow tm-flow--towers">
+      <div class="tm-lane tm-lane--frozen"><p class="tm-lane-t">the wall</p>
+        <div class="tm-node tm-node--key"><b>~22 effective voices</b><i>against a bound of ~38 · minting 58% · retrieval 87%</i></div>
+        <p class="tm-lane-t">four attempts to break it, all measured, all failed</p>
+        <div class="tm-node tm-node--dropped"><b>more novelty</b><i>S9: makes voices more central</i></div>
+        <div class="tm-node tm-node--dropped"><b>more corpus</b><i>S7: 141 to 432 speakers, zero change</i></div>
+        <div class="tm-node tm-node--dropped"><b>more bins</b><i>S18: 125× cells, −2.7 voices</i></div>
+        <div class="tm-node tm-node--dropped"><b>more axes</b><i>S18: all 17 audited, none help</i></div>
+      </div>
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">so: better measurement of the axes we have</p>
+        <div class="tm-node"><b>S17 · vtl_cm repaired</b><i>gender d ~0 → +0.44 to +1.03</i></div>
+        <div class="tm-node tm-node--key"><b>S22 · axis set adopted</b><i>the one shipped change</i></div>
+        <div class="tm-node tm-node--dropped"><b>S21 · S24 · spectral_tilt</b><i>defective, and the repair is worse: lever closed</i></div>
+        <p class="tm-lane-t">the instrument track: audits of the audits</p>
+        <div class="tm-node"><b>S11 · S15 · S19 · S20 · S20b · S23 · S14b · S14c</b><i>naturalness gate, listening sets, layer sweeps, control failures</i></div>
+      </div>
+    </div>
+    <p class="tm-note">Read left to right, then down. The top row is a working system built in about four days. Everything below it is one question, &ldquo;why only 22 voices?&rdquo;, answered four different ways, all negative, plus an instrument track that grew out of distrusting the answers. Six of the last eight outputs are caveats rather than capabilities. The finding that should have redirected the project: retrieval reaches 87% where minting reaches 58%.</p>
+  </figure>
+
+  <!-- 14 ──────────────────────────────────────────────────────────────────── -->
+  <figure class="tm-fig" id={`${id}-stages`}>
+    <figcaption><span class="tm-n">14</span><h3>How far along is it, honestly?</h3><p>The plan&rsquo;s stages, coloured by what is actually committed.</p></figcaption>
+    <div class="tm-flow tm-flow--towers">
+      <div class="tm-lane tm-lane--learned"><p class="tm-lane-t">track A · ML</p>
+        <div class="tm-node tm-node--done"><b>S0 foundations</b><i>7 of 10 experiments · E6 E7 E8 not run</i></div>
+        <div class="tm-node tm-node--done"><b>S1 identity</b><i>done · verified</i></div>
+        <div class="tm-node tm-node--done"><b>S2 retrieval</b><i>done</i></div>
+        <div class="tm-node tm-node--dropped"><b>S3 generative</b><i>not started</i></div>
+        <div class="tm-node"><b>S4 data v2</b><i>partial</i></div>
+        <div class="tm-node tm-node--done"><b>S5 indic</b><i>passed</i></div>
+      </div>
+      <div class="tm-lane tm-lane--frozen"><p class="tm-lane-t">track B · platform</p>
+        <div class="tm-node tm-node--dropped"><b>S6 inference service</b><i>mint + render over HTTP · not started</i></div>
+        <div class="tm-node tm-node--dropped"><b>S7 GPU hosting</b><i>p95 latency · $/min · not started</i></div>
+        <div class="tm-node tm-node--dropped"><b>S8 web app</b><i>a stranger mints, unaided · not started</i></div>
+        <div class="tm-node tm-node--dropped"><b>S9 multi-tenant</b><i>not started</i></div>
+        <div class="tm-node tm-node--dropped"><b>S10 release</b><i>not started</i></div>
+      </div>
+    </div>
+    <div class="tm-slip"><b>Minimum shippable thing</b> = S0 ✓ + S1 ✓ + S6 ✗ + S7 ✗ + cut-down S8 ✗. The plan&rsquo;s own words: &ldquo;Protect it. The most likely failure mode of this project is that S2/S3 research swallows the calendar and nothing ever ships.&rdquo;</div>
+    <p class="tm-note">Note the naming collision. <code>experiments/S6 … S10</code> on disk are Indic experiments; the plan&rsquo;s S6–S10 are the platform track above. Day to day the directory listing looks like progress through the stages. It is not the same S6, and that is part of why a five-stage gap stayed invisible.</p>
+  </figure>
+
+  <footer class="tm-foot">
+    <p>Where to go next: <a href={`${links.repo}/blob/main/learning/00-SANITY-CHECK.md`}>the honest state of the project</a> · <a href={`${links.repo}/blob/main/learning/01-STUDY-GUIDE.md`}>the maths and ML behind any box above</a> · <a href={`${links.repo}/blob/main/DECISIONS.md`}>why a decision was made, 13 ADRs</a> · <a href={`${links.repo}/tree/main/experiments`}>what each experiment actually found</a>.</p>
+  </footer>
+</section>
+
+<style is:global>
+  /* ── The technical map. Paints itself with the poster's tokens; a variant may override any of it. ── */
+  .tmap { --tm-ink: var(--kajal, #17140F); --tm-paper: var(--chuna, #F4EEDD); --tm-a: var(--haldi, #F2B41E); --tm-b: var(--sindoor, #C6201A); --tm-c: var(--neel, #1F3E92);
+    background: var(--tm-paper); color: var(--tm-ink); padding: clamp(2.5rem, 6vw, 5rem) var(--gutter, clamp(1.1rem, 4.5vw, 4rem)) clamp(3rem, 7vw, 5rem); font: 400 1.02rem/1.5 var(--body, Georgia, serif); }
+  .tmap, .tmap *, .tmap *::before, .tmap *::after { box-sizing: border-box; }
+  .tm-defs { position: absolute; width: 0; height: 0; }
+  .tmap code { font: 500 .9em/1 ui-monospace, 'Cascadia Mono', Consolas, monospace; background: rgba(23,20,15,.08); padding: .05em .3em; border-radius: 2px; }
+  .tmap a { color: var(--tm-c); }
+  .tm-head { max-width: 72ch; margin-bottom: clamp(2rem, 4vw, 3.5rem); }
+  .tm-kicker { font: 600 .85rem/1.3 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .12em; color: var(--tm-c); margin: 0 0 .6rem; }
+  .tm-title { font: 400 clamp(2.4rem, 6vw, 4.2rem)/1.1 var(--display, sans-serif); margin: 0 0 .6rem; color: var(--tm-ink); }
+  .tm-lede { font-size: 1.15rem; max-width: 60ch; margin: 0 0 1.4rem; }
+  .tm-nav ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem .5rem; }
+  .tm-nav a { display: inline-flex; align-items: baseline; gap: .4rem; text-decoration: none; color: var(--tm-ink); font: 600 .9rem/1.2 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .06em; padding: .35rem .7rem .3rem; border: 2px solid var(--tm-ink); background: var(--tm-paper); box-shadow: .18rem .18rem 0 var(--tm-a); }
+  .tm-nav a:hover { background: var(--tm-a); }
+  .tm-n { display: inline-block; font: 400 1.05em/1 var(--display, sans-serif); color: var(--tm-b); min-width: 1.2em; }
+
+  .tm-fig { margin: 0 0 clamp(3rem, 6vw, 5rem); padding-top: 1.5rem; border-top: 4px solid var(--tm-ink); }
+  .tm-fig figcaption { max-width: 70ch; margin-bottom: 1.25rem; }
+  .tm-fig figcaption h3 { display: inline; font: 400 clamp(1.5rem, 3vw, 2.2rem)/1.15 var(--display, sans-serif); margin: 0; }
+  .tm-fig figcaption .tm-n { font-size: clamp(1.5rem, 3vw, 2.2rem); margin-right: .4rem; vertical-align: baseline; }
+  .tm-fig figcaption p { margin: .6rem 0 0; max-width: 66ch; }
+  .tm-sub { font: 600 .9rem/1.2 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .1em; color: var(--tm-b); margin: 1.1rem 0 .5rem; }
+  .tm-note { max-width: 70ch; margin: 1.1rem 0 0; font-size: .98rem; }
+  .tm-loopline { display: flex; align-items: center; gap: .6rem; margin: .8rem 0 0; font: 500 .95rem/1.3 var(--cond, sans-serif); color: var(--tm-c); }
+
+  /* painted boxes */
+  .tm-node { position: relative; display: flex; flex-direction: column; gap: .15rem; min-width: 0; max-width: 22rem; padding: .6rem .8rem .65rem; background: var(--tm-paper); color: var(--tm-ink); border: 2.5px solid var(--tm-ink); box-shadow: .3rem .3rem 0 var(--tm-a); }
+  .tm-node b { font: 600 1rem/1.2 var(--cond, sans-serif); letter-spacing: .01em; }
+  .tm-node i { font-style: normal; font-size: .85rem; line-height: 1.3; opacity: .85; }
+  .tm-node em { font-style: normal; font: 600 .8rem/1.2 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .08em; color: var(--tm-b); margin-top: .25rem; }
+  .tm-node--learned { box-shadow: .3rem .3rem 0 var(--tm-c); }
+  .tm-node--learned::before { content: 'learned'; }
+  .tm-node--frozen { box-shadow: .3rem .3rem 0 var(--tm-ink); background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(23,20,15,.07) 7px 9px); }
+  .tm-node--frozen::before { content: 'frozen'; }
+  .tm-node--gate { box-shadow: .3rem .3rem 0 var(--tm-b); }
+  .tm-node--gate::before { content: 'gate'; }
+  .tm-node--key { background: var(--tm-a); box-shadow: .3rem .3rem 0 var(--tm-b); }
+  .tm-node--proposal { border-style: dashed; box-shadow: none; }
+  .tm-node--proposal::before { content: 'proposal'; }
+  .tm-node--dropped { opacity: .72; box-shadow: none; border-style: dashed; }
+  .tm-node--done { background: var(--tm-a); }
+  .tm-node--sm { max-width: 11rem; padding: .4rem .6rem .45rem; box-shadow: .2rem .2rem 0 var(--tm-a); }
+  .tm-node--sm b { font-size: .95rem; }
+  .tm-node--wide { max-width: none; margin-bottom: 1rem; }
+  .tm-node::before { position: absolute; top: -.7rem; right: .5rem; padding: .1rem .4rem; background: var(--tm-ink); color: var(--tm-paper); font: 600 .62rem/1.3 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .1em; }
+
+  /* flows and lanes */
+  .tm-flow { display: flex; align-items: stretch; gap: .9rem; }
+  .tm-flow--wrap { flex-wrap: wrap; align-items: center; row-gap: 1.2rem; }
+  .tm-flow--tight { gap: .6rem; row-gap: .9rem; }
+  .tm-arr { flex: none; width: 2.4rem; height: 1.2rem; color: var(--tm-ink); align-self: center; }
+  .tm-arr--down { transform: rotate(90deg); width: 2rem; height: 1rem; margin: .15rem auto; }
+  .tm-arr--loop { width: 2.6rem; height: 1.3rem; color: var(--tm-c); }
+  .tm-lane { display: flex; flex-direction: column; gap: 1.1rem; padding: 1.4rem .9rem 1rem; border: 2px dashed rgba(23,20,15,.45); min-width: 0; flex: 1 1 0; }
+  .tm-lane .tm-node { max-width: none; }
+  .tm-lane-t { font: 600 .8rem/1.2 var(--cond, sans-serif); text-transform: uppercase; letter-spacing: .12em; color: var(--tm-c); margin: 0 0 -.4rem; }
+  .tm-lane--learned { border-color: var(--tm-c); }
+  .tm-lane--frozen { border-color: var(--tm-ink); background: repeating-linear-gradient(135deg, transparent 0 12px, rgba(23,20,15,.035) 12px 14px); }
+  .tm-lane--wide { flex: none; width: 100%; max-width: 100%; margin-bottom: 1rem; }
+  .tmap .tm-lane--wide { display: block; }
+  .tm-lane--wide .tm-lane-t { margin-bottom: .7rem; }
+  .tm-lane--wide .tm-node { max-width: 22rem; }
+  .tm-flow--towers { align-items: stretch; }
+  .tm-channel { display: flex; align-items: center; flex: 0 0 auto; max-width: 16rem; }
+  .tm-channel .tm-node { max-width: none; }
+
+  /* a pasted slip, like the poster's */
+  .tm-slip { position: relative; isolation: isolate; width: fit-content; max-width: min(62ch, 100%); margin: 1.2rem 0 0; padding: .6rem .9rem .65rem; color: var(--tm-ink); font: 500 .95rem/1.35 var(--cond, sans-serif); transform: rotate(-.6deg); filter: drop-shadow(2px 3px 0 rgba(0,0,0,.35)); }
+  .tm-slip::before { content: ''; position: absolute; inset: 0; z-index: -1; background: #fff9ea; clip-path: polygon(0% 7%, 3% 0%, 13% 4%, 26% 1%, 41% 5%, 58% 0%, 73% 4%, 88% 1%, 100% 5%, 100% 93%, 96% 100%, 83% 96%, 66% 100%, 50% 95%, 34% 100%, 18% 96%, 6% 100%, 0% 95%); }
+  .tm-foot { padding-top: 1.5rem; border-top: 4px solid var(--tm-ink); max-width: 76ch; font-size: .95rem; }
+
+  @media (max-width: 860px) {
+    .tm-flow:not(.tm-flow--wrap) { flex-direction: column; }
+    .tm-flow:not(.tm-flow--wrap) > .tm-arr:not(.tm-arr--down) { transform: rotate(90deg); margin: 0 auto; }
+    .tm-channel { max-width: none; }
+    .tm-flow--three { flex-direction: column; }
+  }
+  @media (max-width: 560px) {
+    .tm-node { max-width: none; }
+    .tm-flow--wrap > .tm-node { flex: 1 1 100%; }
+    .tm-flow--tight > .tm-node--sm { flex: 1 1 40%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .tmap * { transition: none !important; animation: none !important; } }
+</style>
