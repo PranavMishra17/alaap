@@ -25,6 +25,53 @@ envs/qwen3/Scripts/python.exe scripts/demo_script_render.py   # ~4 min, end to e
 Mints three characters from text descriptions, renders a five-line scene with per-line
 emotion, watermarks everything, writes a manifest.
 
+## The site
+
+**[pranavmishra17.github.io/alaap](https://pranavmishra17.github.io/alaap/)** — the landing page: what it is, the three
+minted voices and the five-line scene as real, watermarked clips, the four differences, what was measured with every
+caveat pasted on, and what is honestly not there yet. Every claim on it is sourced in [`site/CONTENT.md`](site/CONTENT.md).
+
+**[pranavmishra17.github.io/alaap/lab](https://pranavmishra17.github.io/alaap/lab/)** — the design lab: all twenty-eight
+landing-page variants that were tried before this one, live, with each designer's notes. Source on the
+[`design-lab`](https://github.com/PranavMishra17/alaap/tree/design-lab) branch.
+
+[![The landing page: a hand-painted wall poster, आलाप in red enamel on yellow](docs/site/landing-fold.png)](https://pranavmishra17.github.io/alaap/)
+
+The cast and the scene, with each character in its own enamel. The bars are drawn in the browser from the actual clips;
+a line lights as it plays, and the language switch is honest about what ships (English) and what is measured but cannot
+(Hindi, Bengali, Tamil — the Indian-language engine is research-only).
+
+![Three characters, each minted from one sentence](docs/site/landing-cast.png)
+
+![The five-line scene, mid-playback](docs/site/landing-scene.png)
+
+![The four things that make it different, with every caveat as a slip](docs/site/landing-billing.png)
+
+### The technical map
+
+The page has a second view, **Landing · Technical map**, for engineers: the fourteen sections of
+[`learning/architecture.html`](learning/architecture.html) as painted flow diagrams — what is learned, what is frozen,
+where the checks sit, and what was tried that did not work. Red boxes learn; outlined boxes are never modified; black
+boxes ask a question and can say no.
+
+![1 · What happens when someone describes a character](docs/site/map-1-system.png)
+
+![2 · Why the speech engine is frozen: two towers, one channel](docs/site/map-2-towers.png)
+
+![3 · How a sentence becomes a stored identity, and the gates it must pass](docs/site/map-3-minting.png)
+
+![5 · What each gate actually asks](docs/site/map-5-gates.png)
+
+![9 · Two engines behind one interface, and why the clips are English](docs/site/map-9-engines.png)
+
+![13 · Thirty-five experiments: what changed a decision](docs/site/map-13-experiments.png)
+
+The site is Astro, plain HTML/CSS/JS, no framework; it builds from [`site/`](site/) and deploys with
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml), which publishes `main` to `/alaap/` and `design-lab` to
+`/alaap/lab/` in one go.
+
+---
+
 ### What was measured
 
 **The two-tower split is real in Indic.** The same content tokens carried through two
