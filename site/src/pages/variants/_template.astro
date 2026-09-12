@@ -1,0 +1,41 @@
+---
+// Reference structure for one variant. Files starting with "_" are not routes.
+// A variant is ONE .astro file: frontmatter, markup, <style is:global>, <script>. Nothing else.
+import { name, meaning, links, characters, clips, scene, seeds, byCharacter, clipCaveats } from '../../content/alaap';
+const mentor = byCharacter('mentor');
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it." />
+    <!-- Google Fonts <link> is allowed. Always give a real fallback stack in CSS. -->
+  </head>
+  <body>
+    <h1>{name.latin} <span lang="hi">{name.devanagari}</span></h1>
+    <p>{meaning}</p>
+
+    <!-- Every player shows the exact words. -->
+    {mentor.map((c) => (
+      <figure>
+        <figcaption>“{c.text}”</figcaption>
+        <audio controls preload="none" src={c.src}></audio>
+      </figure>
+    ))}
+    <p>{clipCaveats.watermark}</p>
+
+    <a href={links.repo}>Read the research</a>
+  </body>
+</html>
+
+<style is:global>
+  /* Use is:global so html/body and everything else are styled plainly; the page is the whole site. */
+  :root { color-scheme: light; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<script>
+  // Bundled as an ES module and run after parse. Plain DOM APIs. No document.currentScript.
+  // For a third-party CDN script use <script is:inline src="..."></script> in <head> instead.
+</script>

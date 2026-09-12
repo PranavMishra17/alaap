@@ -1,0 +1,899 @@
+---
+// Variant 11, "radio": All India Radio and the radio drama. The tuning dial is the navigation,
+// the stations are the sections, the clips are broadcasts, and static marks what is not there yet.
+import type { CharacterId } from '../../content/alaap';
+import { name, meaning, links, characters, clips, scene, seeds, clipCaveats, languages } from '../../content/alaap';
+
+const stations = [
+  { id: 'sign-on', label: 'Sign-on' },
+  { id: 'the-play', label: 'The play' },
+  { id: 'indian-languages', label: 'Indic first' },
+  { id: 'different', label: 'What differs' },
+  { id: 'how-it-works', label: 'How it works' },
+  { id: 'the-log', label: 'The log' },
+  { id: 'not-there-yet', label: 'Not there yet' },
+  { id: 'sign-off', label: 'Sign-off' },
+];
+const last = stations.length - 1;
+const castNames: Record<CharacterId, string> = { mentor: 'The mentor', scout: 'The scout', innkeeper: 'The innkeeper' };
+const seedOf = (id: CharacterId) => seeds.find((s) => s.character === id)!;
+const mentorClips = clips.filter((c) => c.character === 'mentor');
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap · a voice nobody has recorded</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Khand:wght@500;600&family=Martel:wght@400;700;900&display=swap" rel="stylesheet" />
+    <noscript><style>.knob, .btn-js { display: none !important; } .set { height: var(--set-c) !important; } body { padding-top: var(--set-c) !important; }</style></noscript>
+  </head>
+  <body>
+    <!-- The radio face. Fixed at the top; compacts on scroll; every clip on the page plays through it. -->
+    <header class="set" id="set">
+      <div class="chassis">
+        <a class="badge" href="#sign-on"><span>{name.latin}</span><span lang="hi">{name.devanagari}</span></a>
+        <div class="glass" id="glass">
+          <nav class="stations" aria-label="Stations on the dial. Each is a section of this page.">
+            {stations.map((s, i) => (
+              <a href={`#${s.id}`} style={`--x:${i / last}`}>{s.label}</a>
+            ))}
+          </nav>
+          <div class="band" id="band" title="Drag the needle to tune" tabindex="0" role="slider" aria-label="Tuning dial. Arrow keys move between stations." aria-valuemin="0" aria-valuemax={last} aria-valuenow="0">
+            <div class="ticks"></div>
+            {stations.map((s, i) => <span class="mark" style={`--x:${i / last}`}></span>)}
+            <span class="dead" aria-hidden="true"></span>
+            <span class="needle" id="needle"></span>
+          </div>
+          <p class="display" id="display" aria-live="polite">
+            <span class="tuned" id="tuned"></span>
+            <span class="idle">AI-generated synthetic speech. All audio carries an AudioSeal watermark.</span>
+          </p>
+        </div>
+        <div class="meter">
+          <canvas class="eye" id="eye" width="120" height="120" aria-hidden="true"></canvas>
+          <button class="knob" id="knob" type="button" aria-pressed="false">
+            <span class="knob-face" aria-hidden="true"></span>
+            <span class="knob-label">Switch on</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- Station 1: sign-on -->
+      <section class="station hero" id="sign-on">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="ident" lang="hi">यह आलाप है।</p>
+            <h1 class="wordmark">{name.latin} <span lang="hi">{name.devanagari}</span></h1>
+            <p class="meaning">{meaning}</p>
+            <p class="lede">You describe a character in ordinary language. You get back a voice that has never existed. Then you use that voice for any line of dialogue you write, and it stays the same character every time.</p>
+            <p class="who">For people making games, animation, audio drama, dubbing, interactive fiction: anyone who needs many distinct speaking characters and cannot hire a cast for each one.</p>
+            <p class="langs">Measured in {languages.join(', ')}. The Indian-language engine covers 22 Indian languages; four measured so far.</p>
+          </div>
+          <div class="presets">
+            <p class="presets-head">Three characters, minted from these descriptions before this page was made. A key replays that character's stored seed clip; the switch plays the first. The mentor's description is the project's own example. Nothing on this page generates a voice live.</p>
+            <div class="keys">
+              {characters.map((ch) => { const s = seedOf(ch.id); return (
+                <a class="key" href={`#clip-${s.id}`} data-play={s.id}>
+                  <span class="key-name">{castNames[ch.id]}</span>
+                  <span class="key-desc">“{ch.description}”</span>
+                  <span class="key-says">says “{s.text}”</span>
+                </a>
+              ); })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station 2: the play -->
+      <section class="station panel" id="the-play">
+        <div class="wrap">
+          <p class="eyebrow">The play</p>
+          <h2>Three characters minted from text. A five-line scene. About four minutes on one laptop GPU.</h2>
+          <p class="intro">The demo mints the three characters from their descriptions, renders the scene, watermarks everything and writes a file a game engine can read, on one 6 GB laptop GPU. These clips are that run's output, rendered 2026-09-05. Every player shows the exact words.</p>
+
+          <h3>Cast</h3>
+          <ul class="cast">
+            {characters.map((ch) => { const s = seedOf(ch.id); return (
+              <li class="member">
+                <div class="member-who">
+                  <p class="speaker">{castNames[ch.id]}</p>
+                  <p class="desc">minted from “{ch.description}”</p>
+                </div>
+                <figure class="clip" id={`clip-${s.id}`} data-clip={s.id} data-who={castNames[ch.id]}>
+                  <figcaption><span class="words">“{s.text}”</span><span class="note">seed clip · {s.seconds} s</span></figcaption>
+                  <audio preload="none" controls src={s.src}></audio>
+                </figure>
+              </li>
+            ); })}
+          </ul>
+
+          <div class="script-head">
+            <h3>Script</h3>
+            <button class="btn btn-js" id="play-scene" type="button">Play the scene</button>
+          </div>
+          <ol class="script">
+            {scene.map((c) => (
+              <li class="line">
+                <figure class="clip" id={`clip-${c.id}`} data-clip={c.id} data-who={castNames[c.character]}>
+                  <p class="speaker">{castNames[c.character]}</p>
+                  <figcaption>
+                    <span class="words">“{c.text}”</span>
+                    <span class="note">{c.seconds} s · {c.experimentalEmotionSetting ? 'experimental emotion setting, unvalidated' : 'no direction'}</span>
+                  </figcaption>
+                  <audio preload="none" controls src={c.src}></audio>
+                </figure>
+              </li>
+            ))}
+          </ol>
+
+          <div class="caveats">
+            <p>{clipCaveats.watermark}</p>
+            <p>{clipCaveats.emotionSetting}</p>
+            <p>{clipCaveats.englishOnly}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station 3: Indian languages -->
+      <section class="station" id="indian-languages">
+        <div class="wrap narrow">
+          <p class="eyebrow">Indic first</p>
+          <h2>Indic is the stated reason the project exists.</h2>
+          <p>The tools that do this well mostly do it in English. Indian-language creators either use a handful of stock voices that everyone else is also using, or they hire actors. This project treats Hindi, Bengali and Tamil as first-class, not as an afterthought port.</p>
+          <p>The Indian-language tools that exist ship a fixed menu of voices, and every project draws from the same menu. In the project's own measurements the Hindi path scored higher than the English path on every identity check.</p>
+          <div class="hindi-check">
+            <p class="hindi-line" lang="hi">नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है</p>
+            <p class="hindi-gloss">Roughly: “Hello, how are you? The weather is very nice today.” Our translation, not a project claim.</p>
+            <p>A fluent Hindi speaker has confirmed one rendered line says this sentence. They were told the sentence and asked “does it say this?”, not “does it sound right?”. That is the check an earlier, faulty batch of audio failed. Still to be checked: the other voices and the other lines. The Hindi render itself does not ship, not even here: the engine is research-only under its licence.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station 4: what is different -->
+      <section class="station panel" id="different">
+        <div class="wrap">
+          <p class="eyebrow">What differs</p>
+          <h2>Four things, each one measured.</h2>
+          <div class="listing">
+            <article class="prog">
+              <h3>A voice is a thing you keep, not a setting you re-guess</h3>
+              <p>Most tools generate a voice each time you ask. Here the character's voice is stored as an identity and re-used. The same character sounds like the same person across every line, every scene, and every session. That consistency is measured, not hoped for.</p>
+              <div class="hear">
+                <button class="btn btn-js" type="button" data-queue="mentor_seed,mentor_line0,mentor_line3">Hear the same character across different sentences</button>
+                <ul class="hear-words">
+                  {mentorClips.map((c) => <li>“{c.text}”</li>)}
+                </ul>
+              </div>
+            </article>
+            <article class="prog">
+              <h3>Who is speaking and what is being said are genuinely separate</h3>
+              <p>The system holds a character's identity apart from the words. That is why one character can say anything without their voice drifting, and why changing the line never changes the person. This was verified rather than assumed: when the same audio content is played through two different identities, the words come out identically. The measured error between them was exactly zero on every line tested.</p>
+            </article>
+            <article class="prog">
+              <h3>It does not need a recording of the character</h3>
+              <p>There is no voice cloning here, and no user uploads their own audio. Voices are created from a written description. That sidesteps the consent and impersonation problem entirely: you cannot accidentally clone a real person if the system never accepts a recording.</p>
+            </article>
+            <article class="prog">
+              <h3>It knows what it does not know</h3>
+              <p>Every capability is measured against a control, and the honest limits are published alongside the results. Roughly twenty findings in this project were wrong on the first attempt and caught by a check, including one where an entire experiment produced fluent-sounding speech that was saying different words than requested, and nothing errored. That is written up publicly rather than quietly fixed.</p>
+              <p class="rule">“A suspiciously good or suspiciously bad number is a bug report about your setup.”</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station 5: how it works -->
+      <section class="station" id="how-it-works">
+        <div class="wrap">
+          <p class="eyebrow">How it works</p>
+          <h2>One small piece learns. Everything else is used as-is.</h2>
+          <ol class="chain" aria-label="The signal chain, in order">
+            <li class="node"><span class="node-name">your description</span><span class="node-sub">ordinary language</span></li>
+            <li class="node lit"><span class="node-name">the mapper</span><span class="node-sub">the only part that learns</span></li>
+            <li class="node"><span class="node-name">a voice identity</span><span class="node-sub">small, storable, versioned</span></li>
+            <li class="node"><span class="node-name">the voice engine</span><span class="node-sub">never modified, swappable</span></li>
+            <li class="node"><span class="node-name">audio</span><span class="node-sub">watermarked and logged</span></li>
+          </ol>
+          <div class="ideas">
+            <p><b>Only one small piece is trained.</b> The speech engine is used as-is and never altered, so a better engine can be swapped in without rebuilding everything.</p>
+            <p><b>The voice identity is a small, storable thing.</b> That is what makes a character persistent: it can be saved, versioned and handed to someone else. Each one is stored with a short seed clip and the engine version that made it.</p>
+            <p><b>The checker is separate.</b> A speaker-recognition system that has never seen the generator, and never sees the engine's internals, does the checking. Every render is watermarked and logged from the first output, not added later.</p>
+          </div>
+
+          <h3 class="ways-head">Two ways to answer a description, both measured</h3>
+          <p class="ways-intro">Invent a new voice, or find the closest match in an existing library of voices. Inventing gives you a character nobody else has; finding gives you higher accuracy and studio quality. Neither is strictly better and the project has numbers for the trade-off.</p>
+          <div class="ways">
+            <article class="way">
+              <h4>Invent</h4>
+              <p>A voice nobody else has. The three characters on this page were made this way, from nothing but their descriptions. Inventing reached 37 percent of the variety the library actually holds before two mis-set settings were fixed; the fix raised the invented catalogue from 14 to 22 distinct Hindi voices and from 23 to 41 English.</p>
+            </article>
+            <article class="way">
+              <h4>Find</h4>
+              <p>On a library of 141 real Hindi voices, two thirds of descriptions get a voice that matches on every trait named, and 87 percent land within one step. When a description names only a couple of traits, the way people actually write, a bit over half match exactly on the traits named; about one in five would by chance. The same method on a library of 2,500 English voices reaches 88.5 percent, and it replicates in Bengali within a point or two. Finding reaches 87 percent of the variety the library holds.</p>
+              <p>What finding cannot do: produce a voice the library does not contain; guarantee a new character is unique, since two descriptions can return the same voice; and the library is someone else's, so every character in every project draws from the same shelf.</p>
+            </article>
+          </div>
+          <p class="caveat-line">The library measured was real recorded speakers standing in for a studio library. No commercial system has been measured.</p>
+        </div>
+      </section>
+
+      <!-- Station 6: the log -->
+      <section class="station panel" id="the-log">
+        <div class="wrap">
+          <p class="eyebrow">The log</p>
+          <h2>What was measured, with the caveat on the same line.</h2>
+          <div class="log">
+            <article class="entry">
+              <h3>Minting a voice from a description costs nothing in clarity</h3>
+              <p class="measured">A described voice is just as intelligible as one taken from a real recording. The measured difference was tiny, leaned slightly in the invented voice's favour, and was smaller than the difference between two real speakers: the gap between two real speakers was six times larger.</p>
+              <p class="caveat">The project reads that as no detectable difference, not as invented voices being better. The control that had to pass first: every version must come out the same length before any score is read, or the run aborts.</p>
+            </article>
+            <article class="entry">
+              <h3>Invented voices are recognisably distinct people</h3>
+              <p class="measured">Verified by a separate speaker-recognition system that has never seen the generator: an independent check, not the system marking its own homework. Each invented voice also sits clearly apart from the nearest real voice the system learned from, so these are new voices, not real people wearing a label.</p>
+              <div class="hear">
+                <button class="btn btn-js" type="button" data-queue="mentor_seed,scout_seed">Hear the mentor, then the scout</button>
+                <ul class="hear-words"><li>Both say “This is how I sound when I speak.”</li></ul>
+              </div>
+            </article>
+            <article class="entry">
+              <h3>A character stays itself more consistently than a real person does</h3>
+              <p class="measured">A character stays itself across different sentences more consistently than a real person does across different recordings.</p>
+              <p class="note">Unsurprising once you think about it: a stored voice has no bad-throat day, no change of microphone, no mood.</p>
+            </article>
+            <article class="entry">
+              <h3>A blind listening test found and fixed a real problem</h3>
+              <p class="measured">A blind listening test with built-in controls found a real problem in how the system judged whether two voices were the same person: pairs the system called different were heard as the same person about half the time. The threshold was raised. That removed 10 duplicate voices from a set of 50 and cost 3 percent of measured variety.</p>
+              <p class="caveat">The test was small: 8 pairs and one listener, with every control answered correctly. It found the problem but does not settle the exact threshold, and the English threshold has not had its own listening test.</p>
+            </article>
+            <article class="entry">
+              <h3>Pacing is controllable within a measured range</h3>
+              <p class="measured">You can slow a character to about two-thirds of normal speed or push them to about 1.4 times, and they stay the same person saying the same words. Outside that range the identity fades gradually rather than breaking.</p>
+              <p class="caveat">A listener noted the slow extreme starts to sound processed; the range they called clean is narrower, about 0.8 to 1.25 times. The scale below is an illustration of those ranges. Nothing on this page re-times audio.</p>
+              <svg class="pace" viewBox="0 0 600 96" role="img" aria-label="A speed scale. The measured range runs from about two-thirds to about 1.4 times normal speed. The range a listener called clean runs from about 0.8 to about 1.25 times.">
+                <line x1="40" y1="52" x2="560" y2="52" class="pace-rail" />
+                <rect x="77" y="44" width="406" height="16" rx="8" class="pace-measured" />
+                <rect x="147" y="48" width="240" height="8" rx="4" class="pace-clean" />
+                <line x1="253" y1="34" x2="253" y2="70" class="pace-normal" />
+                <text x="253" y="26" class="pace-label mid">normal speed</text>
+                <text x="40" y="26" class="pace-label">about two-thirds</text>
+                <text x="560" y="26" class="pace-label right">about 1.4×</text>
+                <text x="147" y="88" class="pace-label small">about 0.8×</text>
+                <text x="387" y="88" class="pace-label small right">about 1.25×</text>
+              </svg>
+              <p class="pace-key"><span class="swatch sw-measured"></span> measured range <span class="swatch sw-clean"></span> heard as clean</p>
+            </article>
+            <article class="entry">
+              <h3>Watermarked and logged from the first render</h3>
+              <p class="measured">Every render is watermarked and logged, from the first output, not added later. Output includes a manifest a game engine can consume: this is built for a pipeline, not a demo button.</p>
+              <p class="note">114 automated checks guard the rules the project learned the hard way: never accept a user's audio; watermark from the first render; store timbre, not performance; do not start the next stage until this one is measured.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Station 7: not there yet. No carrier here; the static is the point. -->
+      <section class="station dead-air" id="not-there-yet">
+        <svg class="static" aria-hidden="true" focusable="false">
+          <filter id="grain"><feTurbulence type="turbulence" baseFrequency="0.62" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feComponentTransfer><feFuncR type="linear" slope="2.6" intercept="-0.55" /><feFuncG type="linear" slope="2.6" intercept="-0.55" /><feFuncB type="linear" slope="2.6" intercept="-0.55" /></feComponentTransfer></filter>
+          <rect width="100%" height="100%" filter="url(#grain)" />
+        </svg>
+        <div class="wrap narrow">
+          <p class="eyebrow">Not there yet</p>
+          <h2>Static is honest silence. Here is what is missing.</h2>
+          <ul class="missing">
+            <li><b>Not a product.</b> This is a working research system, not a product. There is no signup, no hosted service, no API.</li>
+            <li><b>Emotion is not solved.</b> Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream: the engine's documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between tagged versions of the same line.</li>
+            <li><b>The catalogue is small.</b> Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project's own measure. The limit is understood and measured rather than mysterious: the real speakers the system learned from hold about 38 to 48 distinguishable voices, and the project measured exactly where its own method loses variety.</li>
+            <li><b>Cannot ship as a product, for licensing reasons.</b> It cannot be shipped as a product in its current form for licensing reasons, which are documented. The Indian-language engine's training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</li>
+            <li><b>Very little has been listened to.</b> Most results are automatic measurements. One listener, a handful of pairs.</li>
+            <li><b>No comparison against a commercial system.</b></li>
+            <li><b>The clips on this page are English.</b> {clipCaveats.englishOnly}</li>
+            <li><b>Three of the five demo lines</b> were rendered with an experimental emotion setting whose effect has not been validated on this engine. Listen to them as voice samples, not performances.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Station 8: sign-off -->
+      <section class="station signoff" id="sign-off">
+        <div class="wrap narrow">
+          <p class="eyebrow">Sign-off</p>
+          <h2>Here is what we built, what we measured, and what is missing.</h2>
+          <div class="ctas">
+            <a class="cta" href={links.repo}>Read the research</a>
+            <a class="cta quiet" href={links.issues}>Corrections welcome</a>
+          </div>
+          <p class="quote">“If a claim here is wrong, an issue with a primary source is more useful than almost anything else.”</p>
+          <p class="small">Research and documentation CC BY 4.0; code MIT. No model weights and no generated Indian-language audio ship. Research pass 2026-09-02; implementation and measurement 2026-09-05.</p>
+          <p class="small">Repository: <a href={links.repo}>github.com/PranavMishra17/alaap</a></p>
+          <p class="endline">End of broadcast.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light;
+    --bakelite: #2E1912;
+    --bakelite-2: #452519;
+    --glass: #F2DDA8;
+    --glass-dim: #CDB37C;
+    --ink: #241108;
+    --brass: #C9A24A;
+    --needle: #C8352A;
+    --eye: #7FD9A6;
+    --set-h: 236px;
+    --set-c: 108px;
+    --eye-s: 104px;
+    --pad: 6%;
+    --body: 'Martel', Georgia, 'Noto Serif Devanagari', 'Noto Serif', serif;
+    --dial: 'Khand', 'Arial Narrow', 'Noto Sans Devanagari', 'Helvetica Neue', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; padding-top: var(--set-h);
+    background: var(--bakelite); color: var(--glass);
+    font: 400 17px/1.65 var(--body);
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, p, ul, ol, figure { margin: 0; }
+  ul, ol { padding: 0; list-style: none; }
+  a { color: inherit; }
+  b { font-weight: 700; }
+  :focus-visible { outline: 3px solid var(--eye); outline-offset: 3px; }
+  .panel :focus-visible, .key:focus-visible, .band:focus-visible { outline-color: var(--needle); }
+  [lang="hi"] { font-family: var(--body); }
+
+  /* ---------- the radio face ---------- */
+  .set {
+    position: fixed; inset: 0 0 auto 0; z-index: 20; height: var(--set-h);
+    background: var(--bakelite);
+    background-image: linear-gradient(180deg, rgba(255,255,255,.05), transparent 30%, rgba(0,0,0,.25));
+    box-shadow: 0 2px 0 var(--bakelite-2), 0 14px 30px rgba(0,0,0,.5);
+    transition: height .55s cubic-bezier(.2,.7,.2,1);
+  }
+  .set.compact { height: var(--set-c); --eye-s: 54px; }
+  .chassis { height: 100%; max-width: 1360px; margin: 0 auto; padding: 16px 22px; display: flex; gap: 22px; align-items: stretch; }
+  .set.compact .chassis { padding: 10px 18px; gap: 16px; }
+  .badge {
+    align-self: center; display: flex; flex-direction: column; gap: 2px; text-decoration: none; min-width: 5.5rem;
+    font: 600 16px/1 var(--dial); letter-spacing: .24em; text-transform: uppercase; color: var(--brass);
+  }
+  .badge [lang="hi"] { font: 400 15px/1.2 var(--body); letter-spacing: 0; text-transform: none; }
+  .glass {
+    flex: 1; min-width: 0; position: relative; border-radius: 16px; padding: 8px 18px 8px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--glass-dim);
+    background-image: linear-gradient(180deg, rgba(255,255,255,.18), transparent 40%, rgba(0,0,0,.12));
+    box-shadow: inset 0 0 0 2px #1a0d08, inset 0 10px 24px rgba(0,0,0,.35);
+    transition: background-color 1.6s ease, box-shadow 1.6s ease;
+  }
+  .set.compact .glass { padding: 5px 14px; gap: 3px; border-radius: 11px; }
+  body.on .glass {
+    background-color: var(--glass);
+    box-shadow: inset 0 0 0 2px #1a0d08, inset 0 10px 24px rgba(0,0,0,.18), 0 0 46px rgba(255,140,42,.38), 0 0 4px rgba(255,180,90,.5);
+  }
+  .stations { position: relative; height: 22px; color: var(--ink); }
+  .stations a {
+    position: absolute; top: 0; left: calc(var(--pad) + var(--x) * (100% - 2 * var(--pad))); transform: translateX(-50%);
+    white-space: nowrap; text-decoration: none; font: 600 14px/22px var(--dial); letter-spacing: .14em; text-transform: uppercase;
+    opacity: .72;
+  }
+  .stations a[aria-current="true"] { opacity: 1; color: var(--needle); }
+  .set.compact .stations { height: 18px; }
+  .set.compact .stations a { font-size: 12px; line-height: 18px; }
+  .band { flex: 1; position: relative; min-height: 34px; cursor: ew-resize; touch-action: none; }
+  .set.compact .band { min-height: 18px; }
+  .ticks { position: absolute; inset: 6px var(--pad) 6px; background: repeating-linear-gradient(to right, rgba(36,17,8,.6) 0 1px, transparent 1px 9px); }
+  .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); left: calc(var(--pad) + var(--x) * (100% - 2 * var(--pad))); }
+  .dead {
+    position: absolute; top: 2px; bottom: 2px; width: 9%; left: calc(var(--pad) + 6/7 * (100% - 2 * var(--pad)) - 4.5%);
+    background: repeating-linear-gradient(45deg, rgba(36,17,8,.4) 0 2px, transparent 2px 6px);
+  }
+  .needle {
+    position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--needle); left: calc(var(--pad) + var(--nx, 0) * (100% - 2 * var(--pad)));
+    transform: translateX(-50%); box-shadow: 0 0 8px rgba(200,53,42,.75); transition: left .14s linear; border-radius: 2px;
+  }
+  .band.dragging .needle { transition: none; }
+  .display { color: var(--ink); font: 500 14px/1.3 var(--dial); letter-spacing: .06em; min-height: 18px; display: flex; gap: 14px; align-items: baseline; overflow: hidden; white-space: nowrap; }
+  .display .tuned { display: none; text-transform: uppercase; letter-spacing: .14em; color: var(--needle); }
+  .display .idle { opacity: .8; text-overflow: ellipsis; overflow: hidden; }
+  .display .now { display: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+  .display .now b { font-family: var(--dial); text-transform: uppercase; letter-spacing: .12em; color: var(--needle); margin-right: .6em; }
+  .display .now q { font: 400 15px/1.3 var(--body); letter-spacing: 0; quotes: '“' '”'; }
+  body.playing .display .idle { display: none; }
+  body.playing .display .now { display: inline-block; }
+  .set.compact .display { font-size: 12px; }
+  .meter { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .set.compact .meter { flex-direction: row; gap: 10px; }
+  .eye { width: var(--eye-s); height: var(--eye-s); border-radius: 50%; box-shadow: 0 0 0 3px #1a0d08, 0 0 0 5px var(--brass); transition: width .55s, height .55s, box-shadow 1s; background: #1a0d08; }
+  body.on .eye { box-shadow: 0 0 0 3px #1a0d08, 0 0 0 5px var(--brass), 0 0 22px rgba(127,217,166,.45); }
+  .knob { background: none; border: 0; padding: 0; color: var(--brass); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 12px/1 var(--dial); letter-spacing: .18em; text-transform: uppercase; }
+  .knob-face {
+    display: block; width: 40px; height: 40px; border-radius: 50%; position: relative;
+    background: radial-gradient(circle at 35% 30%, #6a3d2a, var(--bakelite) 65%);
+    box-shadow: 0 0 0 2px var(--brass), 0 3px 6px rgba(0,0,0,.6), inset 0 -2px 3px rgba(0,0,0,.5);
+    transition: transform .4s cubic-bezier(.2,.7,.2,1);
+  }
+  .knob-face::after { content: ''; position: absolute; left: 50%; top: 4px; width: 3px; height: 12px; margin-left: -1.5px; background: var(--brass); border-radius: 2px; }
+  .knob[aria-pressed="true"] .knob-face { transform: rotate(120deg); }
+  .set.compact .knob-face { width: 30px; height: 30px; }
+  .set.compact .knob-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  /* ---------- stations (sections) ---------- */
+  .station { position: relative; padding: clamp(56px, 8vw, 112px) 22px; scroll-margin-top: calc(var(--set-c) + 6px); }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .wrap.narrow { max-width: 780px; }
+  .panel .wrap {
+    background: var(--glass); color: var(--ink); border-radius: 24px; padding: clamp(28px, 4.5vw, 64px);
+    background-image: linear-gradient(180deg, rgba(255,255,255,.22), transparent 30%);
+    box-shadow: inset 0 0 0 3px #1a0d08, inset 0 12px 40px rgba(0,0,0,.16), 0 0 0 7px var(--bakelite-2), 0 24px 60px rgba(0,0,0,.45);
+  }
+  .eyebrow { font: 600 14px/1 var(--dial); letter-spacing: .22em; text-transform: uppercase; color: var(--brass); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+  .eyebrow::before { content: ''; width: 3px; height: 16px; background: var(--needle); box-shadow: 0 0 6px rgba(200,53,42,.7); }
+  .panel .eyebrow { color: var(--needle); }
+  h2 { font: 900 clamp(28px, 3.4vw, 46px)/1.15 var(--body); letter-spacing: -.01em; max-width: 22ch; margin-bottom: 22px; }
+  h3 { font: 700 clamp(20px, 2vw, 24px)/1.3 var(--body); margin-bottom: 10px; }
+  .station p + p { margin-top: 14px; }
+  .intro { max-width: 68ch; margin-bottom: 40px; }
+
+  /* hero */
+  .hero { padding-top: clamp(40px, 6vw, 88px); }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+  .ident { font: 500 clamp(18px, 2vw, 24px)/1.4 var(--dial); letter-spacing: .12em; color: var(--brass); margin-bottom: 8px; }
+  .wordmark { font: 900 clamp(64px, 9.5vw, 132px)/1 var(--body); letter-spacing: -.02em; color: var(--glass); margin: 0 0 18px; display: flex; flex-wrap: wrap; gap: 0 .25em; align-items: baseline; }
+  .wordmark [lang="hi"] { font-weight: 700; font-size: .82em; color: var(--brass); }
+  .meaning { font-size: clamp(17px, 1.5vw, 20px); color: var(--glass); opacity: .85; max-width: 44ch; padding-left: 16px; border-left: 3px solid var(--brass); margin-bottom: 28px; }
+  .lede { font-size: clamp(19px, 1.8vw, 24px); line-height: 1.5; font-weight: 700; max-width: 30ch; }
+  .who { max-width: 52ch; margin-top: 18px; opacity: .9; }
+  .langs { margin-top: 18px; font: 500 15px/1.5 var(--dial); letter-spacing: .06em; color: var(--brass); }
+  .presets {
+    border-radius: 20px; padding: 24px; color: var(--glass);
+    background-color: var(--bakelite-2);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(201,162,74,.18) 0 2px, transparent 2px 7px),
+      repeating-linear-gradient(-45deg, rgba(201,162,74,.14) 0 2px, transparent 2px 7px);
+    box-shadow: inset 0 0 0 2px #1a0d08, 0 0 0 5px var(--bakelite), 0 0 0 7px var(--brass), 0 18px 40px rgba(0,0,0,.45);
+  }
+  .presets-head { font-size: 15px; line-height: 1.55; background: rgba(46,25,18,.85); padding: 10px 12px; border-radius: 8px; }
+  .keys { display: grid; gap: 10px; margin: 16px 0 4px; }
+  .key {
+    display: grid; gap: 4px; text-decoration: none; padding: 14px 16px 12px; border-radius: 6px 6px 10px 10px;
+    background: var(--glass); color: var(--ink); border-top: 6px solid #1a0d08;
+    box-shadow: 0 6px 0 #9a8154, 0 10px 14px rgba(0,0,0,.45);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .key:hover { transform: translateY(2px); box-shadow: 0 4px 0 #9a8154, 0 8px 12px rgba(0,0,0,.45); }
+  .key.is-playing, .key:active { transform: translateY(5px); box-shadow: 0 1px 0 #9a8154, 0 3px 6px rgba(0,0,0,.45); background: #fff0c2; }
+  .key-name { font: 600 13px/1 var(--dial); letter-spacing: .2em; text-transform: uppercase; color: var(--needle); }
+  .key-desc { font: 700 17px/1.35 var(--body); }
+  .key-says { font: 500 13px/1.3 var(--dial); letter-spacing: .06em; opacity: .75; }
+
+  /* the play */
+  .cast { display: grid; gap: 14px; margin-bottom: 44px; }
+  .member { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; align-items: center; padding: 16px 0; border-top: 1px solid rgba(36,17,8,.25); }
+  .member:last-child { border-bottom: 1px solid rgba(36,17,8,.25); }
+  .speaker { font: 600 14px/1.2 var(--dial); letter-spacing: .2em; text-transform: uppercase; color: var(--needle); }
+  .desc { font-weight: 700; margin-top: 4px; }
+  .script-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; } .script-head h3 { margin: 0; }
+  .script { display: grid; }
+  .line { border-top: 1px solid rgba(36,17,8,.25); }
+  .line:last-child { border-bottom: 1px solid rgba(36,17,8,.25); }
+  .line .clip { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; padding: 16px 12px; border-left: 4px solid transparent; transition: background .2s, border-color .2s; }
+  .line .clip.is-playing { background: rgba(255,240,194,.9); border-left-color: var(--needle); }
+  .clip figcaption { display: grid; gap: 4px; }
+  .clip .words { font-size: clamp(17px, 1.6vw, 20px); line-height: 1.45; font-weight: 700; }
+  .clip .note { font: 500 13px/1.3 var(--dial); letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+  .member .clip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 8px 12px; border-left: 4px solid transparent; transition: background .2s, border-color .2s; border-radius: 0 6px 6px 0; }
+  .member .clip.is-playing { background: rgba(255,240,194,.9); border-left-color: var(--needle); }
+  .clip audio { width: 100%; max-width: 320px; grid-column: 1 / -1; }
+  .btn, .play {
+    font: 600 14px/1 var(--dial); letter-spacing: .2em; text-transform: uppercase; cursor: pointer;
+    padding: 12px 18px 10px; border-radius: 6px; border: 2px solid var(--ink); background: var(--glass); color: var(--ink);
+    box-shadow: 0 4px 0 #9a8154; transition: transform .1s, box-shadow .1s;
+  }
+  .btn:hover, .play:hover { transform: translateY(1px); box-shadow: 0 3px 0 #9a8154; }
+  .btn[aria-pressed="true"], .play[aria-pressed="true"] { transform: translateY(4px); box-shadow: 0 0 0 #9a8154; background: var(--needle); color: var(--glass); border-color: var(--needle); } .play { min-width: 5.2rem; }
+  .station:not(.panel) .btn { background: var(--bakelite-2); color: var(--glass); border-color: var(--brass); box-shadow: 0 4px 0 #1a0d08; }
+  .station:not(.panel) .btn:hover { box-shadow: 0 3px 0 #1a0d08; }
+  .caveats { margin-top: 36px; padding: 18px 20px; border: 2px dashed rgba(36,17,8,.45); border-radius: 10px; font-size: 15px; line-height: 1.55; display: grid; gap: 8px; }
+  .caveats p + p { margin-top: 0; }
+
+  /* Indian languages */
+  .hindi-check { margin-top: 32px; padding: 26px 26px 22px; border-radius: 16px; background: var(--bakelite-2); box-shadow: inset 0 0 0 2px #1a0d08, 0 0 0 4px var(--bakelite), 0 0 0 5px var(--brass); }
+  .hindi-line { font: 700 clamp(26px, 3.6vw, 40px)/1.5 var(--body); color: var(--glass); }
+  .hindi-gloss { font: 500 14px/1.4 var(--dial); letter-spacing: .06em; color: var(--brass); margin-top: 6px !important; }
+  .hindi-check p:last-child { margin-top: 16px; font-size: 16px; }
+
+  /* what is different: a programme listing */
+  .listing { display: grid; gap: 0; }
+  .prog { padding: 26px 0 28px; border-top: 1px solid rgba(36,17,8,.25); }
+  .prog:last-child { border-bottom: 1px solid rgba(36,17,8,.25); }
+  .prog p { max-width: 70ch; }
+  .rule { font-weight: 700; color: var(--needle); }
+  .hear { margin-top: 18px; display: grid; gap: 10px; justify-items: start; }
+  .hear-words { font-size: 15px; line-height: 1.5; opacity: .85; display: grid; gap: 2px; }
+  .hear-words li::before { content: '– '; }
+
+  /* how it works: the signal chain */
+  .chain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin: 36px 0 32px; }
+  .node { position: relative; padding: 18px 16px 16px; border-radius: 12px; background: var(--bakelite-2); box-shadow: inset 0 0 0 2px #1a0d08, 0 0 0 2px var(--brass); display: grid; gap: 4px; align-content: start; min-height: 108px; }
+  .node + .node { margin-left: 26px; }
+  .node + .node::before { content: ''; position: absolute; left: -28px; top: 50%; width: 26px; height: 2px; background: var(--brass); }
+  .node + .node::after { content: ''; position: absolute; left: -8px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--brass); }
+  .node.lit { background: var(--glass); color: var(--ink); box-shadow: inset 0 0 0 2px #1a0d08, 0 0 0 2px var(--brass), 0 0 30px rgba(255,140,42,.45); }
+  .node-name { font: 700 17px/1.3 var(--body); }
+  .node-sub { font: 500 13px/1.3 var(--dial); letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+  .ideas { display: grid; gap: 16px; max-width: 72ch; margin-bottom: 48px; }
+  .ideas p + p { margin-top: 0; }
+  .ways-head { margin-bottom: 10px; }
+  .ways-intro { max-width: 70ch; margin-bottom: 26px; }
+  .ways { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 22px; }
+  .way { padding: 22px 24px; border-radius: 14px; background: var(--bakelite-2); box-shadow: inset 0 0 0 2px #1a0d08, 0 0 0 2px var(--brass); }
+  .way h4 { font: 600 14px/1 var(--dial); letter-spacing: .24em; text-transform: uppercase; color: var(--brass); margin-bottom: 12px; }
+  .way p { font-size: 16px; }
+  .caveat-line { margin-top: 20px; font-size: 15px; opacity: .85; max-width: 70ch; }
+
+  /* the log */
+  .log { display: grid; }
+  .entry { padding: 26px 0 30px; border-top: 1px solid rgba(36,17,8,.25); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .entry:last-child { border-bottom: 1px solid rgba(36,17,8,.25); }
+  .entry h3 { margin-bottom: 4px; }
+  .entry p { max-width: 72ch; padding-left: 7.5rem; position: relative; margin: 0 !important; }
+  .entry p::before { position: absolute; left: 0; top: .35em; font: 600 12px/1 var(--dial); letter-spacing: .2em; text-transform: uppercase; }
+  .entry .measured::before { content: 'measured'; color: var(--needle); }
+  .entry .caveat::before, .entry .note::before { content: 'caveat'; color: rgba(36,17,8,.65); } .entry .note::before { content: 'note'; }
+  .entry .caveat, .entry .note { opacity: .88; font-size: 16px; }
+  .entry .hear { padding-left: 7.5rem; }
+  .pace { display: block; width: 100%; max-width: 640px; height: auto; margin-top: 12px; margin-left: 7.5rem; }
+  .pace-rail { stroke: rgba(36,17,8,.4); stroke-width: 2; }
+  .pace-measured { fill: var(--brass); }
+  .pace-clean { fill: var(--ink); }
+  .pace-normal { stroke: var(--needle); stroke-width: 3; }
+  .pace-label { font: 500 18px var(--dial); fill: var(--ink); letter-spacing: .06em; }
+  .pace-label.right { text-anchor: end; }
+  .pace-label.mid { text-anchor: middle; fill: var(--needle); }
+  .pace-label.small { font-size: 17px; opacity: .8; }
+  .pace-key { padding-left: 7.5rem; font: 500 13px/1.4 var(--dial); letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+  .swatch { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: middle; margin: 0 4px 0 8px; }
+  .swatch.sw-measured { background: var(--brass); }
+  .swatch.sw-clean { background: var(--ink); }
+
+  /* not there yet: static */
+  .dead-air { overflow: hidden; }
+  .static { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .22; pointer-events: none; }
+  .dead-air .wrap { position: relative; }
+  .missing { display: grid; gap: 16px; margin-top: 8px; }
+  .missing li { padding-left: 22px; position: relative; max-width: 68ch; }
+  .missing li::before { content: ''; position: absolute; left: 0; top: .75em; width: 12px; height: 2px; background: var(--brass); }
+  .missing b { color: #fff0c2; }
+
+  /* sign-off */
+  .signoff { padding-bottom: clamp(72px, 10vw, 140px); }
+  .ctas { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 26px; }
+  .cta { display: inline-block; text-decoration: none; padding: 16px 26px 14px; border-radius: 8px; font: 600 16px/1 var(--dial); letter-spacing: .2em; text-transform: uppercase; background: var(--glass); color: var(--ink); border: 2px solid var(--ink); box-shadow: 0 5px 0 #9a8154; transition: transform .1s, box-shadow .1s; }
+  .cta:hover { transform: translateY(2px); box-shadow: 0 3px 0 #9a8154; }
+  .cta.quiet { background: var(--bakelite-2); color: var(--glass); border-color: var(--brass); box-shadow: 0 5px 0 #1a0d08; }
+  .quote { font-size: 19px; font-weight: 700; max-width: 40ch; color: var(--glass); border-left: 3px solid var(--brass); padding-left: 16px; }
+  .small { font-size: 15px; opacity: .85; max-width: 60ch; }
+  .endline { margin-top: 40px !important; font: 500 18px/1 var(--dial); letter-spacing: .3em; text-transform: uppercase; color: var(--brass); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1180px) {
+    .stations, .set.compact .stations { height: 0; overflow: hidden; visibility: hidden; }
+    .display .tuned { display: inline; }
+  }
+  @media (max-width: 1000px) {
+    .chain { grid-template-columns: 1fr; gap: 20px; }
+    .node + .node { margin-left: 0; }
+    .node + .node::before { left: 50%; top: -22px; width: 2px; height: 20px; margin-left: -1px; }
+    .node + .node::after { left: 50%; top: -6px; margin: 0 0 0 -4px; }
+    .node { min-height: 0; }
+  }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .ways { grid-template-columns: 1fr; }
+    .entry p, .entry .hear, .pace-key { padding-left: 0; }
+    .entry p { padding-top: 1.4em; }
+    .entry p::before { top: 0; }
+    .pace { margin-left: 0; }
+  }
+  @media (max-width: 640px) {
+    :root { --set-h: 172px; --set-c: 82px; --eye-s: 68px; --pad: 5%; }
+    .set.compact { --eye-s: 40px; }
+    .chassis { padding: 12px 14px; gap: 12px; }
+    .set.compact .chassis { padding: 8px 12px; gap: 10px; }
+    .badge { display: none; }
+    .glass { padding: 6px 12px; }
+    .meter { gap: 4px; }
+    .set.compact .meter { gap: 6px; }
+    .knob-face { width: 34px; height: 34px; }
+    .set.compact .knob-face { width: 26px; height: 26px; }
+    .knob-label { display: none; }
+    .display { font-size: 12px; gap: 10px; }
+    .station { padding-left: 16px; padding-right: 16px; }
+    .panel .wrap { border-radius: 16px; padding: 22px 18px; }
+    .member { grid-template-columns: 1fr; gap: 8px; }
+    .line .clip { grid-template-columns: 1fr; gap: 8px; padding: 14px 10px; }
+    .line .clip .play { justify-self: start; }
+    .member .clip { padding: 8px 10px; }
+    .wordmark { font-size: 20vw; }
+    .presets { padding: 16px; }
+    .hindi-check { padding: 18px 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script>
+  const set = document.getElementById('set')!;
+  const band = document.getElementById('band')!;
+  const needle = document.getElementById('needle')!;
+  const display = document.getElementById('display')!;
+  const tuned = document.getElementById('tuned')!;
+  const eyeCanvas = document.getElementById('eye') as HTMLCanvasElement;
+  const knob = document.getElementById('knob')!;
+  const knobLabel = knob.querySelector('.knob-label')!;
+  const stationLinks = Array.from(document.querySelectorAll<HTMLAnchorElement>('.stations a'));
+  const sections = Array.from(document.querySelectorAll<HTMLElement>('section.station'));
+  const N = sections.length;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- the dial: where you are on the page ----------
+  const cssNum = (name: string) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  const probeOffset = () => cssNum('--set-c') + innerHeight * 0.22;
+  const tops = () => sections.map((s) => s.getBoundingClientRect().top + scrollY);
+
+  function position() {
+    const t = tops();
+    if (scrollY + innerHeight >= document.documentElement.scrollHeight - 2) return { i: N - 1, f: 0 };
+    const probe = scrollY + probeOffset();
+    let i = 0;
+    while (i < N - 1 && probe >= t[i + 1]) i++;
+    if (i === N - 1) return { i, f: 0 };
+    const f = Math.min(1, Math.max(0, (probe - t[i]) / (t[i + 1] - t[i])));
+    return { i, f };
+  }
+
+  let compact = false;
+  let lastIndex = -1;
+  function render() {
+    const { i, f } = position();
+    needle.style.setProperty('--nx', String((i + f) / (N - 1)));
+    if (i !== lastIndex) {
+      lastIndex = i;
+      stationLinks.forEach((a, k) => (k === i ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current')));
+      tuned.textContent = stationLinks[i].textContent ?? '';
+      band.setAttribute('aria-valuenow', String(i)); band.setAttribute('aria-valuetext', tuned.textContent);
+    }
+    const wantCompact = compact ? scrollY > 12 : scrollY > 72;
+    if (wantCompact !== compact) { compact = wantCompact; set.classList.toggle('compact', compact); }
+  }
+  let ticking = false;
+  const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; render(); }); } };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+  render();
+  if (document.fonts) document.fonts.ready.then(render);
+
+  // Drag or click the needle to tune.
+  let dragging = false;
+  function tuneTo(clientX: number) {
+    const r = band.getBoundingClientRect();
+    const padPx = r.width * cssNum('--pad') / 100;
+    const frac = Math.min(1, Math.max(0, (clientX - r.left - padPx) / (r.width - 2 * padPx)));
+    const pos = frac * (N - 1);
+    const i = Math.min(N - 2, Math.floor(pos));
+    const f = pos - i;
+    const t = tops();
+    const target = t[i] + f * (t[i + 1] - t[i]) - probeOffset();
+    scrollTo({ top: Math.max(0, Math.ceil(target) + 1), behavior: 'instant' });
+  }
+  band.addEventListener('pointerdown', (e) => { dragging = true; band.classList.add('dragging'); band.setPointerCapture(e.pointerId); tuneTo(e.clientX); });
+  band.addEventListener('pointermove', (e) => { if (dragging) tuneTo(e.clientX); });
+  const endDrag = () => { dragging = false; band.classList.remove('dragging'); };
+  band.addEventListener('pointerup', endDrag);
+  band.addEventListener('pointercancel', endDrag);
+  band.addEventListener('keydown', (e) => {
+    const step = /^Arrow(Right|Down)$/.test(e.key) ? 1 : /^Arrow(Left|Up)$/.test(e.key) ? -1 : 0;
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? N - 1 : step ? lastIndex + step : -1;
+    if (to < 0 || to >= N) return;
+    e.preventDefault(); sections[to].scrollIntoView();
+  });
+
+  // ---------- the set: one audio path, one magic eye ----------
+  const audios = Array.from(document.querySelectorAll<HTMLAudioElement>('figure.clip audio'));
+  const byId = new Map<string, HTMLAudioElement>();
+  let actx: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  let data: Float32Array<ArrayBuffer> | null = null;
+  const sources = new WeakSet<HTMLAudioElement>();
+  let current: HTMLAudioElement | null = null;
+  let queue: HTMLAudioElement[] = [];
+  let queueButton: HTMLButtonElement | null = null;
+
+  function powerOn() {
+    if (!actx) {
+      actx = new AudioContext();
+      analyser = actx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.5;
+      analyser.connect(actx.destination);
+      data = new Float32Array(analyser.fftSize);
+    }
+    if (actx.state === 'suspended') actx.resume();
+    if (!document.body.classList.contains('on')) {
+      document.body.classList.add('on');
+      knob.setAttribute('aria-pressed', 'true');
+      knobLabel.textContent = 'On';
+      drawEye(0);
+    }
+  }
+  function attach(el: HTMLAudioElement) {
+    if (!actx || !analyser || sources.has(el)) return;
+    actx.createMediaElementSource(el).connect(analyser);
+    sources.add(el);
+  }
+  function stopAll(except?: HTMLAudioElement) {
+    for (const a of audios) if (a !== except && !a.paused) a.pause();
+  }
+  function clearQueue() {
+    queue = [];
+    if (queueButton) { queueButton.setAttribute('aria-pressed', 'false'); queueButton.textContent = queueButton.dataset.label ?? ''; queueButton = null; }
+  }
+  function play(el: HTMLAudioElement) {
+    powerOn();
+    attach(el);
+    stopAll(el);
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  }
+  function playQueue(list: HTMLAudioElement[], button: HTMLButtonElement) {
+    if (queueButton === button) { clearQueue(); stopAll(); return; }
+    clearQueue();
+    queue = list.slice();
+    queueButton = button;
+    button.dataset.label = button.dataset.label ?? button.textContent ?? '';
+    button.setAttribute('aria-pressed', 'true');
+    button.textContent = 'Stop';
+    const first = queue.shift();
+    if (first) play(first);
+  }
+
+  // Replace native controls with one honest button per clip. Words stay in the figcaption.
+  for (const el of audios) {
+    const fig = el.closest('figure.clip') as HTMLElement;
+    byId.set(fig.dataset.clip ?? '', el);
+    el.removeAttribute('controls');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'play';
+    btn.textContent = 'Play';
+    btn.setAttribute('aria-pressed', 'false');
+    fig.appendChild(btn);
+    btn.addEventListener('click', () => { if (el.paused) { clearQueue(); play(el); } else { el.pause(); } });
+    el.addEventListener('play', () => {
+      current = el;
+      fig.classList.add('is-playing');
+      btn.textContent = 'Stop'; btn.setAttribute('aria-pressed', 'true');
+      document.querySelectorAll<HTMLElement>('.key').forEach((k) => k.classList.toggle('is-playing', k.dataset.play === fig.dataset.clip));
+      showPlaying(fig.dataset.who ?? '', fig.querySelector('.words')?.textContent ?? '');
+      if (!reduce) startLoop(); else drawEye(0.55);
+    });
+    const stopped = () => {
+      fig.classList.remove('is-playing');
+      btn.textContent = 'Play'; btn.setAttribute('aria-pressed', 'false');
+      document.querySelectorAll<HTMLElement>('.key').forEach((k) => k.classList.remove('is-playing'));
+      if (current === el) { current = null; document.body.classList.remove('playing'); if (reduce) drawEye(0); }
+    };
+    el.addEventListener('pause', stopped);
+    el.addEventListener('ended', () => {
+      stopped();
+      const next = queue.shift();
+      if (next) play(next); else clearQueue();
+    });
+  }
+
+  let playLine: HTMLElement | null = null;
+  function showPlaying(who: string, words: string) {
+    if (!playLine) {
+      playLine = document.createElement('span');
+      playLine.className = 'now';
+      display.appendChild(playLine);
+    }
+    playLine.textContent = '';
+    const b = document.createElement('b'); b.textContent = who;
+    const q = document.createElement('q'); q.textContent = words.replace(/^“|”$/g, '');
+    playLine.append(b, q);
+    document.body.classList.add('playing');
+  }
+
+  // Preset keys in the hero replay the stored seed clips.
+  document.querySelectorAll<HTMLAnchorElement>('.key').forEach((k) => {
+    k.setAttribute('role', 'button');
+    k.addEventListener('click', (e) => {
+      e.preventDefault();
+      const el = byId.get(k.dataset.play ?? '');
+      if (!el) return;
+      if (!el.paused) el.pause(); else { clearQueue(); play(el); }
+    });
+  });
+
+  // Back-to-back buttons: the scene, one character across sentences, two characters.
+  const sceneBtn = document.getElementById('play-scene') as HTMLButtonElement | null;
+  if (sceneBtn) sceneBtn.addEventListener('click', () => {
+    const list = Array.from(document.querySelectorAll<HTMLElement>('.script figure.clip')).map((f) => byId.get(f.dataset.clip ?? '')!).filter(Boolean);
+    playQueue(list, sceneBtn);
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-queue]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const list = (b.dataset.queue ?? '').split(',').map((id) => byId.get(id)!).filter(Boolean);
+      playQueue(list, b);
+    });
+  });
+
+  // The knob: switch on, and the set says its first words.
+  knob.addEventListener('click', () => {
+    if (knob.getAttribute('aria-pressed') === 'true') {
+      stopAll(); clearQueue();
+      document.body.classList.remove('on');
+      knob.setAttribute('aria-pressed', 'false');
+      knobLabel.textContent = 'Switch on';
+      drawEye(0);
+      return;
+    }
+    const first = byId.get('mentor_seed');
+    if (first) { clearQueue(); play(first); } else powerOn();
+  });
+
+  // ---------- the magic eye ----------
+  const ectx = eyeCanvas.getContext('2d')!;
+  let raf = 0;
+  let level = 0;
+  function drawEye(lvl: number) {
+    const s = eyeCanvas.width, c = s / 2, R = s * 0.47;
+    ectx.clearRect(0, 0, s, s);
+    ectx.beginPath(); ectx.arc(c, c, R, 0, Math.PI * 2); ectx.fillStyle = '#120906'; ectx.fill();
+    if (!document.body.classList.contains('on')) {
+      ectx.beginPath(); ectx.arc(c, c, R * 0.86, 0, Math.PI * 2); ectx.fillStyle = '#2f3a33'; ectx.fill();
+      ectx.beginPath(); ectx.arc(c, c, R * 0.16, 0, Math.PI * 2); ectx.fillStyle = '#0d1a12'; ectx.fill();
+      return;
+    }
+    const g = ectx.createRadialGradient(c, c, R * 0.12, c, c, R * 0.9);
+    g.addColorStop(0, '#f2fff5'); g.addColorStop(0.3, '#7FD9A6'); g.addColorStop(1, '#18603f');
+    ectx.beginPath(); ectx.arc(c, c, R * 0.86, 0, Math.PI * 2); ectx.fillStyle = g; ectx.fill();
+    const open = (1 - Math.min(1, lvl * 3)) * Math.PI * 0.5;
+    if (open > 0.02) {
+      ectx.fillStyle = 'rgba(8,22,14,.94)';
+      for (const base of [-Math.PI / 2, Math.PI / 2]) {
+        ectx.beginPath(); ectx.moveTo(c, c); ectx.arc(c, c, R * 0.86, base - open / 2, base + open / 2); ectx.closePath(); ectx.fill();
+      }
+    }
+    ectx.beginPath(); ectx.arc(c, c, R * 0.16, 0, Math.PI * 2); ectx.fillStyle = '#0d1a12'; ectx.fill();
+  }
+  function loop() {
+    if (analyser && data) {
+      analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+      const rms = Math.sqrt(sum / data.length);
+      level = Math.max(rms, level * 0.86);
+    }
+    drawEye(level);
+    if (current || level > 0.005) raf = requestAnimationFrame(loop);
+    else { raf = 0; level = 0; drawEye(0); }
+  }
+  function startLoop() { if (!raf) raf = requestAnimationFrame(loop); }
+  drawEye(0);
+</script>

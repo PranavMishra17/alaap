@@ -1,0 +1,839 @@
+---
+// Variant 18 — "cassette". One tape, two sides. Side A: three voices minted from three
+// descriptions. Side B: the five-line scene where they keep those voices. The J-card unfolds
+// below as printed panels. Every claim and number is from ../../../CONTENT.md.
+import { name, meaning, links, characters, scene, seeds, clipCaveats } from '../../content/alaap';
+
+const describe = (id: string) => characters.find((c) => c.id === id)?.description ?? '';
+const sideA = seeds.map((c) => ({ ...c, desc: describe(c.character) }));
+const sideB = scene.map((c) => ({ ...c, desc: describe(c.character) }));
+const faces = ['A', 'B'] as const;
+---
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap · आलाप — a voice you describe, then keep</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it. A research system for Hindi, Bengali, Tamil and English, with its limits printed on the inlay." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Karma:wght@400;500;600;700&family=Khand:wght@500;600;700&display=swap" rel="stylesheet" />
+    <script is:inline>document.documentElement.className = 'js';</script>
+  </head>
+  <body>
+    <main class="jcard">
+
+      <!-- FRONT PANEL: title, thesis, and the tape in its deck -->
+      <section class="panel panel--front" aria-labelledby="title">
+        <p class="panel-tag">Front</p>
+        <div class="front">
+          <div class="front-head">
+            <h1 id="title" class="title">
+              <span class="title-hi" lang="hi">{name.devanagari}</span>
+              <span class="title-latin">{name.latin}</span>
+            </h1>
+            <p class="meaning">{meaning}.</p>
+            <p class="statement">Describe a character. Get a voice nobody has recorded. Keep it.</p>
+          </div>
+
+          <div class="deck" id="deck">
+            <div class="cassette" id="cassette">
+              <div class="cassette-inner">
+                {faces.map((s) => (
+                  <div class={`face face--${s.toLowerCase()}`} data-face={s}>
+                    <div class="shell">
+                      <span class="screw screw--tl"></span><span class="screw screw--tr"></span>
+                      <span class="screw screw--bl"></span><span class="screw screw--br"></span>
+                      <div class="label">
+                        <span class="side-mark" aria-hidden="true">{s}</span>
+                        <p class="hand hand--title"><span lang="hi">{name.devanagari}</span> {name.latin} <span class="hand-side">side {s}</span></p>
+                        <p class="hand hand--line" data-hand-line>{s === 'A' ? sideA[0].desc : sideB[0].text}</p>
+                      </div>
+                      <svg class="window" viewBox="0 0 200 64" aria-hidden="true">
+                        <defs>
+                          <radialGradient id={`pack-${s}`} cx="0.5" cy="0.5" r="0.5">
+                            <stop offset="0.55" stop-color="#4A2E1E" />
+                            <stop offset="1" stop-color="#6B4630" />
+                          </radialGradient>
+                        </defs>
+                        <rect x="0" y="0" width="200" height="64" rx="32" fill="#121316" />
+                        <rect x="1.5" y="1.5" width="197" height="61" rx="30.5" fill="none" stroke="rgba(255,255,255,0.09)" />
+                        <line x1="30" y1="57" x2="170" y2="57" stroke="#4A2E1E" stroke-width="2.5" />
+                        <circle class="pack pack--l" cx="55" cy="32" r="28" fill={`url(#pack-${s})`} />
+                        <circle class="pack pack--r" cx="145" cy="32" r="11" fill={`url(#pack-${s})`} />
+                        <g class="hub hub--l">
+                          <circle cx="55" cy="32" r="9.5" fill="#E8E4D8" />
+                          <circle cx="55" cy="32" r="8" fill="none" stroke="#8E8B82" stroke-width="3" stroke-dasharray="3.4 5" />
+                          <circle cx="55" cy="32" r="3.5" fill="#121316" />
+                        </g>
+                        <g class="hub hub--r">
+                          <circle cx="145" cy="32" r="9.5" fill="#E8E4D8" />
+                          <circle cx="145" cy="32" r="8" fill="none" stroke="#8E8B82" stroke-width="3" stroke-dasharray="3.4 5" />
+                          <circle cx="145" cy="32" r="3.5" fill="#121316" />
+                        </g>
+                      </svg>
+                      <div class="foot" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div class="keys" role="group" aria-label="Deck controls">
+              <button class="key" type="button" data-act="prev" title="Rewind to the previous track">
+                <svg viewBox="0 0 24 14" aria-hidden="true"><path d="M0 7l6-4v8z"/><rect x="6" y="3" width="13" height="8"/><rect x="20" y="3" width="4" height="8" opacity=".55"/></svg>
+                <span>Rewind</span>
+              </button>
+              <button class="key key--play" type="button" data-act="play" aria-pressed="false">
+                <svg viewBox="0 0 24 14" aria-hidden="true"><path d="M5 1l16 6-16 6z"/></svg>
+                <span>Play</span>
+              </button>
+              <button class="key" type="button" data-act="stop">
+                <svg viewBox="0 0 24 14" aria-hidden="true"><rect x="6" y="1" width="12" height="12"/></svg>
+                <span>Stop</span>
+              </button>
+              <button class="key" type="button" data-act="next" title="Forward to the next track">
+                <svg viewBox="0 0 24 14" aria-hidden="true"><path d="M2 1l9 6-9 6z"/><path d="M12 1l9 6-9 6z"/></svg>
+                <span>Forward</span>
+              </button>
+              <button class="key key--flip" type="button" data-act="flip" aria-pressed="false">
+                <svg viewBox="0 0 24 14" aria-hidden="true"><path d="M12 12.5a5.5 5.5 0 1 1 5.2-7.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M18.5 1v5.5H13z"/></svg>
+                <span>Turn over</span>
+              </button>
+            </div>
+
+            <div class="status" aria-live="polite">
+              <p class="status-meta"><span data-status-side>Side A</span> · <span class="who" data-status-who>mentor</span><span data-status-kind> · seed clip · {sideA[0].seconds} s</span></p>
+              <p class="status-words">“<span data-status-words>{sideA[0].text}</span>”</p>
+              <p class="status-note" data-status-note hidden>Rendered with an experimental emotion setting whose effect has not been validated. A voice sample, not a performance.</p>
+            </div>
+            <p class="deck-note">Pre-recorded. This tape holds three voices minted on 2026-09-05 from the three descriptions on side A, and the five-line scene they then read on side B. Play replays those stored clips. Nothing on this page generates a voice.</p>
+            <noscript><p class="deck-note">With scripts off, the players in the track list below work on their own.</p></noscript>
+          </div>
+
+          <div class="front-body">
+            <p class="lede">You describe a character in ordinary language. You get back a voice that has never existed. Then you use that voice for any line of dialogue you write, and it stays the same character every time.</p>
+            <p class="audience">For people making games, animation, audio drama, dubbing, interactive fiction: anyone who needs many distinct speaking characters and cannot hire a cast for each one.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- SPINE -->
+      <section class="panel panel--spine" aria-label="Spine">
+        <p class="spine">
+          <span lang="hi">{name.devanagari}</span> <span class="spine-latin">{name.latin}</span>
+          <span class="spine-dot">·</span> three voices, one scene
+          <span class="spine-dot">·</span> English
+          <span class="spine-dot">·</span> one laptop GPU
+          <span class="spine-dot">·</span> <span class="nowrap">recorded 2026-09-05</span>
+        </p>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- BACK PANEL: track list -->
+      <section class="panel panel--back" aria-labelledby="tracks-h">
+        <p class="panel-tag">Back · track list</p>
+        <h2 id="tracks-h" class="h2">What is on the tape</h2>
+        <div class="sides">
+          <div class="side">
+            <h3 class="side-head"><span class="side-badge" aria-hidden="true">A</span> Minted <small>three voices, from nothing but these descriptions</small></h3>
+            <ol class="tracks">
+              {sideA.map((c, i) => (
+                <li class={`track${i === 0 ? ' is-current' : ''}`} data-side="A" data-index={i} data-who={c.character} data-text={c.text} data-desc={c.desc} data-seconds={c.seconds} data-exp={c.experimentalEmotionSetting ? '1' : '0'} data-kind="seed">
+                  <button class="track-play" type="button" aria-pressed="false" aria-label={`Play the ${c.character} seed clip`}><svg viewBox="0 0 12 12" aria-hidden="true"><path class="ico-play" d="M2 1l9 5-9 5z"/><rect class="ico-stop" x="2" y="2" width="8" height="8"/></svg></button>
+                  <div class="track-body">
+                    <p class="track-title"><span class="who">{c.character}</span> <span class="desc">“{c.desc}”</span></p>
+                    <p class="track-says">seed clip says “{c.text}”</p>
+                    <audio controls preload="none" src={c.src}></audio>
+                  </div>
+                  <span class="track-time">{c.seconds.toFixed(1)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div class="side">
+            <h3 class="side-head"><span class="side-badge" aria-hidden="true">B</span> Kept <small>the five-line scene, in order; the same three voices</small></h3>
+            <ol class="tracks">
+              {sideB.map((c, i) => (
+                <li class="track" data-side="B" data-index={i} data-who={c.character} data-text={c.text} data-desc={c.desc} data-seconds={c.seconds} data-exp={c.experimentalEmotionSetting ? '1' : '0'} data-kind="line">
+                  <button class="track-play" type="button" aria-pressed="false" aria-label={`Play the ${c.character} line`}><svg viewBox="0 0 12 12" aria-hidden="true"><path class="ico-play" d="M2 1l9 5-9 5z"/><rect class="ico-stop" x="2" y="2" width="8" height="8"/></svg></button>
+                  <div class="track-body">
+                    <p class="track-title"><span class="who">{c.character}</span> <span class="words">“{c.text}”</span>{c.experimentalEmotionSetting && <span class="mark" title="experimental emotion setting, unvalidated">✱</span>}</p>
+                    <audio controls preload="none" src={c.src}></audio>
+                  </div>
+                  <span class="track-time">{c.seconds.toFixed(1)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+        <div class="track-notes">
+          <p><strong>Watermark.</strong> {clipCaveats.watermark} The output manifest's own disclosure line: “AI-generated synthetic speech. All audio carries an AudioSeal watermark.”</p>
+          <p><strong>✱ Emotion setting.</strong> {clipCaveats.emotionSetting}</p>
+          <p><strong>English only.</strong> {clipCaveats.englishOnly}</p>
+          <p class="track-notes-small">Lengths in seconds. The seed clip is the short reference recording the system stores alongside every identity when it is minted.</p>
+        </div>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- LINER NOTES: why, and the four differences -->
+      <section class="panel panel--notes" aria-labelledby="notes-h">
+        <p class="panel-tag">Inlay · liner notes</p>
+        <h2 id="notes-h" class="h2">Why this tape exists</h2>
+        <div class="prose prose--wide">
+          <p>The tools that do this well mostly do it in English. Indian-language creators either use a handful of stock voices that everyone else is also using, or they hire actors. This project treats Hindi, Bengali and Tamil as first-class, not as an afterthought port.</p>
+          <p>The Indian-language engine covers 22 Indian languages; four are measured so far: English, Hindi, Bengali, Tamil. In the project's own measurements the Hindi path scored higher than the English path on all three identity checks.</p>
+        </div>
+        <h2 class="h2 h2--sub">Four things it does differently</h2>
+        <div class="notes-grid">
+          <article>
+            <h3>A voice is a thing you keep, not a setting you re‑guess</h3>
+            <p>Most tools generate a voice each time you ask. Here the character's voice is stored as an identity and re-used. The same character sounds like the same person across every line, every scene, and every session. That consistency is measured, not hoped for.</p>
+          </article>
+          <article>
+            <h3>Who is speaking and what is said are genuinely separate</h3>
+            <p>The system holds a character's identity apart from the words. That is why one character can say anything without their voice wandering, and why changing the line never changes the person. This was verified rather than assumed: when the same audio content is played through two different identities, the words come out identically. The measured error between them was exactly zero on every line tested.</p>
+          </article>
+          <article>
+            <h3>It does not need a recording of the character</h3>
+            <p>There is no voice cloning here, and no user uploads their own audio. Voices are created from a written description. That sidesteps the consent and impersonation problem entirely: you cannot accidentally clone a real person if the system never accepts a recording.</p>
+          </article>
+          <article>
+            <h3>It knows what it does not know</h3>
+            <p>Every capability is measured against a control, and the honest limits are published alongside the results. Roughly twenty findings in this project were wrong on the first attempt and caught by a check, including one where an entire experiment produced fluent-sounding speech that was saying different words than requested, and nothing errored. That is written up publicly rather than quietly fixed.</p>
+          </article>
+        </div>
+        <p class="pencil">A suspiciously good or suspiciously bad number is a bug report about your setup. <span class="pencil-by">— a rule the project keeps</span></p>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- MEASURED -->
+      <section class="panel panel--measured" aria-labelledby="measured-h">
+        <p class="panel-tag">Inlay · what was measured</p>
+        <h2 id="measured-h" class="h2">What works, and the catch each time</h2>
+        <dl class="measured">
+          <div>
+            <dt>It works end to end today, on one laptop GPU, in English, Hindi, Bengali and Tamil.</dt>
+            <dd>Describe a character, get a voice, render a scene of dialogue, and out comes watermarked audio plus a file a game engine can read. The demo mints three characters from text, renders a five-line scene, watermarks everything and writes the manifest in about four minutes, on a 6 GB laptop GPU. The clips on this tape are that demo's output.</dd>
+          </div>
+          <div>
+            <dt>Minting a voice from a description costs nothing in clarity.</dt>
+            <dd>A described voice is just as intelligible as one taken from a real recording. The measured difference was tiny, leaned slightly in the invented voice's favour, and was smaller than the difference between two real speakers; that gap was six times larger. Read this as no detectable difference, not as invented voices being better. The control that had to pass first: every version must come out the same length before any score is read, or the run aborts.</dd>
+          </div>
+          <div>
+            <dt>Invented voices are recognisably distinct people.</dt>
+            <dd>Verified by a separate speaker-recognition system that has never seen the generator: an independent check, not the system marking its own homework. Each invented voice also sits clearly apart from the nearest real voice the system learned from, so these are new voices, not real people wearing a label.</dd>
+          </div>
+          <div>
+            <dt>A character stays itself more consistently than a real person does.</dt>
+            <dd>Across different sentences, more consistently than a real person across different recordings. Unsurprising once you think about it: a stored voice has no bad-throat day, no change of microphone, no mood.</dd>
+          </div>
+          <div>
+            <dt>A fluent Hindi speaker confirmed one rendered line says what it should.</dt>
+            <dd>They were told the sentence and asked “does it say this?”, not “does it sound right?”. An earlier batch of audio that sounded fluent and said the wrong words failed exactly this check. The sentence: <span class="hindi" lang="hi">नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है</span> — our plain translation, not a project claim: “Hello, how are you? The weather is very nice today.” The other voices and lines are still to be checked, and the Hindi audio itself does not ship; see the notice below.</dd>
+          </div>
+          <div>
+            <dt>A blind listening test found and fixed a real problem.</dt>
+            <dd>Pairs the system called different were heard as the same person about half the time. The threshold was raised; that removed 10 duplicate voices from a set of 50 and cost 3 percent of measured variety. The test was small: 8 pairs, one listener, every control answered correctly. It found the problem but does not settle the exact threshold, and the English threshold has not had its own listening test.</dd>
+          </div>
+          <div>
+            <dt>Pacing is controllable within a measured range.</dt>
+            <dd>
+              <p>About two-thirds to about 1.4 times normal speed, and the character stays the same person saying the same words. Outside that range the identity fades gradually rather than breaking. A listener noted the slow extreme starts to sound processed; the range they called clean is narrower, about 0.8 to 1.25 times.</p>
+              <figure class="pitch">
+                <div class="pitch-cap">clean, to one listener</div>
+                <div class="pitch-bar" aria-hidden="true">
+                  <span class="pitch-clean"></span>
+                  <span class="pitch-knob"></span>
+                </div>
+                <ol class="pitch-scale">
+                  <li style="--x: 0%">0.67×</li>
+                  <li style="--x: 17.1%">0.8×</li>
+                  <li style="--x: 43.4%">normal</li>
+                  <li style="--x: 76.3%">1.25×</li>
+                  <li style="--x: 100%">1.43×</li>
+                </ol>
+                <figcaption>The whole bar is the measured range; the blue band is what one listener called clean. Illustration only: no audio on this page is re-timed.</figcaption>
+              </figure>
+            </dd>
+          </div>
+          <div>
+            <dt>Watermarked and logged from the first render.</dt>
+            <dd>Not added later. The watermark is AudioSeal. Output includes a manifest a game engine can consume: this is built for a pipeline, not a demo button. And 114 automated checks guard the rules the project learned the hard way.</dd>
+          </div>
+        </dl>
+
+        <h2 class="h2 h2--sub">Two ways to answer a description</h2>
+        <p class="prose-intro">Invent a new voice, or find the closest match in an existing library. Inventing gives you a character nobody else has; finding gives you higher accuracy and studio quality. Neither is strictly better, and the project has numbers for the trade-off.</p>
+        <div class="ways">
+          <article class="way">
+            <h3>Invent</h3>
+            <p>A character nobody else has. The catch is reach: finding reaches 87% of the variety its library holds, and inventing reached 37% of the variety the real speakers held before two mis-set settings were fixed. The fix raised the invented catalogue to about 22 distinct Hindi voices and 41 English.</p>
+          </article>
+          <article class="way">
+            <h3>Find</h3>
+            <p>On a library of 141 real Hindi voices, two thirds of descriptions get a voice that matches every trait named, and 87 percent land within one step. When a description names only a couple of traits, the way people actually write, a bit over half match exactly, against about one in five by chance. On 2,500 English voices the same method reaches 88.5%. It replicates in Bengali within a point or two.</p>
+            <p class="way-limit">What finding cannot do: produce a voice the library does not contain; guarantee a new character is unique, since two descriptions can return the same voice; and the library is someone else's, so every character in every project draws from the same shelf.</p>
+          </article>
+        </div>
+        <p class="caveat">The library measured was real recorded speakers standing in for a studio library, and no commercial system has been measured.</p>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- HOW IT WAS RECORDED -->
+      <section class="panel panel--chain" aria-labelledby="chain-h">
+        <p class="panel-tag">Inlay · how it was recorded</p>
+        <h2 id="chain-h" class="h2">The path from words to voice</h2>
+        <ol class="chain">
+          <li class="chain-step"><span class="chain-what">your description</span><span class="chain-note">ordinary language</span></li>
+          <li class="chain-step chain-step--trained"><span class="chain-what">the mapper</span><span class="chain-note">the only part that learns</span></li>
+          <li class="chain-step"><span class="chain-what">a voice identity</span><span class="chain-note">small, storable, yours to keep</span></li>
+          <li class="chain-step"><span class="chain-what">the voice engine</span><span class="chain-note">never modified, swappable</span></li>
+          <li class="chain-step"><span class="chain-what">audio</span><span class="chain-note">watermarked and logged</span></li>
+        </ol>
+        <div class="notes-grid notes-grid--three">
+          <article>
+            <h3>Only one small piece is trained</h3>
+            <p>The speech engine is used as-is and never altered, so a better engine can be swapped in without rebuilding everything.</p>
+          </article>
+          <article>
+            <h3>The voice identity is a small, storable thing</h3>
+            <p>That is what makes a character persistent: it can be saved, versioned and handed to someone else. Each one is stored with a short seed clip and the engine version that made it. The identity is who the character is; each line is a separate performance.</p>
+          </article>
+          <article>
+            <h3>The checker never sees inside</h3>
+            <p>The speaker-recognition system that verifies identities is a separate system that never sees the engine's internals. Every render is watermarked and logged from the first output.</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- NOTICE: not there yet -->
+      <section class="panel panel--notice" aria-labelledby="notice-h">
+        <p class="panel-tag">Notice</p>
+        <div class="notice">
+          <h2 id="notice-h" class="h2">Not there yet</h2>
+          <ul class="notice-list">
+            <li><strong>Not a product.</strong> This is a working research system, not a product. There is no signup, no hosted service, no API.</li>
+            <li><strong>Emotion is not solved.</strong> Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream: the engine's documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between four tagged versions of the same line.</li>
+            <li><strong>The catalogue is small.</strong> Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project's own measure. The limit is understood and measured rather than mysterious. The real speakers the system learned from hold about 38 to about 48 distinguishable voices, and tripling the speakers bought about a quarter more variety; the project measured exactly where its own method loses variety.</li>
+            <li><strong>Cannot ship as a product, for licensing reasons.</strong> It cannot be shipped as a product in its current form for licensing reasons, which are documented. The Indian-language engine's training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</li>
+            <li><strong>Very little has been listened to.</strong> Most results are automatic measurements. One listener, a handful of pairs.</li>
+            <li><strong>No comparison against a commercial system.</strong></li>
+            <li><strong>The clips on this page are English.</strong> {clipCaveats.englishOnly}</li>
+            <li><strong>Three of the five demo lines</strong> were rendered with an experimental emotion setting whose effect has not been validated on this engine. Listen to them as voice samples, not performances.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="fold" role="presentation"></div>
+
+      <!-- COLOPHON -->
+      <footer class="panel panel--colophon">
+        <p class="panel-tag">Colophon</p>
+        <div class="colophon">
+          <div class="colophon-text">
+            <p>℗ Research pass 2026-09-02. Implementation and measurement 2026-09-05. Research and documentation CC-BY-4.0; code MIT. No model weights and no generated Indian-language audio ship.</p>
+            <p class="colophon-quote">“If a claim here is wrong, an issue with a primary source is more useful than almost anything else.”</p>
+          </div>
+          <div class="cta">
+            <a class="cta-link" href={links.repo}>Read the research <span aria-hidden="true">→</span></a>
+            <a class="cta-link cta-link--soft" href={links.issues}>Corrections welcome <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+      </footer>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light;
+    --shelf: #2E4A43;
+    --card: #EBE3CC;
+    --paper: #F4EFE3;
+    --ink: #1A1D26;
+    --ink-70: rgba(26, 29, 38, 0.72);
+    --ink-line: rgba(26, 29, 38, 0.22);
+    --red: #C4391F;
+    --blue: #234A80;
+    --oxide: #4A2E1E;
+    --shell: #2A2B2E;
+    --display: 'Khand', 'Arial Narrow', 'Roboto Condensed', 'Noto Sans Devanagari', system-ui, sans-serif;
+    --body: 'Karma', 'Noto Serif Devanagari', Georgia, 'Times New Roman', serif;
+    --hand: 'Kalam', 'Segoe Print', 'Bradley Hand', 'Noto Sans Devanagari', cursive;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--shelf);
+    color: var(--ink);
+    font: 400 17.5px/1.55 var(--body);
+    padding: clamp(14px, 4vw, 56px) clamp(10px, 3vw, 40px);
+    overflow-x: hidden;
+  }
+  :focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+  a { color: inherit; }
+  p { margin: 0 0 1em; }
+  h1, h2, h3 { margin: 0; font-weight: 700; }
+
+  /* The J-card: one continuous piece of card, folded between panels */
+  .jcard {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    background: var(--card);
+    background-image:
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent 12%),
+      radial-gradient(rgba(26, 29, 38, 0.06) 0.6px, transparent 0.9px);
+    background-size: auto, 3px 3px;
+    border-radius: 3px;
+    box-shadow:
+      0 40px 70px -30px rgba(0, 0, 0, 0.6),
+      0 2px 4px rgba(0, 0, 0, 0.25),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  }
+  .panel { padding: clamp(28px, 5vw, 56px) clamp(18px, 5vw, 64px); }
+  .panel-tag {
+    font: 600 12px/1 var(--display);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin: 0 0 22px;
+  }
+  .fold {
+    height: 3px;
+    background: linear-gradient(to bottom, rgba(26, 29, 38, 0.32), rgba(26, 29, 38, 0.12));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55), 0 -10px 14px -8px rgba(26, 29, 38, 0.25);
+  }
+  .h2 {
+    font: 700 clamp(30px, 4.2vw, 44px)/1 var(--display);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0 0 22px;
+  }
+  .h2--sub { margin-top: clamp(30px, 4vw, 48px); }
+  .who {
+    font: 600 13.5px/1 var(--display);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
+
+  .nowrap { white-space: nowrap; }
+
+  /* FRONT: the tape sits beside the words on a wide card, and directly under the thesis on a narrow one */
+  .front { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-areas: 'head deck' 'body deck'; gap: 0 clamp(28px, 5vw, 64px); align-items: start; }
+  .front-head { grid-area: head; }
+  .front-body { grid-area: body; }
+  .deck { grid-area: deck; }
+  .title { display: grid; gap: 4px; margin: 0 0 14px; }
+  .title-hi { font: 700 clamp(72px, 9.5vw, 116px)/0.95 var(--display); color: var(--red); }
+  .title-latin { font: 700 clamp(30px, 4vw, 44px)/1 var(--display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink); padding-left: 3px; }
+  .meaning { color: var(--ink-70); font-size: 16px; margin-bottom: 26px; max-width: 34em; }
+  .statement { font: 600 clamp(30px, 3.4vw, 42px)/1.05 var(--display); margin: 0 0 20px; max-width: 12em; }
+  .lede { font-size: 19px; line-height: 1.5; max-width: 30em; }
+  .audience { color: var(--ink-70); max-width: 30em; margin-bottom: 0; }
+
+  /* The cassette */
+  .deck { position: relative; }
+  .cassette { position: relative; width: 100%; aspect-ratio: 400 / 254; perspective: 1600px; container-type: inline-size; }
+  .cassette-inner { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotate(-1.2deg); transition: transform 0.85s cubic-bezier(0.45, 0, 0.2, 1); }
+  .cassette.is-b .cassette-inner { transform: rotate(-1.2deg) rotateX(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: visibility 0s linear 0.42s; }
+  .face--b { transform: rotateX(180deg); }
+  /* Belt and braces: the hidden side is also visibility:hidden, swapped at the half-turn. */
+  .cassette.is-b .face--a, .cassette:not(.is-b) .face--b { visibility: hidden; }
+  .shell {
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, #35363A, var(--shell) 55%, #232427);
+    border-radius: 4% / 6.5%;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -3px 0 rgba(0, 0, 0, 0.45), 0 18px 30px -14px rgba(0, 0, 0, 0.7);
+  }
+  .screw { position: absolute; width: 3cqw; height: 3cqw; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8a8a8f 0 28%, #3b3c40 30% 60%, #55565a 62%); box-shadow: inset 0 0 0 0.3cqw rgba(0, 0, 0, 0.5); }
+  .screw--tl { left: 2%; top: 3.2%; } .screw--tr { right: 2%; top: 3.2%; }
+  .screw--bl { left: 2%; bottom: 5%; } .screw--br { right: 2%; bottom: 5%; }
+  .label {
+    position: absolute; left: 5.5%; top: 7%; width: 89%; height: 61.5%;
+    background: var(--paper);
+    background-image: radial-gradient(rgba(26, 29, 38, 0.05) 0.5px, transparent 0.8px);
+    background-size: 2px 2px;
+    border-radius: 1.4cqw;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 0.3cqw 0.6cqw rgba(0, 0, 0, 0.25);
+    padding: 2.8cqw 4cqw 0 4cqw;
+    overflow: hidden;
+  }
+  .side-mark {
+    position: absolute; left: 3.6cqw; top: 3.2cqw;
+    width: 8cqw; height: 8cqw; border-radius: 50%;
+    border: 0.45cqw solid var(--red); color: var(--red);
+    font: 700 5.2cqw/8cqw var(--display); text-align: center;
+  }
+  .hand { margin: 0; font-family: var(--hand); color: var(--blue); border-bottom: 1px solid rgba(35, 74, 128, 0.38); }
+  .hand--title { font-size: 5cqw; line-height: 1.35; font-weight: 700; padding-left: 10.5cqw; padding-bottom: 0.3cqw; transform: rotate(-0.4deg); }
+  .hand-side { font-weight: 400; font-size: 3.2cqw; margin-left: 1cqw; }
+  .hand--line { font-size: 3.2cqw; line-height: 1.45; font-weight: 400; padding: 0.8cqw 0 0.2cqw 1cqw; min-height: 5cqw; }
+  .hand--line.is-writing { animation: write 0.75s steps(28, end) both; }
+  @keyframes write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  .window { position: absolute; left: 25%; top: 40%; width: 50%; height: 25.5%; display: block; overflow: visible; }
+  .hub { transform-box: fill-box; transform-origin: center; }
+  .cassette.is-playing .hub { animation: spin 1.15s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .foot { position: absolute; left: 17%; right: 17%; bottom: 0; height: 21%; background: rgba(0, 0, 0, 0.28); border-radius: 12% 12% 0 0 / 40% 40% 0 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 8% 3.2cqw; }
+  .foot i { width: 3.6cqw; height: 3.6cqw; border-radius: 50%; background: radial-gradient(#0d0d10 55%, #45464b 60%); }
+  .foot i:nth-child(2), .foot i:nth-child(3) { width: 2.4cqw; height: 2.4cqw; margin-bottom: 0.5cqw; }
+
+  /* Deck keys, piano-key style */
+  .keys { display: flex; gap: 6px; margin-top: 22px; }
+  .key {
+    flex: 1 1 0; min-width: 0;
+    appearance: none; border: 0; cursor: pointer;
+    border-radius: 4px 4px 7px 7px;
+    background: linear-gradient(#4A4B50, #333438);
+    color: #E8E4D8;
+    padding: 12px 4px 10px;
+    box-shadow: 0 4px 0 #17181b, inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    font: 600 11.5px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase;
+    display: grid; justify-items: center; gap: 9px;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .key svg { width: 22px; height: 14px; fill: currentColor; }
+  .key:hover { background: linear-gradient(#55565b, #3a3b3f); }
+  .key:active, .key.is-down { transform: translateY(3px); box-shadow: 0 1px 0 #17181b, inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+  .key.is-down { color: var(--card); background: linear-gradient(#2c2d31, #232427); }
+  .key--play.is-down svg { fill: var(--red); }
+  .key--flip { flex: 1.15 1 0; }
+
+  .status { margin-top: 20px; padding: 12px 14px 8px; border: 1px solid var(--ink-line); border-radius: 3px; background: rgba(255, 255, 255, 0.28); min-height: 88px; }
+  .status-meta { font: 600 13px/1.2 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-70); margin: 0 0 6px; }
+  .status-words { font-size: 19px; line-height: 1.4; margin: 0 0 6px; }
+  .status-note { font-size: 14px; color: var(--ink-70); margin: 0 0 4px; }
+  .deck-note { font-size: 14.5px; line-height: 1.5; color: var(--ink-70); margin: 12px 0 0; }
+
+  /* SPINE */
+  .panel--spine { padding-top: 14px; padding-bottom: 14px; background: rgba(26, 29, 38, 0.05); }
+  .spine { margin: 0; font: 600 clamp(13px, 1.6vw, 17px)/1.4 var(--display); letter-spacing: 0.2em; text-transform: uppercase; text-align: center; color: var(--ink); overflow-wrap: anywhere; }
+  .spine [lang='hi'] { color: var(--red); letter-spacing: 0.06em; font-size: 1.25em; vertical-align: -0.05em; }
+  .spine-latin { color: var(--red); }
+  .spine-dot { color: var(--ink-line); padding: 0 0.3em; }
+
+  /* BACK: tracks */
+  .sides { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(20px, 4vw, 56px); }
+  .side-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; font: 700 26px/1 var(--display); text-transform: uppercase; letter-spacing: 0.04em; padding-bottom: 10px; border-bottom: 2px solid var(--ink); margin-bottom: 4px; }
+  .side-head small { font: 400 15px/1.3 var(--body); text-transform: none; letter-spacing: 0; color: var(--ink-70); flex-basis: 100%; }
+  .side-badge { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--red); color: var(--red); font-size: 20px; line-height: 1; vertical-align: middle; }
+  .tracks { list-style: none; margin: 0; padding: 0; }
+  .track { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 6px 12px 4px; border-bottom: 1px solid var(--ink-line); transition: background 0.2s ease; }
+  .track.is-current { background: rgba(35, 74, 128, 0.09); box-shadow: inset 3px 0 0 var(--blue); }
+  .track-play { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; display: grid; place-items: center; padding: 0; margin-top: 2px; }
+  .track-play svg { width: 14px; height: 14px; fill: currentColor; }
+  .track-play .ico-stop { display: none; }
+  .track-play[aria-pressed='true'] { background: var(--ink); color: var(--card); }
+  .track-play[aria-pressed='true'] .ico-play { display: none; }
+  .track-play[aria-pressed='true'] .ico-stop { display: block; }
+  .track-play:hover { background: rgba(26, 29, 38, 0.1); }
+  .track-play[aria-pressed='true']:hover { background: var(--ink); }
+  .track-title { margin: 0 0 2px; line-height: 1.45; }
+  .track-title .who { margin-right: 6px; }
+  .track-says { margin: 0; font-size: 15px; color: var(--ink-70); }
+  .desc { font-family: var(--hand); color: var(--blue); font-size: 18px; }
+  .mark { color: var(--red); margin-left: 6px; font-weight: 700; }
+  .track-time { font: 600 16px/1.5 var(--display); letter-spacing: 0.04em; color: var(--ink-70); }
+  .js .track audio { display: none; }
+  .no-js .track audio { display: block; width: 100%; margin-top: 8px; }
+  .no-js .keys, .no-js .status, .no-js .track-play { display: none; }
+  .no-js .track { grid-template-columns: minmax(0, 1fr) auto; }
+  .no-js .track.is-current { background: none; box-shadow: none; }
+  .track-notes { margin-top: 30px; padding-top: 18px; border-top: 2px solid var(--ink); font-size: 15.5px; line-height: 1.5; columns: 2; column-gap: 40px; }
+  .track-notes p { break-inside: avoid; margin-bottom: 0.8em; }
+  .track-notes strong { font-weight: 700; }
+  .track-notes-small { color: var(--ink-70); }
+
+  /* LINER NOTES */
+  .prose p { max-width: 62em; }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px clamp(24px, 4vw, 56px); }
+  .notes-grid--three { grid-template-columns: 1fr 1fr 1fr; margin-top: 34px; }
+  .notes-grid article { border-top: 2px solid var(--ink); padding-top: 12px; }
+  .notes-grid h3 { font: 700 23px/1.05 var(--display); text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 10px; color: var(--blue); }
+  .notes-grid p { margin-bottom: 0; }
+  .pencil { margin: 36px 0 0; font: 400 clamp(19px, 2.2vw, 24px)/1.35 var(--hand); color: rgba(26, 29, 38, 0.66); transform: rotate(-1.2deg); max-width: 28em; }
+  .pencil-by { display: block; font-size: 0.75em; }
+
+  /* MEASURED */
+  .measured { margin: 0; display: grid; gap: 22px; }
+  .measured > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px clamp(20px, 4vw, 48px); padding-top: 14px; border-top: 1px solid var(--ink-line); }
+  .measured dt { font: 600 21px/1.25 var(--body); }
+  .measured dd { margin: 0; font-size: 16px; line-height: 1.55; color: var(--ink-70); }
+  .measured dd p { margin-bottom: 0.8em; }
+  .hindi { font-size: 1.1em; color: var(--ink); font-weight: 600; }
+  /* Pacing: a bounded slider drawn in HTML so the scale stays legible at phone width */
+  .pitch { margin: 10px 0 0; max-width: 560px; }
+  .pitch-cap { position: relative; left: 17.1%; width: 59.2%; margin: 0 0 24px; text-align: center; font: 600 12px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); white-space: nowrap; }
+  .pitch-bar { position: relative; height: 14px; border-radius: 7px; background: rgba(26, 29, 38, 0.12); box-shadow: inset 0 0 0 1px rgba(26, 29, 38, 0.4); }
+  .pitch-clean { position: absolute; left: 17.1%; width: 59.2%; top: -8px; bottom: -8px; border-radius: 4px; background: rgba(35, 74, 128, 0.18); border: 1px dashed var(--blue); }
+  .pitch-knob { position: absolute; left: 43.4%; top: -14px; width: 14px; height: 42px; margin-left: -7px; border-radius: 3px; background: #35363A; border: 1px solid #17181b; }
+  .pitch-knob::after { content: ''; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 2px; margin-left: -1px; background: #E8E4D8; }
+  .pitch-scale { position: relative; height: 24px; margin: 16px 0 0; padding: 0; list-style: none; font: 600 14px/1 var(--display); color: var(--ink); }
+  .pitch-scale li { position: absolute; left: var(--x); top: 4px; transform: translateX(-50%); white-space: nowrap; }
+  .pitch-scale li::before { content: ''; position: absolute; left: 50%; top: -12px; width: 1.5px; height: 8px; background: rgba(26, 29, 38, 0.6); }
+  .pitch-scale li:first-child { transform: none; }
+  .pitch-scale li:first-child::before { left: 0; }
+  .pitch-scale li:last-child { transform: translateX(-100%); }
+  .pitch-scale li:last-child::before { left: auto; right: 0; }
+  .pitch figcaption { font-size: 14px; line-height: 1.45; color: var(--ink-70); margin-top: 2px; }
+  .prose-intro { max-width: 60em; }
+  .ways { display: grid; grid-template-columns: 1fr 1fr; gap: 20px clamp(24px, 4vw, 56px); }
+  .way { border-top: 2px solid var(--ink); padding-top: 12px; }
+  .way h3 { font: 700 26px/1 var(--display); text-transform: uppercase; color: var(--blue); margin: 0 0 10px; }
+  .way p { margin-bottom: 0.8em; }
+  .way-limit { font-size: 16px; color: var(--ink-70); }
+  .caveat { margin: 18px 0 0; font-size: 15.5px; color: var(--ink-70); }
+
+  /* CHAIN */
+  .chain { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; position: relative; }
+  .chain::before { content: ''; position: absolute; left: 4%; right: 4%; top: 50%; height: 7px; margin-top: -3px; background: var(--oxide); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
+  .chain-step { position: relative; z-index: 1; background: var(--paper); border: 1px solid rgba(26, 29, 38, 0.35); border-radius: 3px; padding: 14px 14px 12px; display: grid; gap: 4px; box-shadow: 0 2px 0 rgba(26, 29, 38, 0.15); }
+  .chain-step--trained { border: 2px dashed var(--red); }
+  .chain-what { font: 700 20px/1.05 var(--display); text-transform: uppercase; letter-spacing: 0.02em; }
+  .chain-step--trained .chain-what { color: var(--red); }
+  .chain-note { font-size: 14.5px; color: var(--ink-70); line-height: 1.35; }
+
+  /* NOTICE */
+  .notice { border: 4px double var(--ink); padding: clamp(18px, 3vw, 32px) clamp(18px, 3.5vw, 40px); background: rgba(255, 255, 255, 0.18); }
+  .notice .h2 { color: var(--red); }
+  .notice-list { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: clamp(24px, 4vw, 56px); }
+  .notice-list li { break-inside: avoid; margin: 0 0 14px; padding-left: 16px; border-left: 3px solid var(--red); font-size: 16.5px; line-height: 1.5; }
+  .notice-list strong { font-weight: 700; color: var(--ink); }
+
+  /* COLOPHON */
+  .colophon { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px clamp(24px, 4vw, 56px); align-items: start; }
+  .colophon-text p { font-size: 15.5px; color: var(--ink-70); max-width: 44em; }
+  .colophon-quote { color: var(--ink); }
+  .cta { display: grid; gap: 12px; justify-items: start; }
+  .cta-link { display: inline-block; font: 700 22px/1 var(--display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--card); background: var(--ink); text-decoration: none; padding: 12px 18px 10px; border-radius: 3px; box-shadow: 0 3px 0 #0b0c10; }
+  .cta-link:hover { background: var(--red); box-shadow: 0 3px 0 #7a2313; }
+  .cta-link--soft { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+  .cta-link--soft:hover { background: transparent; color: var(--red); box-shadow: inset 0 0 0 2px var(--red); }
+
+  @media (max-width: 900px) {
+    .front { grid-template-columns: 1fr; grid-template-areas: 'head' 'deck' 'body'; gap: 26px 0; }
+    .statement { margin-bottom: 0; }
+    .measured > div { grid-template-columns: 1fr; }
+    .chain { grid-template-columns: 1fr 1fr; }
+    .chain::before { left: 50%; right: auto; top: 4%; bottom: 4%; height: auto; width: 7px; margin: 0 0 0 -3px; }
+    .notes-grid--three { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    body { font-size: 16.5px; }
+    .sides, .notes-grid, .ways, .colophon { grid-template-columns: 1fr; }
+    .track-notes, .notice-list { columns: 1; }
+    .chain { grid-template-columns: 1fr; gap: 12px; }
+    .chain::before { left: 22px; }
+    .keys { gap: 4px; }
+    .key { padding: 10px 2px 8px; font-size: 10px; letter-spacing: 0.08em; }
+    .status-words { font-size: 17px; }
+    .title-latin { letter-spacing: 0.12em; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script>
+  const $ = (s: string, r: ParentNode = document) => r.querySelector(s) as HTMLElement;
+  const $$ = (s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as HTMLElement[];
+
+  interface Track { el: HTMLElement; audio: HTMLAudioElement; btn: HTMLButtonElement; side: 'A' | 'B'; index: number; who: string; text: string; desc: string; seconds: number; exp: boolean; kind: string; }
+
+  const tracks: Track[] = $$('.track').map((el) => ({
+    el,
+    audio: el.querySelector('audio') as HTMLAudioElement,
+    btn: el.querySelector('.track-play') as HTMLButtonElement,
+    side: el.dataset.side as 'A' | 'B',
+    index: Number(el.dataset.index),
+    who: el.dataset.who || '',
+    text: el.dataset.text || '',
+    desc: el.dataset.desc || '',
+    seconds: Number(el.dataset.seconds),
+    exp: el.dataset.exp === '1',
+    kind: el.dataset.kind || '',
+  }));
+  const sides = {
+    A: tracks.filter((t) => t.side === 'A').sort((a, b) => a.index - b.index),
+    B: tracks.filter((t) => t.side === 'B').sort((a, b) => a.index - b.index),
+  };
+  const total = { A: sides.A.reduce((s, t) => s + t.seconds, 0), B: sides.B.reduce((s, t) => s + t.seconds, 0) };
+
+  const cassette = $('#cassette');
+  const keyPlay = $('[data-act="play"]') as HTMLButtonElement;
+  const keyFlip = $('[data-act="flip"]') as HTMLButtonElement;
+  const stSide = $('[data-status-side]');
+  const stWho = $('[data-status-who]');
+  const stKind = $('[data-status-kind]');
+  const stWords = $('[data-status-words]');
+  const stNote = $('[data-status-note]');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const R_MIN = 11, R_MAX = 28;
+  const state = { side: 'A' as 'A' | 'B', i: 0, playing: false, ended: false };
+  let raf = 0;
+
+  const current = () => sides[state.side][state.i];
+
+  function packs(face: 'A' | 'B', f: number) {
+    const el = $(`.face[data-face="${face}"]`);
+    const span = R_MAX * R_MAX - R_MIN * R_MIN;
+    const rl = Math.sqrt(R_MAX * R_MAX - f * span);
+    const rr = Math.sqrt(R_MIN * R_MIN + f * span);
+    $('.pack--l', el).setAttribute('r', rl.toFixed(2));
+    $('.pack--r', el).setAttribute('r', rr.toFixed(2));
+  }
+
+  function progress() {
+    const t = current();
+    const before = sides[state.side].slice(0, state.i).reduce((s, x) => s + x.seconds, 0);
+    const pos = state.ended ? total[state.side] : before + Math.min(t.audio.currentTime || 0, t.seconds);
+    packs(state.side, Math.max(0, Math.min(1, pos / total[state.side])));
+  }
+
+  function writeLabel(t: Track) {
+    const line = $(`.face[data-face="${t.side}"] [data-hand-line]`);
+    const next = t.side === 'A' ? t.desc : t.text;
+    if (line.textContent === next) return;
+    line.textContent = next;
+    if (reduced) return;
+    line.classList.remove('is-writing');
+    void line.offsetWidth;
+    line.classList.add('is-writing');
+  }
+
+  function render() {
+    const t = current();
+    stSide.textContent = state.ended ? `End of side ${state.side}` : `Side ${state.side}`;
+    stWho.textContent = state.ended ? (state.side === 'A' ? 'turn over for the scene' : 'turn over for the voices') : t.who;
+    stKind.textContent = state.ended ? '' : ` · ${t.kind === 'seed' ? 'seed clip' : 'line'} · ${t.seconds.toFixed(1)} s`;
+    stWords.textContent = t.text;
+    stNote.hidden = !t.exp;
+    tracks.forEach((x) => {
+      const isCur = x === t;
+      x.el.classList.toggle('is-current', isCur);
+      x.btn.setAttribute('aria-pressed', String(isCur && state.playing));
+      x.btn.setAttribute('aria-label', `${isCur && state.playing ? 'Stop' : 'Play'} the ${x.who} ${x.kind === 'seed' ? 'seed clip' : 'line'}`);
+    });
+    keyPlay.setAttribute('aria-pressed', String(state.playing));
+    keyPlay.classList.toggle('is-down', state.playing);
+    keyFlip.setAttribute('aria-pressed', String(state.side === 'B'));
+    cassette.classList.toggle('is-playing', state.playing);
+    cassette.classList.toggle('is-b', state.side === 'B');
+    writeLabel(t);
+    progress();
+  }
+
+  function stopAll() {
+    tracks.forEach((x) => { if (!x.audio.paused) x.audio.pause(); });
+  }
+
+  function loop() {
+    progress();
+    if (state.playing) raf = requestAnimationFrame(loop);
+  }
+
+  function load(side: 'A' | 'B', i: number) {
+    const wasPlaying = state.playing;
+    const t = current();
+    stopAll();
+    t.audio.currentTime = 0;
+    state.side = side;
+    state.i = i;
+    state.playing = false;
+    state.ended = false;
+    render();
+    return wasPlaying;
+  }
+
+  async function play() {
+    if (state.ended) { load(state.side, 0); }
+    const t = current();
+    stopAll();
+    try {
+      await t.audio.play();
+      state.playing = true;
+      state.ended = false;
+      render();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(loop);
+    } catch {
+      state.playing = false;
+      render();
+    }
+  }
+
+  function stop() {
+    const t = current();
+    stopAll();
+    t.audio.currentTime = 0;
+    state.playing = false;
+    state.ended = false;
+    cancelAnimationFrame(raf);
+    render();
+  }
+
+  function step(delta: number) {
+    const list = sides[state.side];
+    const next = Math.max(0, Math.min(list.length - 1, (state.ended ? list.length - 1 : state.i) + delta));
+    const resume = load(state.side, next);
+    if (resume) play();
+  }
+
+  function flip() {
+    load(state.side === 'A' ? 'B' : 'A', 0);
+    // A fresh side: tape fully on the left hub.
+    packs(state.side, 0);
+  }
+
+  tracks.forEach((t) => {
+    t.audio.addEventListener('ended', () => {
+      if (t !== current()) return;
+      const list = sides[state.side];
+      if (state.i + 1 < list.length) {
+        state.playing = false;
+        cancelAnimationFrame(raf);
+        window.setTimeout(() => { load(state.side, state.i + 1); play(); }, 380);
+      } else {
+        state.playing = false;
+        state.ended = true;
+        cancelAnimationFrame(raf);
+        render();
+      }
+    });
+    t.btn.addEventListener('click', () => {
+      if (t === current() && state.playing) { stop(); return; }
+      load(t.side, t.index);
+      play();
+    });
+  });
+
+  $$('.key').forEach((k) => {
+    k.addEventListener('click', () => {
+      const act = k.dataset.act;
+      if (act === 'play') { if (!state.playing) play(); }
+      else if (act === 'stop') stop();
+      else if (act === 'prev') step(-1);
+      else if (act === 'next') step(1);
+      else if (act === 'flip') flip();
+    });
+  });
+
+  packs('A', 0);
+  packs('B', 0);
+  render();
+</script>

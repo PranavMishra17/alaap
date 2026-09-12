@@ -1,0 +1,822 @@
+---
+// 09 · audition — the actor and the casting room. One casting file, read top to bottom.
+import { name, meaning, links, characters, seeds, scene, byCharacter, clipCaveats } from '../../content/alaap';
+
+const roleLabel = (id: string) => id.charAt(0).toUpperCase() + id.slice(1);
+const roles = characters.map((c) => ({
+  ...c,
+  label: roleLabel(c.id),
+  seed: seeds.find((s) => s.character === c.id)!,
+  lines: byCharacter(c.id).filter((k) => k.kind === 'line'),
+}));
+const mentor = roles[0];
+const scout = roles[1];
+const secs = (n: number) => `${n.toFixed(1)} s`;
+const mentorQueue = [mentor.seed.id, ...mentor.lines.map((l) => l.id)].join(',');
+const pairQueue = [mentor.seed.id, scout.seed.id].join(',');
+---
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap — casting notice</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Hind:wght@400;500;600;700&family=Khand:wght@500;700&display=swap" rel="stylesheet" />
+    <script is:inline>document.documentElement.className = 'js';</script>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- ─── The notice ─────────────────────────────────────────────── -->
+      <header class="notice">
+        <p class="strip kicker">
+          <span>Casting notice</span>
+          <span>{name.latin} · <span lang="hi">{name.devanagari}</span></span>
+          <span>Posted 2026-09-05</span>
+        </p>
+        <h1 class="notice__title">Casting</h1>
+        <p class="notice__thesis">Three speaking roles. No headshot, no reel, no recording of any kind. Each part is cast from a written description.</p>
+
+        <dl class="form">
+          <dt class="kicker">Project</dt>
+          <dd>{name.latin} · <span lang="hi">{name.devanagari}</span>: {meaning}. A voice mapping out its own possibility space. That is exactly what description-to-voice design does.</dd>
+          <dt class="kicker">What happens</dt>
+          <dd>You describe a character in ordinary language. You get back a voice that has never existed. Then you use that voice for any line of dialogue you write, and it stays the same character every time.</dd>
+          <dt class="kicker">Who it is for</dt>
+          <dd>People making games, animation, audio drama, dubbing, interactive fiction: anyone who needs many distinct speaking characters and cannot hire a cast for each one.</dd>
+          <dt class="kicker">Languages</dt>
+          <dd>English, Hindi, Bengali, Tamil. The Indian-language engine covers 22 Indian languages; four measured so far.</dd>
+          <dt class="kicker">Runs on</dt>
+          <dd>One laptop GPU (6 GB).</dd>
+          <dt class="kicker">Status</dt>
+          <dd>A working research system, not a product. No signup, no hosted service, no API. <a href={links.repo}>Read the research</a>.</dd>
+        </dl>
+      </header>
+
+      <!-- ─── The breakdown: three roles, three headshots with no face ──── -->
+      <section class="doc" id="roles" aria-labelledby="roles-h">
+        <div class="doc__head">
+          <h2 id="roles-h">The roles</h2>
+          <p class="kicker">Breakdown · three roles · one description each</p>
+        </div>
+        <p class="doc__intro">Each role was cast from nothing but the line under its name. When the system mints a voice it stores a short seed clip alongside the identity; that seed is the slate you hear here. There is no photograph on file because no recording of anyone was ever taken.</p>
+
+        <ul class="roles">
+          {roles.map((r) => (
+            <li class="role" data-seed={r.seed.id}>
+              <figure class="print">
+                <div class="print__photo">
+                  <canvas data-seed={r.seed.id} data-src={r.seed.src} role="img" aria-label={`The ${r.label} slate drawn as a silhouette: how loud the recording is from start to finish, top to bottom, mirrored.`}></canvas>
+                  <p class="print__nophoto">No photograph on file</p>
+                </div>
+                <figcaption class="print__name">{r.label}</figcaption>
+              </figure>
+              <dl class="role__meta">
+                <dt class="kicker">Description given</dt>
+                <dd class="role__desc">{r.description}</dd>
+              </dl>
+              <div class="slate">
+                <button class="play js-only" type="button" data-play={r.seed.id} aria-pressed="false">
+                  <svg class="play__go" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l9 5-9 5z"/></svg>
+                  <svg class="play__stop" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0h4v10H0zM6 0h4v10H6z"/></svg>
+                  <span class="play__go">Play</span><span class="play__stop">Pause</span>
+                  <span class="sr-only"> the {r.label} slate</span>
+                </button>
+                <p class="slate__words">
+                  <span class="kicker">Slate</span>
+                  “{r.seed.text}”
+                  <span class="slate__len">{secs(r.seed.seconds)}</span>
+                </p>
+                <audio preload="none" controls src={r.seed.src} data-clip={r.seed.id} data-label={`${r.label}, slate: “${r.seed.text}”`}></audio>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div class="notes">
+          <p>The portrait is the slate’s own shape: how loud the recording is from its first moment to its last, drawn top to bottom and mirrored. It is the only likeness on file.</p>
+          <p>Nothing on this page is generated live. Every clip was rendered by the end-to-end demo on 2026-09-05: three characters minted from text, a five-line scene, about four minutes on one laptop GPU. The players replay that output.</p>
+          <p>{clipCaveats.watermark}</p>
+          <p>{clipCaveats.englishOnly}</p>
+        </div>
+      </section>
+
+      <!-- ─── The sides: the five-line scene as script pages ───────────── -->
+      <section class="doc" id="sides" aria-labelledby="sides-h">
+        <div class="doc__head">
+          <h2 id="sides-h">The sides</h2>
+          <p class="kicker">Sides · five lines · rendered 2026-09-05</p>
+        </div>
+        <p class="doc__intro">The five-line scene from the demo, in reading order. The parenthetical is where a director’s note would go. Where it says the setting was experimental, listen to the line as a voice sample, not a performance. A line stays highlighted once it has been heard.</p>
+
+        <article class="script">
+          <p class="script__head"><span>{name.latin} · sides</span><span>All lines watermarked</span></p>
+          <ol class="cues">
+            {scene.map((l) => (
+              <li class="cue" data-clip={l.id}>
+                <div class="cue__ctl">
+                  <button class="play js-only" type="button" data-play={l.id} aria-pressed="false">
+                    <svg class="play__go" viewBox="0 0 10 10" aria-hidden="true"><path d="M1 0l9 5-9 5z"/></svg>
+                    <svg class="play__stop" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0h4v10H0zM6 0h4v10H6z"/></svg>
+                    <span class="play__go">Play</span><span class="play__stop">Pause</span>
+                    <span class="sr-only"> {roleLabel(l.character)}: {l.text}</span>
+                  </button>
+                  <span class="cue__len">{secs(l.seconds)}</span>
+                </div>
+                <div class="cue__body">
+                  <span class="cue__who">{roleLabel(l.character)}</span>
+                  <span class="cue__paren">{l.experimentalEmotionSetting ? '(experimental emotion setting, not validated)' : '(no direction)'}</span>
+                  <span class="cue__words">{l.text}</span>
+                  <audio preload="none" controls src={l.src} data-clip={l.id} data-label={`${roleLabel(l.character)}: “${l.text}”`}></audio>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div class="script__foot">
+            <p>{clipCaveats.emotionSetting}</p>
+            <p>{clipCaveats.watermark}</p>
+          </div>
+        </article>
+
+        <!-- ─── Callbacks: the one mechanic ──────────────────────────── -->
+        <div class="callbacks js-only">
+          <div class="callback">
+            <h3>Call back the mentor</h3>
+            <button class="queue" type="button" data-queue={mentorQueue} aria-pressed="false">Slate, then both lines</button>
+            <p>One voice, three sentences, back to back. Most tools generate a voice each time you ask. Here the character’s voice is stored as an identity and re-used, so the same character sounds like the same person across every line, every scene and every session. That consistency is measured, not hoped for.</p>
+          </div>
+          <div class="callback">
+            <h3>Mentor, then scout</h3>
+            <button class="queue" type="button" data-queue={pairQueue} aria-pressed="false">Two slates in a row</button>
+            <p>Two descriptions, two voices. Verified as distinct people by a separate speaker-recognition system that has never seen the generator: an independent check, not the system marking its own homework. Each invented voice also sits clearly apart from the nearest real voice the system learned from, so these are new voices, not real people wearing a label.</p>
+          </div>
+          <p class="queue__now" id="now-playing" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- ─── Conditions of the call: the four differentiators ─────────── -->
+      <section class="doc" id="conditions" aria-labelledby="cond-h">
+        <div class="doc__head">
+          <h2 id="cond-h">Conditions of the call</h2>
+          <p class="kicker">Notice · four conditions · all four hold</p>
+        </div>
+        <ul class="conds">
+          <li class="cond">
+            <h3>No recording is ever taken</h3>
+            <p>There is no voice cloning here, and no one uploads their own audio. Voices are created from a written description. That sidesteps the consent and impersonation problem entirely: you cannot accidentally clone a real person if the system never accepts a recording.</p>
+          </li>
+          <li class="cond">
+            <h3>A voice is a thing you keep, not a setting you re-guess</h3>
+            <p>Most tools generate a voice each time you ask. Here the character’s voice is stored as an identity and re-used. The same character sounds like the same person across every line, every scene, and every session. That consistency is measured, not hoped for.</p>
+          </li>
+          <li class="cond">
+            <h3>Who is speaking and what is being said are genuinely separate</h3>
+            <p>The system holds a character’s identity apart from the words. That is why one character can say anything without their voice changing, and why changing the line never changes the person. This was verified rather than assumed: when the same audio content is played through two different identities, the words come out identically. The measured error between them was exactly zero on every line tested.</p>
+          </li>
+          <li class="cond">
+            <h3>It knows what it does not know</h3>
+            <p>Every capability is measured against a control, and the honest limits are published alongside the results. Roughly twenty findings in this project were wrong on the first attempt and caught by a check, including one where an entire experiment produced fluent-sounding speech that was saying different words than requested, and nothing errored. That is written up publicly rather than quietly fixed.</p>
+            <blockquote>A suspiciously good or suspiciously bad number is a bug report about your setup.</blockquote>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ─── Routing slip: how the room works ─────────────────────────── -->
+      <section class="doc" id="room" aria-labelledby="room-h">
+        <div class="doc__head">
+          <h2 id="room-h">How the room works</h2>
+          <p class="kicker">Routing slip · a description becomes a take</p>
+        </div>
+        <ol class="flow">
+          <li><b>Your description</b><span>Ordinary language. The only input there is.</span></li>
+          <li class="is-learn"><b>The mapper</b><span>The only part that learns. Everything else is used as-is.</span></li>
+          <li><b>A voice identity</b><span>Small and storable. Saved with a short seed clip and the engine version that made it.</span></li>
+          <li><b>The voice engine</b><span>Never modified, swappable. A better engine can be dropped in without rebuilding everything.</span></li>
+          <li><b>Audio</b><span>Watermarked and logged from the first render, plus a manifest a game engine can read.</span></li>
+        </ol>
+        <dl class="ideas">
+          <dt>Only one small piece is trained</dt>
+          <dd>The speech engine is used as-is and never altered, so a better engine can be swapped in without rebuilding everything.</dd>
+          <dt>The identity is a small, storable thing</dt>
+          <dd>That is what makes a character persistent: it can be saved, versioned and handed to someone else. The identity is who the character is; each line is a separate performance.</dd>
+          <dt>Two ways to answer a description</dt>
+          <dd>Invent a new voice, or find the closest match in an existing library. Both are measured; the numbers are in the notes below.</dd>
+          <dt>A separate checker</dt>
+          <dd>Whether two voices are the same person is judged by a separate speaker-recognition system that never sees the engine’s internals.</dd>
+          <dt>House rules</dt>
+          <dd>Never accept a user’s audio. Watermark from the first render. Store timbre, not performance. Do not start the next stage until this one is measured. 114 automated checks guard these.</dd>
+        </dl>
+      </section>
+
+      <!-- ─── Languages ─────────────────────────────────────────────── -->
+      <section class="doc" id="languages" aria-labelledby="lang-h">
+        <div class="doc__head">
+          <h2 id="lang-h">Why the call is in Indian languages</h2>
+          <p class="kicker">Languages · four measured · one line listened to</p>
+        </div>
+        <div class="prose">
+          <p>The tools that do this well mostly do it in English. Indian-language creators either use a handful of stock voices that everyone else is also using, or they hire actors. This project treats Hindi, Bengali and Tamil as first-class, not as an afterthought port. Indic is the stated reason the project exists.</p>
+          <p>The Indian-language tools that exist ship a fixed menu of voices, and every project draws from the same menu. In the project’s own measurements the Hindi path scored higher than the English path on all three identity checks, and the Indian-language speech data it builds on holds more distinct speakers than any English set it has, under a licence that allows commercial use.</p>
+        </div>
+        <figure class="hindi">
+          <p lang="hi">नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है</p>
+          <figcaption>The one rendered line a fluent Hindi speaker has confirmed. They were told the sentence and asked “does it say this?”, not “does it sound right?”. Our plain translation, not a project claim: “Hello, how are you? The weather is very nice today.” The Hindi clip itself does not ship, for the licence reason above.</figcaption>
+        </figure>
+      </section>
+
+      <!-- ─── On file: checked, and not yet ────────────────────────────── -->
+      <section class="doc" id="file" aria-labelledby="file-h">
+        <div class="doc__head">
+          <h2 id="file-h">Casting director’s notes</h2>
+          <p class="kicker">On file · ticked means measured · empty means not there yet</p>
+        </div>
+        <p class="doc__intro">Here is what we built, here is what we measured, here is what is missing. Every ticked item keeps its caveat within reach.</p>
+
+        <div class="file">
+        <div class="file__col">
+        <h3 class="check__sub">Checked</h3>
+        <ul class="check">
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>It works end to end today</h3>
+              <p>On one laptop GPU, in English, Hindi, Bengali and Tamil. Describe a character, get a voice, render a scene of dialogue, and out comes watermarked audio plus a file a game engine can read. The demo mints three characters from text, renders a five-line scene, watermarks everything and writes the manifest in about four minutes. The clips above are that run.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>An invented voice is as clear as a recorded one</h3>
+              <p>The measured difference was tiny, leaned slightly in the invented voice’s favour, and was smaller than the difference between two real speakers, which was six times larger. Read that as no detectable difference, not as invented voices being better.</p>
+              <p class="caveat"><b>Control that had to pass first:</b> every version must come out the same length before any score is read, or the run aborts.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>Invented voices are recognisably distinct people</h3>
+              <p>Verified by a separate speaker-recognition system that has never seen the generator. Each invented voice also sits clearly apart from the nearest real voice the system learned from.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>A character stays itself</h3>
+              <p>Across different sentences, more consistently than a real person does across different recordings. Unsurprising once you think about it: a stored voice has no bad-throat day, no change of microphone, no mood.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>The Hindi says what it should, for one line</h3>
+              <p>A fluent Hindi speaker has confirmed one rendered line says the target sentence, the one shown above. That is the check an earlier, mis-rendered batch of audio failed.</p>
+              <p class="caveat"><b>Still to be checked:</b> the other three voices and the other two lines.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>A blind listening test found a real problem, and it was fixed</h3>
+              <p>Pairs the system called different were heard as the same person about half the time. The threshold was raised. That removed 10 duplicate voices from a set of 50 and cost 3 percent of measured variety.</p>
+              <p class="caveat"><b>Caveat:</b> the test was small, 8 pairs and one listener with every control answered correctly. It found the problem but does not settle the exact threshold, and the English threshold has not had its own listening test.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>Pacing is controllable within a measured range</h3>
+              <p>You can slow a character to about two-thirds of normal speed or push them to about 1.4 times, and they stay the same person saying the same words. Outside that range the identity fades gradually rather than breaking. A listener noted the slow extreme starts to sound processed; the range they called clean is narrower, about 0.8 to 1.25 times.</p>
+              <div class="ruler" role="img" aria-label="A ruler of playback speed. The wide band marks the measured range, about two-thirds to about 1.4 times normal. The narrow band marks the range a listener called clean, about 0.8 to 1.25 times.">
+                <span class="ruler__band ruler__band--measured"></span>
+                <span class="ruler__band ruler__band--clean"></span>
+                <span class="ruler__track"></span>
+                <span class="ruler__tick" style="left:45.5%"></span>
+                <span class="ruler__lab ruler__lab--up" style="left:15.2%">about two-thirds</span>
+                <span class="ruler__lab ruler__lab--up" style="left:84.5%">about 1.4 times</span>
+                <span class="ruler__lab ruler__lab--down" style="left:27.3%">about 0.8</span>
+                <span class="ruler__lab ruler__lab--down" style="left:45.5%">normal</span>
+                <span class="ruler__lab ruler__lab--down" style="left:68.2%">about 1.25</span>
+              </div>
+              <p class="caveat">An illustration of the measured range, not a control. No live re-timing happens on this page.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>Two ways to answer a description</h3>
+              <p>Invent a new voice, or find the closest match in an existing library of voices. Inventing gives you a character nobody else has; finding gives you higher accuracy and studio quality. Neither is strictly better.</p>
+              <p>Finding, on a library of 141 real Hindi voices: two thirds of descriptions get a voice that matches on every trait named, and 87 percent land within one step. When the description names only a couple of traits, the way people actually write, a bit over half match exactly on the traits named. About one in five would by chance. The same method on a library of 2,500 English voices reaches 88.5%, and it replicates in Bengali within a point or two.</p>
+              <p>Reach: finding reaches 87% of the variety the library actually holds; inventing reached 37% before two mis-set settings were fixed, and the fix raised the invented catalogue from 14 to 22 distinct Hindi voices and from 23 to 41 English.</p>
+              <p class="caveat"><b>What finding cannot do:</b> produce a voice the library does not contain; guarantee a new character is unique, since two descriptions can return the same voice; and the library is someone else’s, so every character in every project draws from the same shelf. The library measured was real recorded speakers standing in for a studio library, and no commercial system has been measured.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l6 6L22 3" /></svg></span>
+            <div>
+              <h3>Watermarked and logged from the first render</h3>
+              <p>Every render is watermarked and logged, from the first output, not added later. The watermark is AudioSeal. Output includes a manifest a game engine can consume: this is built for a pipeline, not a demo button. The manifest’s own disclosure line: “AI-generated synthetic speech. All audio carries an AudioSeal watermark.”</p>
+            </div>
+          </li>
+        </ul>
+        </div>
+
+        <div class="file__col">
+        <h3 class="check__sub">Not there yet</h3>
+        <ul class="check check--not">
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>A product</h3>
+              <p>This is a working research system, not a product. There is no signup, no hosted service, no API.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>Emotional direction</h3>
+              <p>Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream: the engine’s documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between four tagged versions of the same line.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>A large catalogue</h3>
+              <p>Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project’s own measure. The limit is understood and measured rather than mysterious: the real speakers the system learned from hold about 38 to 48 distinguishable voices, and the project measured exactly where its own method loses variety.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>Something that can ship</h3>
+              <p>It cannot be shipped as a product in its current form for licensing reasons, which are documented. The Indian-language engine’s training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>Much listening</h3>
+              <p>Most results are automatic measurements. One listener, a handful of pairs.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>A comparison against a commercial system</h3>
+              <p>None has been measured.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>Indian-language clips on this page</h3>
+              <p>The clips here are English. Hindi renders exist and a native speaker has checked one, but the Indian-language engine’s licence is research-only, so those clips do not ship, not even here.</p>
+            </div>
+          </li>
+          <li>
+            <span class="box"></span>
+            <div>
+              <h3>Validated direction on the demo lines</h3>
+              <p>Three of the five demo lines were rendered with an experimental emotion setting whose effect has not been validated on this engine. Listen to them as voice samples, not performances.</p>
+            </div>
+          </li>
+        </ul>
+        </div>
+        </div>
+      </section>
+
+      <!-- ─── Thank you ─────────────────────────────────────────────── -->
+      <footer class="close">
+        <div>
+          <h2>Thank you. We won’t be in touch.</h2>
+          <p class="close__p">There is no email and no signup. The repository is where this lives, and where every claim on this page is sourced.</p>
+          <a class="cta" href={links.repo}>Read the research</a>
+          <a class="cta cta--pen" href={links.issues}>Corrections welcome</a>
+          <p class="close__p">If a claim here is wrong, an issue with a primary source is more useful than almost anything else.</p>
+        </div>
+        <div>
+          <dl class="form form--small">
+            <dt class="kicker">Signed in</dt>
+            <dd>Research pass 2026-09-02. Implementation and measurement 2026-09-05.</dd>
+            <dt class="kicker">Licence</dt>
+            <dd>Research and documentation CC-BY-4.0. Code MIT. No model weights and no generated Indian-language audio ship.</dd>
+            <dt class="kicker">Clips</dt>
+            <dd>English, watermarked, from the end-to-end demo run on 2026-09-05.</dd>
+          </dl>
+        </div>
+      </footer>
+
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light;
+    --paper: #EDEEE9;
+    --ink: #17171A;
+    --pen: #1E3F96;
+    --mark: #F7E64B;
+    --pencil: #6F7069;
+    --photo: #C9CAC4;
+    --white: #FAFAF7;
+    --display: 'Khand', 'Arial Narrow', 'Roboto Condensed', Impact, sans-serif;
+    --body: 'Hind', 'Noto Sans Devanagari', 'Segoe UI', Arial, sans-serif;
+    --mono: 'Courier Prime', 'Courier New', Courier, monospace;
+    --measure: 64ch;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); min-height: 100vh; }
+  h1, h2, h3, h4, p, dl, dd, dt, ol, ul, figure, blockquote { margin: 0; }
+  a { color: var(--pen); text-decoration-thickness: 1px; text-underline-offset: .16em; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--pen); outline-offset: 3px; }
+  button { font: inherit; }
+  svg { display: block; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .js audio[controls] { display: none; }
+  .no-js .js-only { display: none; }
+  audio[controls] { display: block; width: 100%; max-width: 22rem; margin-top: .6rem; }
+
+  .wrap { max-width: 76rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3rem); }
+  .kicker { font: 600 .72rem/1.35 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--pencil); }
+  .prose { max-width: var(--measure); }
+  .prose p + p { margin-top: .9em; }
+
+  /* ─── the notice ─── */
+  .notice { padding: 1.1rem 0 3.5rem; }
+  .strip { display: flex; flex-wrap: wrap; gap: .4rem 2rem; justify-content: space-between; border-bottom: 1px solid var(--ink); padding-bottom: .6rem; color: var(--ink); }
+  .notice__title { font: 700 clamp(4.75rem, 17vw, 15rem)/.82 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 1.6rem 0 0 -.04em; }
+  .notice__thesis { font: 500 clamp(1.5rem, 3vw, 2.35rem)/1.12 var(--display); max-width: 27ch; margin: .8rem 0 2.5rem; }
+  .form { display: grid; grid-template-columns: 10rem minmax(0, 1fr); border-top: 3px solid var(--ink); }
+  .form dt { padding: .9rem 0 .6rem; border-bottom: 1px solid var(--ink); }
+  .form dd { padding: .7rem 0 .75rem 1rem; border-bottom: 1px solid var(--ink); font-family: var(--mono); font-size: .97rem; line-height: 1.5; max-width: 72ch; }
+  .form--small { border-top-width: 1px; }
+  .form--small dt { padding-top: .7rem; }
+  .form--small dd { font-size: .88rem; }
+  @media (max-width: 640px) {
+    .form { grid-template-columns: 1fr; }
+    .form dt { border-bottom: 0; padding-bottom: 0; }
+    .form dd { padding-left: 0; padding-top: .25rem; }
+  }
+
+  /* ─── documents in the file ─── */
+  .doc { padding-top: 5rem; }
+  .doc__head { border-top: 3px solid var(--ink); padding-top: .6rem; margin-bottom: 1.6rem; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem 2rem; }
+  .doc__head h2 { font: 700 clamp(2.2rem, 4vw, 3rem)/1 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+  .doc__intro { max-width: var(--measure); font-size: 1.1rem; margin-bottom: 2.4rem; }
+
+  /* ─── the roles: headshots with no face ─── */
+  .roles { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem 2rem; max-width: 66rem; }
+  .role { display: grid; gap: 1.1rem; align-content: start; }
+  .print { background: var(--white); padding: .7rem .7rem 0; box-shadow: 0 1px 0 rgba(23, 23, 26, .14), 0 18px 30px -18px rgba(23, 23, 26, .5); }
+  .print__photo { position: relative; aspect-ratio: 4 / 5; background: var(--photo); overflow: hidden; }
+  .print__photo canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .print__nophoto { position: absolute; left: .55rem; top: .5rem; padding: .1rem .15rem; background: var(--photo); font: 400 .66rem/1.3 var(--mono); letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+  .print__name { font: 700 1.6rem/1 var(--display); text-transform: uppercase; letter-spacing: .08em; text-align: center; padding: .75rem 0 .6rem; }
+  .role__meta { display: grid; gap: .3rem; }
+  .role__desc { font-family: var(--mono); font-size: .97rem; line-height: 1.5; }
+  .role__desc::before { content: '\201C'; }
+  .role__desc::after { content: '\201D'; }
+  .slate { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem .85rem; align-items: start; }
+  .slate audio { grid-column: 1 / -1; }
+  .slate__words { font-family: var(--mono); font-size: .97rem; line-height: 1.5; }
+  .slate__words .kicker { display: block; margin-bottom: .1rem; }
+  .slate__len { display: block; font: 500 .75rem/1.4 var(--body); color: var(--pencil); }
+  @media (max-width: 820px) {
+    .roles { grid-template-columns: 1fr; gap: 2.25rem; }
+    .role { grid-template-columns: 8.5rem minmax(0, 1fr); gap: .6rem 1.25rem; }
+    .print { grid-row: 1 / 3; }
+    .print__name { font-size: 1.15rem; padding: .55rem 0 .45rem; }
+    .print__nophoto { font-size: .55rem; left: .45rem; top: .4rem; }
+  }
+  @media (max-width: 420px) { .role { grid-template-columns: 7rem minmax(0, 1fr); gap: .5rem .9rem; } }
+
+  /* ─── play controls ─── */
+  .play { display: inline-flex; align-items: center; gap: .45rem; font: 600 .74rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; background: var(--ink); color: var(--paper); border: 2px solid var(--ink); padding: .52rem .7rem .4rem; cursor: pointer; border-radius: 2px; white-space: nowrap; }
+  .play svg { width: .62rem; height: .62rem; fill: currentColor; flex: none; }
+  .play .play__stop { display: none; }
+  .play[aria-pressed="true"] { background: var(--pen); border-color: var(--pen); }
+  .play[aria-pressed="true"] .play__go { display: none; }
+  .play[aria-pressed="true"] .play__stop { display: block; }
+
+  .notes { margin-top: 2.75rem; max-width: var(--measure); display: grid; gap: .7rem; }
+  .notes p { font-size: .95rem; }
+
+  /* ─── the sides ─── */
+  .script { background: var(--white); max-width: 48rem; margin: 0 auto; padding: clamp(1.5rem, 5vw, 3.25rem) clamp(1rem, 6vw, 4rem) clamp(2rem, 5vw, 3.25rem); box-shadow: 0 1px 0 rgba(23, 23, 26, .14), 0 26px 40px -26px rgba(23, 23, 26, .45); font-family: var(--mono); font-size: 1rem; line-height: 1.5; }
+  .script__head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1.5rem; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; border-bottom: 1px solid var(--ink); padding-bottom: .6rem; margin-bottom: 2.25rem; }
+  .cues { list-style: none; padding: 0; display: grid; gap: 1.9rem; }
+  .cue { display: grid; grid-template-columns: 5.6rem minmax(0, 1fr); gap: .4rem 1rem; align-items: start; }
+  .cue__ctl { display: grid; gap: .35rem; justify-items: start; padding-top: .15rem; }
+  .cue__len { font: 500 .74rem/1.4 var(--body); color: var(--pencil); }
+  .cue__body { padding-left: clamp(0rem, 9vw, 5.5rem); }
+  .cue__who { display: block; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding-left: clamp(0rem, 8vw, 5rem); }
+  .cue.is-playing .cue__who { color: var(--pen); }
+  .cue__paren { display: block; font-style: italic; font-size: .9rem; padding-left: clamp(0rem, 4vw, 2.25rem); color: var(--pencil); }
+  .cue__words { background-image: linear-gradient(var(--mark), var(--mark)); background-repeat: no-repeat; background-size: calc(var(--p, 0) * 100%) 100%; -webkit-box-decoration-break: slice; box-decoration-break: slice; padding: .08em 0; }
+  .script__foot { margin-top: 2.5rem; border-top: 1px solid var(--ink); padding-top: 1rem; font-family: var(--body); font-size: .9rem; display: grid; gap: .6rem; }
+  @media (max-width: 520px) {
+    .cue { grid-template-columns: 1fr; }
+    .cue__ctl { grid-row: 2; display: flex; align-items: center; gap: .75rem; }
+    .cue__body { padding-left: 0; }
+  }
+
+  /* ─── callbacks ─── */
+  .callbacks { margin: 3.25rem auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 3rem; max-width: 66rem; }
+  .callback { border-top: 2px solid var(--pen); padding-top: 1rem; }
+  .callback h3 { font: 700 1.4rem/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .5rem; }
+  .callback p { font-size: .95rem; max-width: 46ch; }
+  .queue { display: inline-flex; gap: .5rem; align-items: center; font: 600 .78rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--pen); background: transparent; border: 2px solid var(--pen); padding: .62rem .9rem .5rem; border-radius: 2px; cursor: pointer; margin: .2rem 0 .9rem; }
+  .queue::before { content: ''; width: .55rem; height: .55rem; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+  .queue[aria-pressed="true"] { background: var(--pen); color: var(--paper); }
+  .queue[aria-pressed="true"]::before { clip-path: none; }
+  .queue__now { grid-column: 1 / -1; font: 500 .85rem/1.4 var(--body); color: var(--pen); min-height: 1.3em; }
+  .queue__now:empty::before { content: 'Nothing playing.'; color: var(--pencil); }
+  @media (max-width: 820px) { .callbacks { grid-template-columns: 1fr; } }
+
+  /* ─── conditions ─── */
+  .conds { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.6rem 3.5rem; max-width: 70rem; }
+  .cond h3 { font: 700 1.65rem/1.05 var(--display); text-transform: uppercase; letter-spacing: .02em; margin-bottom: .6rem; max-width: 30ch; }
+  .cond p { max-width: 54ch; }
+  .cond blockquote { margin-top: 1rem; padding-left: 1rem; border-left: 3px solid var(--pen); font-family: var(--mono); font-size: .95rem; max-width: 48ch; }
+  @media (max-width: 820px) { .conds { grid-template-columns: 1fr; gap: 2rem; } }
+
+  /* ─── routing slip ─── */
+  .flow { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 2.4rem; margin-bottom: 3rem; }
+  .flow li { position: relative; border-top: 2px solid var(--ink); padding-top: .7rem; }
+  .flow li + li::before { content: '\2192'; position: absolute; left: -1.95rem; top: .5rem; font: 700 1.5rem/1 var(--display); color: var(--pen); }
+  .flow b { display: block; font: 700 1.35rem/1.05 var(--display); text-transform: uppercase; letter-spacing: .03em; margin-bottom: .35rem; }
+  .flow span { display: block; font-size: .9rem; }
+  .flow .is-learn { border-top-color: var(--pen); }
+  .flow .is-learn b { color: var(--pen); }
+  .ideas { display: grid; grid-template-columns: 15rem minmax(0, 1fr); border-top: 1px solid var(--ink); max-width: 70rem; }
+  .ideas dt { font: 700 1.15rem/1.2 var(--display); text-transform: uppercase; letter-spacing: .03em; padding: .9rem 1rem .8rem 0; border-bottom: 1px solid var(--ink); }
+  .ideas dd { padding: .95rem 0 .8rem; border-bottom: 1px solid var(--ink); font-size: .95rem; max-width: 62ch; }
+  @media (max-width: 820px) {
+    .flow { grid-template-columns: 1fr; gap: 1.8rem; }
+    .flow li + li::before { content: '\2193'; left: 0; top: -1.75rem; }
+    .ideas { grid-template-columns: 1fr; }
+    .ideas dt { border-bottom: 0; padding-bottom: 0; }
+    .ideas dd { padding-top: .25rem; }
+  }
+
+  /* ─── languages ─── */
+  .hindi { margin-top: 1.75rem; padding: 1.25rem 1.5rem 1.35rem; border: 2px solid var(--ink); max-width: 42rem; }
+  .hindi [lang="hi"] { font: 500 clamp(1.5rem, 3vw, 1.9rem)/1.55 var(--body); margin-bottom: .6rem; }
+  .hindi figcaption { font-size: .9rem; color: var(--pencil); }
+
+  /* ─── the notes on file ─── */
+  .file { display: grid; grid-template-columns: 1fr; gap: 3rem 4rem; }
+  .file__col { min-width: 0; max-width: 72ch; }
+  @media (min-width: 1100px) {
+    .file { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+    .file__col { max-width: none; }
+  }
+  .check { list-style: none; padding: 0; display: grid; gap: 1.7rem; }
+  .check li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: .95rem; }
+  .box { width: 1.35rem; height: 1.35rem; border: 2px solid var(--ink); margin-top: .35rem; position: relative; }
+  .box svg { position: absolute; left: -.2rem; top: -.55rem; width: 1.9rem; height: 1.9rem; overflow: visible; fill: none; stroke: var(--pen); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .check h3 { font: 700 1.4rem/1.1 var(--display); text-transform: uppercase; letter-spacing: .02em; margin-bottom: .4rem; }
+  .check p + p { margin-top: .7em; }
+  .caveat { color: var(--pencil); font-size: .93rem; }
+  .caveat b { color: var(--ink); font-weight: 600; }
+  .check__sub { font: 700 clamp(1.8rem, 3vw, 2.3rem)/1 var(--display); text-transform: uppercase; letter-spacing: .02em; margin: 0 0 1.5rem; padding-top: 1rem; border-top: 2px solid var(--ink); }
+  .check--not h3 { color: var(--ink); }
+
+  .ruler { position: relative; height: 4.6rem; margin: 1.1rem 0 .4rem; max-width: 36rem; }
+  .ruler__track { position: absolute; left: 0; right: 0; top: 2rem; height: 2px; background: var(--ink); }
+  .ruler__band { position: absolute; top: 1.45rem; height: 1.1rem; background: var(--mark); }
+  .ruler__band--measured { left: 15.2%; width: 69.3%; opacity: .5; }
+  .ruler__band--clean { left: 27.3%; width: 40.9%; top: 1.6rem; height: .8rem; }
+  .ruler__tick { position: absolute; top: 1.35rem; width: 2px; height: 1.3rem; background: var(--ink); transform: translateX(-1px); }
+  .ruler__lab { position: absolute; transform: translateX(-50%); font: 500 .7rem/1.2 var(--body); letter-spacing: .04em; color: var(--pencil); white-space: nowrap; }
+  .ruler__lab--up { top: .1rem; }
+  .ruler__lab--down { top: 2.9rem; }
+
+  /* ─── close ─── */
+  .close { margin-top: 6rem; border-top: 3px solid var(--ink); padding: 2rem 0 3.5rem; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 2rem 4rem; }
+  .close h2 { font: 700 clamp(2.2rem, 5vw, 3.6rem)/1 var(--display); text-transform: uppercase; letter-spacing: .01em; max-width: 14ch; }
+  .close__p { max-width: 46ch; margin: 1rem 0; }
+  .cta { display: inline-flex; font: 600 .82rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: .85rem 1.1rem .7rem; text-decoration: none; border-radius: 2px; border: 2px solid var(--ink); margin: .25rem .5rem .25rem 0; }
+  .cta--pen { background: transparent; color: var(--pen); border-color: var(--pen); }
+  @media (max-width: 820px) { .close { grid-template-columns: 1fr; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+
+<script>
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const INK = '#17171A';
+  const PEN = '#1E3F96';
+  const PHOTO = '#C9CAC4';
+
+  // ─── audio on file ───
+  const audios = new Map<string, HTMLAudioElement>();
+  document.querySelectorAll<HTMLAudioElement>('audio[data-clip]').forEach((a) => audios.set(a.dataset.clip!, a));
+  const cues = new Map<string, HTMLElement>();
+  document.querySelectorAll<HTMLElement>('.cue[data-clip]').forEach((c) => cues.set(c.dataset.clip!, c));
+  const playButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-play]'));
+  const queueButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-queue]'));
+  const status = document.getElementById('now-playing');
+
+  let queue: string[] = [];
+  let activeQueue: HTMLButtonElement | null = null;
+  let raf = 0;
+
+  const isPlaying = (a: HTMLAudioElement) => !a.paused && !a.ended;
+
+  function pauseOthers(except: string | null) {
+    audios.forEach((a, id) => { if (id !== except && !a.paused) a.pause(); });
+  }
+  function play(id: string) {
+    const a = audios.get(id);
+    if (!a) return;
+    pauseOthers(id);
+    try { a.currentTime = 0; } catch { /* not loaded yet; starts at 0 anyway */ }
+    const cue = cues.get(id);
+    if (cue) cue.style.setProperty('--p', '0');
+    a.play().catch(() => reflect(id));
+  }
+  function endQueue() {
+    queue = [];
+    if (activeQueue) activeQueue.setAttribute('aria-pressed', 'false');
+    activeQueue = null;
+  }
+  function reflect(id: string) {
+    const a = audios.get(id)!;
+    const on = isPlaying(a);
+    playButtons.forEach((b) => { if (b.dataset.play === id) b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    cues.get(id)?.classList.toggle('is-playing', on);
+    if (status) {
+      if (on) status.textContent = `Now playing: ${a.dataset.label ?? id}`;
+      else if (![...audios.values()].some(isPlaying)) status.textContent = '';
+    }
+  }
+  function tick() {
+    let any = false;
+    audios.forEach((a, id) => {
+      if (!isPlaying(a) || !a.duration) return;
+      any = true;
+      const p = Math.min(1, a.currentTime / a.duration);
+      const cue = cues.get(id);
+      if (cue) cue.style.setProperty('--p', reduced ? '1' : p.toFixed(4));
+      const port = portraits.get(id);
+      if (port) drawPortrait(port, p);
+    });
+    raf = any ? requestAnimationFrame(tick) : 0;
+  }
+
+  audios.forEach((a, id) => {
+    a.addEventListener('play', () => { pauseOthers(id); reflect(id); if (!raf) raf = requestAnimationFrame(tick); });
+    a.addEventListener('pause', () => {
+      reflect(id);
+      const port = portraits.get(id);
+      if (port && a.ended) drawPortrait(port, null);
+    });
+    a.addEventListener('ended', () => {
+      reflect(id);
+      const cue = cues.get(id);
+      if (cue) cue.style.setProperty('--p', '1');
+      const port = portraits.get(id);
+      if (port) drawPortrait(port, null);
+      if (queue.length) play(queue.shift()!);
+      else endQueue();
+    });
+    a.addEventListener('error', () => { reflect(id); endQueue(); });
+  });
+
+  playButtons.forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.play!;
+    const a = audios.get(id);
+    if (!a) return;
+    endQueue();
+    if (isPlaying(a)) a.pause();
+    else play(id);
+  }));
+
+  queueButtons.forEach((b) => b.addEventListener('click', () => {
+    if (activeQueue === b) { endQueue(); pauseOthers(null); return; }
+    endQueue();
+    activeQueue = b;
+    b.setAttribute('aria-pressed', 'true');
+    const ids = (b.dataset.queue ?? '').split(',').filter(Boolean);
+    ids.forEach((id) => cues.get(id)?.style.setProperty('--p', '0'));
+    queue = ids.slice(1);
+    play(ids[0]);
+  }));
+
+  // ─── the portraits: each slate's loudness, top to bottom, mirrored ───
+  interface Portrait { canvas: HTMLCanvasElement; data: Float32Array; env: Float32Array | null; dpr: number; reveal: number; seen: boolean; developed: boolean; }
+  const portraits = new Map<string, Portrait>();
+
+  function envelope(data: Float32Array, rows: number): Float32Array {
+    const n = data.length;
+    const per = n / rows;
+    const raw = new Float32Array(rows);
+    for (let i = 0; i < rows; i++) {
+      const s = Math.floor(i * per);
+      const e = Math.min(n, Math.floor((i + 1) * per));
+      let peak = 0;
+      for (let j = s; j < e; j++) { const v = Math.abs(data[j]); if (v > peak) peak = v; }
+      raw[i] = peak;
+    }
+    const env = new Float32Array(rows);
+    let max = 0;
+    for (let i = 0; i < rows; i++) {
+      let acc = 0, c = 0;
+      for (let k = -3; k <= 3; k++) { const j = i + k; if (j >= 0 && j < rows) { acc += raw[j]; c++; } }
+      env[i] = acc / c;
+      if (env[i] > max) max = env[i];
+    }
+    // Normalise; drop the faint transient rows so a stray tick never floats above the silhouette.
+    if (max > 0) for (let i = 0; i < rows; i++) { const v = Math.pow(env[i] / max, 0.85); env[i] = v < 0.035 ? 0 : v; }
+    return env;
+  }
+  function size(st: Portrait) {
+    const r = st.canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    st.canvas.width = Math.max(1, Math.round(r.width * dpr));
+    st.canvas.height = Math.max(1, Math.round(r.height * dpr));
+    st.dpr = dpr;
+    st.env = envelope(st.data, Math.max(40, Math.round(r.height / 2)));
+  }
+  function drawPortrait(st: Portrait, progress: number | null) {
+    const ctx = st.canvas.getContext('2d');
+    if (!ctx || !st.env) return;
+    const W = st.canvas.width, H = st.canvas.height;
+    ctx.fillStyle = PHOTO;
+    ctx.fillRect(0, 0, W, H);
+    const top = H * 0.08, span = H * 0.84, rows = st.env.length, rowH = span / rows, half = W * 0.44, cx = W / 2;
+    const limit = Math.round(rows * st.reveal);
+    ctx.fillStyle = INK;
+    for (let i = 0; i < limit; i++) {
+      const h = st.env[i] * half;
+      if (h < 0.75) continue;
+      ctx.fillRect(cx - h, top + i * rowH, h * 2, rowH + 0.6);
+    }
+    if (progress != null && progress > 0) {
+      ctx.fillStyle = PEN;
+      ctx.fillRect(0, top + progress * span - st.dpr, W, 2 * st.dpr);
+    }
+  }
+  function develop(st: Portrait) {
+    st.developed = true;
+    if (reduced) { st.reveal = 1; drawPortrait(st, null); return; }
+    const t0 = performance.now();
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 1100);
+      st.reveal = 1 - Math.pow(1 - k, 3);
+      drawPortrait(st, null);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // A card counts as seen whether or not its clip has decoded yet; whichever happens second develops it.
+  const seenIds = new Set<string>();
+  const seen = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+          if (!en.isIntersecting) return;
+          const id = (en.target as HTMLElement).dataset.seed!;
+          seenIds.add(id);
+          const st = portraits.get(id);
+          if (st && st.env && !st.developed) develop(st);
+          seen!.unobserve(en.target);
+        });
+      }, { threshold: 0.2 })
+    : null;
+
+  async function loadPortrait(canvas: HTMLCanvasElement) {
+    const id = canvas.dataset.seed!;
+    const src = canvas.dataset.src!;
+    try {
+      const res = await fetch(src);
+      if (!res.ok) return;
+      const buf = await res.arrayBuffer();
+      const decoded = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(buf);
+      const st: Portrait = { canvas, data: decoded.getChannelData(0), env: null, dpr: 1, reveal: 0, seen: false, developed: false };
+      portraits.set(id, st);
+      size(st);
+      if (!seen || seenIds.has(id)) develop(st);
+      // Whatever the observer does, no card stays blank for long.
+      else window.setTimeout(() => { if (!st.developed) develop(st); }, 3500);
+    } catch { /* the "no photograph on file" label stays, which is also true */ }
+  }
+
+  const canvases = Array.from(document.querySelectorAll<HTMLCanvasElement>('canvas[data-seed]'));
+  canvases.forEach((c) => { seen?.observe(c); loadPortrait(c); });
+
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      portraits.forEach((st) => { size(st); if (st.developed) { st.reveal = 1; drawPortrait(st, null); } });
+    }, 120);
+  });
+</script>

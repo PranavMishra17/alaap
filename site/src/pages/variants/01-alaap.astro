@@ -1,0 +1,745 @@
+---
+// Variant 01 · alaap. The page is an alaap: a drone that never stops, a voice entering on Sa,
+// the range mapped one note at a time, pace gathering from vilambit to drut, the octave's return.
+import { name, meaning, links, characters, clips, scene, seeds, clipCaveats } from '../../content/alaap';
+
+const mentorSeed = clips.find((c) => c.id === 'mentor_seed')!;
+const example = characters.find((c) => c.id === 'mentor')!;
+const swaras = [
+  { id: 'sa', dev: 'सा', lat: 'Sa', title: 'Alaap', gloss: 'the tonic. The voice enters.' },
+  { id: 're', dev: 'रे', lat: 'Re', title: 'Who it is for', gloss: '' },
+  { id: 'ga', dev: 'ग', lat: 'Ga', title: 'Three voices, five lines', gloss: '' },
+  { id: 'ma', dev: 'म', lat: 'Ma', title: 'What makes it different', gloss: '' },
+  { id: 'pa', dev: 'प', lat: 'Pa', title: 'How it works', gloss: 'the fifth, the second drone string.' },
+  { id: 'dha', dev: 'ध', lat: 'Dha', title: 'What was measured', gloss: '' },
+  { id: 'ni', dev: 'नि', lat: 'Ni', title: 'What is not there yet', gloss: 'the leading note. It does not resolve on its own.' },
+  { id: 'sa2', dev: 'सां', lat: 'Sa', title: 'The return', gloss: 'the octave.' },
+] as const;
+const sw = (id: string) => swaras.find((s) => s.id === id)!;
+const hindiLine = 'नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap — describe a character, get a voice nobody has recorded, keep it</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it. A working research system for Indian-language character voices, with its limits stated plainly." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wdth,wght@75..125,300..700&family=Eczar:wght@400..800&family=Xanh+Mono:ital@0;1&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <aside class="tanpura" aria-label="The tanpura: the sections of this page as the notes of the ascent">
+      <div class="strings" aria-hidden="true">
+        <i style="--n:0"></i><i style="--n:1"></i><i style="--n:2"></i><i style="--n:3"></i>
+        <span class="bead"></span>
+      </div>
+      <nav class="swaras" aria-label="Sections">
+        {swaras.map((s) => (
+          <a href={`#${s.id}`} data-for={s.id} title={s.title}>
+            <b lang="hi">{s.dev}</b><small>{s.lat}</small><span class="sr">{s.title}</span>
+          </a>
+        ))}
+      </nav>
+      <button class="drone" type="button" aria-pressed="false" hidden>
+        <b lang="hi">तानपुरा</b> <span>tanpura</span> <em>off</em>
+      </button>
+    </aside>
+
+    <main>
+      <!-- सा · the voice enters -->
+      <section class="raga" id="sa" data-laya="vilambit">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('sa').dev}</b> {sw('sa').lat} <i>· {sw('sa').gloss}</i></span>
+        </header>
+        <h1 class="swar"><span lang="hi" class="dev">{name.devanagari}</span><span class="lat">{name.latin}</span></h1>
+        <p class="meaning swar">{meaning}</p>
+        <p class="lead swar">You describe a character in ordinary language. You get back a voice that has never existed. Then you use that voice for any line of dialogue you write, and it stays the same character every time.</p>
+
+        <div class="example swar">
+          <p class="cue">The example. A description, then the voice it minted.</p>
+          <p class="desc" lang="en">“{example.description}”</p>
+          <button class="hear" type="button" hidden>Hear the example</button>
+          <div class="clip" data-clip={mentorSeed.id} data-src={mentorSeed.src} data-who={mentorSeed.character}>
+            <button class="play" type="button" aria-label={`Play: ${mentorSeed.text}`} hidden>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path class="tri" d="M4 2.5v11l9-5.5z" /><path class="bars" d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" /></svg>
+            </button>
+            <div class="meta"><span class="who">{mentorSeed.character}, seed clip</span><span class="len">{mentorSeed.seconds} s</span></div>
+            <p class="words">“{mentorSeed.text}”</p>
+            <canvas class="string" aria-hidden="true"></canvas>
+            <audio controls preload="none" src={mentorSeed.src}></audio>
+          </div>
+          <p class="fine">This replays the seed clip the system stored when it minted the voice from that description, on 2026-09-05. Nothing on this page generates live. The tanpura, when you turn it on, is synthesised in your browser and stays under the clips.</p>
+        </div>
+      </section>
+
+      <!-- रे -->
+      <section class="raga" id="re" data-laya="vilambit">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('re').dev}</b> {sw('re').lat}</span>
+          <h2>{sw('re').title}</h2>
+        </header>
+        <p class="lead swar">People making games, animation, audio drama, dubbing, interactive fiction: anyone who needs many distinct speaking characters and cannot hire a cast for each one.</p>
+        <p class="swar">The tools that do this well mostly do it in English. Indian-language creators either use a handful of stock voices that everyone else is also using, or they hire actors. This project treats Hindi, Bengali and Tamil as first-class, not as an afterthought port. Indic is the stated reason the project exists.</p>
+        <p class="swar">Proven so far in English, Hindi, Bengali and Tamil. The Indian-language engine it builds on covers 22 Indian languages; four are measured so far. In the project's own measurements the Hindi path scored higher than the English path on each of its identity checks, and the Indian-language speech data it builds on holds more distinct speakers than any English set it has, under a licence that allows commercial use.</p>
+      </section>
+
+      <!-- ग -->
+      <section class="raga" id="ga" data-laya="madhya">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('ga').dev}</b> {sw('ga').lat}</span>
+          <h2>{sw('ga').title}</h2>
+        </header>
+        <p class="lead swar">The demo mints three characters from text, renders a five-line scene, watermarks everything and writes the manifest in about four minutes, on one laptop GPU. These are its clips, rendered 2026-09-05.</p>
+
+        <ul class="caveats swar" aria-label="Before you listen">
+          <li>{clipCaveats.watermark}</li>
+          <li>{clipCaveats.englishOnly}</li>
+          <li>{clipCaveats.emotionSetting}</li>
+        </ul>
+
+        <h3 class="swar">Three characters, each minted from nothing but the description shown</h3>
+        <div class="cast">
+          {seeds.map((c) => (
+            <div class="voice swar">
+              <p class="desc">“{characters.find((x) => x.id === c.character)!.description}”</p>
+              <div class="clip" data-clip={c.id} data-src={c.src} data-who={c.character}>
+                <button class="play" type="button" aria-label={`Play: ${c.text}`} hidden>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path class="tri" d="M4 2.5v11l9-5.5z" /><path class="bars" d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" /></svg>
+                </button>
+                <div class="meta"><span class="who">{c.character}, seed clip</span><span class="len">{c.seconds} s</span></div>
+                <p class="words">“{c.text}”</p>
+                <canvas class="string" aria-hidden="true"></canvas>
+                <audio controls preload="none" src={c.src}></audio>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p class="seq swar">All three seeds say the same sentence. <button type="button" class="run" data-seq="seed" hidden>Play the three in a row</button> <output class="now" aria-live="polite"></output></p>
+
+        <h3 class="swar">The five-line scene, in order</h3>
+        <div class="lines">
+          {scene.map((c) => (
+            <div class="clip swar" data-clip={c.id} data-src={c.src} data-who={c.character}>
+              <button class="play" type="button" aria-label={`Play: ${c.text}`} hidden>
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path class="tri" d="M4 2.5v11l9-5.5z" /><path class="bars" d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z" /></svg>
+              </button>
+              <div class="meta"><span class="who">{c.character}</span><span class="len">{c.seconds} s</span>{c.experimentalEmotionSetting && <span class="tag">experimental emotion setting, unvalidated</span>}</div>
+              <p class="words">“{c.text}”</p>
+              <canvas class="string" aria-hidden="true"></canvas>
+              <audio controls preload="none" src={c.src}></audio>
+            </div>
+          ))}
+        </div>
+        <p class="seq swar"><button type="button" class="run" data-seq="line" hidden>Play the scene in order</button> <output class="now" aria-live="polite"></output></p>
+      </section>
+
+      <!-- म -->
+      <section class="raga" id="ma" data-laya="madhya">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('ma').dev}</b> {sw('ma').lat}</span>
+          <h2>{sw('ma').title}</h2>
+        </header>
+        <div class="four">
+          <div class="swar">
+            <h3>A voice is a thing you keep, not a setting you re-guess</h3>
+            <p>Most tools generate a voice each time you ask. Here the character's voice is stored as an identity and re-used. The same character sounds like the same person across every line, every scene, and every session. That consistency is measured, not hoped for.</p>
+            <p class="seq"><button type="button" class="run" data-seq="mentor" hidden>Hear one character across three sentences</button> <output class="now" aria-live="polite"></output></p>
+          </div>
+          <div class="swar">
+            <h3>Who is speaking and what is being said are genuinely separate</h3>
+            <p>The system holds a character's identity apart from the words. That is why one character can say anything without their voice changing, and why changing the line never changes the person. This was verified rather than assumed: when the same audio content is played through two different identities, the words come out identically. The measured error between them was exactly zero on every line tested.</p>
+          </div>
+          <div class="swar">
+            <h3>It does not need a recording of the character</h3>
+            <p>There is no voice cloning here, and no user uploads their own audio. Voices are created from a written description. That sidesteps the consent and impersonation problem entirely: you cannot accidentally clone a real person if the system never accepts a recording.</p>
+          </div>
+          <div class="swar">
+            <h3>It knows what it does not know</h3>
+            <p>Every capability is measured against a control, and the honest limits are published alongside the results. Roughly twenty findings in this project were wrong on the first attempt and caught by a check, including one where an entire experiment produced fluent-sounding speech that was saying different words than requested, and nothing errored. That is written up publicly rather than quietly fixed.</p>
+            <p class="rule">A suspiciously good or suspiciously bad number is a bug report about your setup.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- प -->
+      <section class="raga" id="pa" data-laya="madhya">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('pa').dev}</b> {sw('pa').lat} <i>· {sw('pa').gloss}</i></span>
+          <h2>{sw('pa').title}</h2>
+        </header>
+        <ol class="flow swar" aria-label="The shape of the system">
+          <li><span>your description</span></li>
+          <li class="box"><span>the mapper</span><small>the only part that learns</small></li>
+          <li><span>a voice identity</span><small>small, storable, yours</small></li>
+          <li class="box"><span>the voice engine</span><small>never modified, swappable</small></li>
+          <li><span>audio</span><small>watermarked and logged from the first render</small></li>
+        </ol>
+        <div class="ideas">
+          <p class="swar"><strong>Only one small piece is trained.</strong> The speech engine is used as-is and never altered, so a better engine can be swapped in without rebuilding everything.</p>
+          <p class="swar"><strong>The voice identity is a small, storable thing.</strong> That is what makes a character persistent: it can be saved, versioned and handed to someone else. Each one is stored with a short seed clip and the engine version that made it. The identity is who the character is; each line is a separate performance.</p>
+          <p class="swar"><strong>Two ways to answer a description, both measured.</strong> Invent a new voice, or find the closest match in an existing library. The numbers for that trade-off are under Dha.</p>
+          <p class="swar"><strong>The checker is a separate system.</strong> A speaker-recognition system that has never seen the generator and never sees the engine's internals does the verifying. The output includes a manifest a game engine can consume: this is built for a pipeline, not a demo button. The manifest's own line reads: “AI-generated synthetic speech. All audio carries an AudioSeal watermark.”</p>
+        </div>
+      </section>
+
+      <!-- ध -->
+      <section class="raga" id="dha" data-laya="drut">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('dha').dev}</b> {sw('dha').lat}</span>
+          <h2>{sw('dha').title}</h2>
+          <p class="sub">Each result with its caveat within reach. Most of these are automatic measurements; see Ni.</p>
+        </header>
+        <dl class="measured">
+          <div class="swar">
+            <dt>It works end to end today</dt>
+            <dd>On one 6 GB laptop GPU, in English, Hindi, Bengali and Tamil. Describe a character, get a voice, render a scene of dialogue, and out comes watermarked audio plus a file a game engine can read. The demo under Ga mints three characters, renders five lines, watermarks everything and writes the manifest in about four minutes.</dd>
+          </div>
+          <div class="swar">
+            <dt>Minting a voice from a description costs nothing in clarity</dt>
+            <dd>A described voice is just as intelligible as one taken from a real recording. The measured difference was tiny, leaned slightly in the invented voice's favour, and was smaller than the difference between two real speakers: that gap was six times larger. The project reads this as no detectable difference, not as invented voices being better. <span class="cav">The control that had to pass first: every version must come out the same length before any score is read, or the run aborts.</span></dd>
+          </div>
+          <div class="swar">
+            <dt>Invented voices are recognisably distinct people</dt>
+            <dd>Verified by a separate speaker-recognition system that has never seen the generator: an independent check, not the system marking its own homework. Each invented voice also sits clearly apart from the nearest real voice the system learned from, so these are new voices, not real people wearing a label.</dd>
+          </div>
+          <div class="swar">
+            <dt>A character stays itself more consistently than a real person does</dt>
+            <dd>Across different sentences, more consistently than a real person does across different recordings. Unsurprising once you think about it: a stored voice has no bad-throat day, no change of microphone, no mood.</dd>
+          </div>
+          <div class="swar">
+            <dt>A native speaker confirmed the Hindi says what it should</dt>
+            <dd>A fluent Hindi speaker has confirmed one rendered line says the target sentence. They were told the sentence and asked “does it say this?”, not “does it sound right?”. That is the check an earlier batch of faulty audio failed: fluent-sounding speech saying different words. <span class="cav">The other voices and lines are still to be checked.</span>
+              <span class="hindi"><span lang="hi">{hindiLine}</span><small>Our plain translation, not a project claim: “Hello, how are you? The weather is very nice today.”</small></span></dd>
+          </div>
+          <div class="swar">
+            <dt>A blind listening test found and fixed a real problem</dt>
+            <dd>A blind listening test with built-in controls found a real problem in how the system judged whether two voices were the same person: pairs the system called different were heard as the same person about half the time. The threshold was raised. That removed 10 duplicate voices from a set of 50 and cost 3 percent of measured variety. <span class="cav">The test was small: 8 pairs and one listener, with every control answered correctly. It found the problem but does not settle the exact threshold, and the English threshold has not had its own listening test.</span></dd>
+          </div>
+          <div class="swar">
+            <dt>Pacing is controllable within a measured range</dt>
+            <dd>You can slow a character to about two-thirds of normal speed or push them to about 1.4 times, and they stay the same person saying the same words. Outside that range the identity fades gradually rather than breaking. <span class="cav">A listener noted the slow extreme starts to sound processed; the range they called clean is narrower, about 0.8 to 1.25 times.</span>
+              <span class="laya">
+                <label for="pace">The measured range, as a bounded illustration. Nothing is re-timed here.</label>
+                <span class="scale" aria-hidden="true">
+                  <span class="band outer"></span><span class="band inner"></span>
+                  <span class="tick lo" style="--x:0.67">about two-thirds</span><span class="tick" style="--x:0.8">0.8×</span><span class="tick" style="--x:1">normal</span><span class="tick" style="--x:1.25">1.25×</span><span class="tick hi" style="--x:1.43">about 1.4×</span>
+                </span>
+                <input type="range" id="pace" min="50" max="160" value="100" step="1" aria-describedby="pace-out" />
+                <output id="pace-out" for="pace">Normal speed. The same person saying the same words.</output>
+              </span></dd>
+          </div>
+          <div class="swar">
+            <dt>Two ways to answer a description, and the numbers for the trade-off</dt>
+            <dd>Invent a new voice, or find the closest match in an existing library of voices. Inventing gives you a character nobody else has; finding gives you higher accuracy and studio quality. Neither is strictly better.
+              <span class="pair">
+                <span><b>Finding</b>, on a library of 141 real Hindi voices: two thirds of descriptions (65.6%) get a voice that matches on every trait named, and 87 percent land within one step. When the description names only a couple of traits, the way people actually write, a bit over half (53.8%) match exactly on the traits named. Chance would be about one in five (about 20%). The same method on a library of 2,500 English voices reaches 88.5%. It replicates in Bengali.</span>
+                <span><b>Reach.</b> Finding reaches 87% of the variety the library actually holds; inventing reached 37% before mis-set settings were fixed, and the fix raised the invented catalogue from 14 to 22 distinct Hindi voices and from 23 to 41 English.</span>
+                <span><b>What finding cannot do:</b> produce a voice the library does not contain; guarantee a new character is unique, since different descriptions can return the same voice; and the library is someone else's, so every character in every project draws from the same shelf.</span>
+              </span>
+              <span class="cav">The library measured was real recorded speakers standing in for a studio library, and no commercial system has been measured.</span></dd>
+          </div>
+          <div class="swar">
+            <dt>Watermarked and logged from the first render</dt>
+            <dd>Every render is watermarked and logged, from the first output, not added later. 114 automated checks guard the rules the project learned the hard way: never accept a user's audio; watermark from the first render; store timbre, not performance; do not start the next stage until this one is measured.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- नि · the light panel -->
+      <section class="raga chaandni" id="ni" data-laya="drut">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('ni').dev}</b> {sw('ni').lat} <i>· {sw('ni').gloss}</i></span>
+          <h2>{sw('ni').title}</h2>
+        </header>
+        <ul class="missing">
+          <li class="swar"><b>Not a product.</b> This is a working research system, not a product. There is no signup, no hosted service, no API.</li>
+          <li class="swar"><b>Emotion is not solved.</b> Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream: the engine's documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between tagged versions of the same line.</li>
+          <li class="swar"><b>The catalogue is small.</b> Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project's own measure. The limit is understood and measured rather than mysterious. The real speakers the system learned from hold about 38 to 48 distinguishable voices, and the project measured exactly where its own method loses variety.</li>
+          <li class="swar"><b>Cannot ship as a product, for licensing reasons.</b> It cannot be shipped as a product in its current form, and the reasons are documented. The Indian-language engine's training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</li>
+          <li class="swar"><b>Very little has been listened to.</b> Most results are automatic measurements. One listener, a handful of pairs.</li>
+          <li class="swar"><b>No comparison against a commercial system.</b> None has been measured.</li>
+          <li class="swar"><b>The clips on this page are English.</b> {clipCaveats.englishOnly}</li>
+          <li class="swar"><b>Three of the five demo lines</b> were rendered with an experimental emotion setting whose effect has not been validated on this engine. Listen to them as voice samples, not performances.</li>
+        </ul>
+      </section>
+
+      <!-- सां · the return -->
+      <section class="raga" id="sa2" data-laya="drut">
+        <header class="mark swar">
+          <span class="swara"><b lang="hi">{sw('sa2').dev}</b> {sw('sa2').lat} <i>· {sw('sa2').gloss}</i></span>
+          <h2>{sw('sa2').title}</h2>
+        </header>
+        <p class="lead swar">Describe a character. Get a voice nobody has recorded. Keep it.</p>
+        <p class="cta swar">
+          <a class="go" href={links.repo}>Read the research</a>
+          <a class="go quiet" href={links.issues}>Corrections welcome</a>
+        </p>
+        <p class="swar">If a claim here is wrong, an issue with a primary source is more useful than almost anything else. Code under the MIT licence; research and writing under a Creative Commons attribution licence. No model weights and no generated Indian-language audio ship. Clips on this page: Qwen3-TTS, Apache-licensed, English only.</p>
+        <p class="fine swar">Research pass 2026-09-02. Implementation and measurement 2026-09-05.</p>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    --night: #1F1C33;   /* the baithak after dark: indigo, not black */
+    --tumba: #2A2645;   /* the gourd's shadow: a lifted indigo for controls */
+    --bone: #EAE2D0;    /* the jawari bridge: bone, the reading colour */
+    --brass: #CD9A44;   /* the kharaj string: brass, everything active */
+    --steel: #9298A8;   /* the three steel strings: secondary text and rules */
+    --chaandni: #EEEBE3;/* the white floor sheet, lit: the panel for what is missing */
+    --display: 'Eczar', 'Tiro Devanagari Hindi', Georgia, 'Noto Serif Devanagari', serif;
+    --body: 'Anek Latin', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --mono: 'Xanh Mono', 'Courier Prime', 'Courier New', monospace;
+    --rail: 8.5rem;
+    --gutter: clamp(1.25rem, 7vw, 7.5rem);
+    --measure: 44rem;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--night); scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--night); color: var(--bone); font: 400 1.0625rem/1.55 var(--body); font-variation-settings: 'wdth' 100; overflow-x: hidden; }
+  [lang='hi'] { font-family: var(--display); }
+  a { color: var(--brass); text-underline-offset: 0.18em; }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; border-radius: 2px; }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; } /* scripts off: the buttons that need them never render */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---- the tanpura: strings, swara rail, drone control ---- */
+  .tanpura { position: fixed; inset: 0 auto 0 0; width: var(--rail); z-index: 5; display: grid; grid-template-columns: 4.25rem 1fr; background: var(--night); border-right: 1px solid color-mix(in oklab, var(--steel) 22%, transparent); }
+  .strings { position: relative; height: 100%; }
+  .strings i { position: absolute; top: 0; bottom: 0; width: 1px; left: calc(0.9rem + var(--n) * 0.8rem); background: var(--steel); opacity: 0.55; --dx: 0.9px; --dy: 0px; }
+  .strings i:nth-child(4) { width: 2px; background: var(--brass); opacity: 0.8; }
+  .strings i.ring { opacity: 1; filter: brightness(1.5); animation: ring 90ms linear infinite; }
+  .drone-on .strings i { opacity: 0.85; }
+  @keyframes ring { 0% { transform: translate(var(--dx), var(--dy)); } 50% { transform: translate(calc(var(--dx) * -1), calc(var(--dy) * -1)); } 100% { transform: translate(var(--dx), var(--dy)); } }
+  .bead { position: absolute; left: calc(0.9rem + 0.8rem - 4px); top: calc(var(--p, 0) * (100% - 14px)); width: 9px; height: 14px; border-radius: 50%; background: var(--brass); box-shadow: 0 0 0 2px var(--night); }
+  .swaras { display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem 0.5rem 5.5rem; }
+  .swaras a { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.35rem; text-decoration: none; color: var(--steel); padding: 0.2rem 0.4rem; border-radius: 3px; }
+  .swaras a b { font: 500 1.35rem/1 var(--display); }
+  .swaras a small { font-size: 0.75rem; font-variation-settings: 'wdth' 85; }
+  .swaras a.on { color: var(--brass); }
+  .swaras a.on b { font-weight: 700; }
+  .swaras a:hover { color: var(--bone); }
+  .drone { position: absolute; left: 0.6rem; right: 0.6rem; bottom: 1rem; display: grid; grid-template-columns: auto 1fr; column-gap: 0.35rem; align-items: baseline; text-align: left; background: var(--tumba); border: 1px solid color-mix(in oklab, var(--steel) 35%, transparent); border-radius: 6px; padding: 0.5rem 0.65rem 0.45rem; cursor: pointer; font-size: 0.8rem; }
+  .drone b { grid-column: 1 / -1; font: 500 1.1rem/1.1 var(--display); margin-bottom: 0.1rem; }
+  .drone span { font-variation-settings: 'wdth' 85; color: var(--steel); }
+  .drone em { font-style: normal; color: var(--steel); justify-self: end; }
+  .drone[aria-pressed='true'] { border-color: var(--brass); }
+  .drone[aria-pressed='true'] em { color: var(--brass); }
+
+  /* ---- sections: the ascent, spacing tightens as pace gathers ---- */
+  main { margin-left: var(--rail); }
+  .raga { padding: var(--pad) var(--gutter); }
+  .raga > * { max-width: var(--measure); }
+  [data-laya='vilambit'] { --pad: 6rem; --stagger: 0.22s; --dur: 1.1s; }
+  [data-laya='madhya'] { --pad: 5rem; --stagger: 0.11s; --dur: 0.65s; }
+  [data-laya='drut'] { --pad: 3.5rem; --stagger: 0.045s; --dur: 0.38s; }
+  #sa { padding-top: 5.5rem; min-height: 100vh; }
+  #sa2 { padding-bottom: 8rem; }
+  .mark { margin: 0 0 1.75rem; }
+  .swara { display: block; font-size: 0.95rem; color: var(--steel); font-variation-settings: 'wdth' 90; }
+  .swara b { font: 600 1.6rem/1 var(--display); color: var(--brass); margin-right: 0.2rem; vertical-align: -0.1em; }
+  .swara i { font-style: normal; }
+  h1, h2, h3, dt { font-family: var(--display); font-weight: 600; margin: 0; line-height: 1.1; text-wrap: balance; }
+  h1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1.25rem; margin: 0.5rem 0 1rem; max-width: 60rem; }
+  h1 .dev { font-size: clamp(5rem, 14vw, 12rem); font-weight: 700; line-height: 1; letter-spacing: -0.01em; }
+  h1 .lat { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 500; color: var(--steel); }
+  h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); margin-top: 0.35rem; }
+  h3 { font-size: 1.3rem; margin: 2.5rem 0 1rem; }
+  .meaning { font: italic 400 clamp(1.15rem, 1.9vw, 1.45rem)/1.4 var(--display); color: var(--steel); margin: 0 0 1.75rem; max-width: 36rem; }
+  .lead { font-size: clamp(1.15rem, 1.6vw, 1.35rem); line-height: 1.45; font-variation-settings: 'wdth' 100, 'wght' 400; margin: 0 0 1.5rem; }
+  .sub { color: var(--steel); margin: 0.5rem 0 0; }
+  p { margin: 0 0 1.1rem; }
+  .fine { color: var(--steel); font-size: 0.9rem; max-width: 36rem; }
+  .cue { color: var(--steel); font-variation-settings: 'wdth' 90; margin: 0 0 0.4rem; }
+  .example { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid color-mix(in oklab, var(--steel) 30%, transparent); }
+  .example .desc { font: 500 clamp(1.4rem, 2.4vw, 2rem)/1.25 var(--display); margin: 0 0 1.25rem; }
+  .desc .w { display: inline-block; }
+  html.js .desc.singing .w { opacity: 0; translate: 0 0.35em; transition: opacity 0.6s ease, translate 0.6s ease; }
+  html.js .desc.singing .w.in { opacity: 1; translate: 0 0; }
+  .hear, .run, .go { display: inline-block; background: var(--brass); color: var(--night); border: 0; border-radius: 999px; padding: 0.6rem 1.15rem; font-weight: 500; cursor: pointer; text-decoration: none; }
+  .hear:hover, .run:hover, .go:hover { background: var(--bone); }
+  .hear { margin-bottom: 1.25rem; }
+  .run { background: transparent; color: var(--brass); border: 1px solid var(--brass); padding: 0.4rem 0.9rem; font-size: 0.95rem; }
+  .run:hover { background: var(--brass); color: var(--night); }
+  .go.quiet { background: transparent; color: var(--bone); border: 1px solid color-mix(in oklab, var(--steel) 55%, transparent); }
+  .go.quiet:hover { background: var(--tumba); }
+  .seq { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+  .now { font-family: var(--mono); color: var(--steel); font-size: 0.95rem; }
+
+  /* ---- players: the string that carries the voice ---- */
+  .clip { position: relative; display: grid; grid-template-columns: 2.75rem 1fr; grid-template-rows: auto auto auto; gap: 0.15rem 0.85rem; padding: 0.85rem 0; border-top: 1px solid color-mix(in oklab, var(--steel) 22%, transparent); }
+  .clip .play { grid-row: 1 / 4; align-self: start; width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 1px solid var(--brass); background: transparent; color: var(--brass); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .clip .play svg { width: 1rem; height: 1rem; fill: currentColor; }
+  .clip .play .bars { display: none; }
+  .clip.playing .play { background: var(--brass); color: var(--night); }
+  .clip.playing .play .tri { display: none; }
+  .clip.playing .play .bars { display: block; }
+  .clip .meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.85rem; color: var(--steel); font-variation-settings: 'wdth' 92; }
+  .clip .who { color: var(--bone); }
+  .clip .tag { color: var(--brass); }
+  .clip .words { font-family: var(--mono); font-size: 1.05rem; line-height: 1.35; margin: 0; }
+  .clip .string { width: 100%; height: 2.5rem; display: block; }
+  html.js .clip audio { display: none; }
+  html:not(.js) .clip .string { display: none; }
+  html:not(.js) .clip { display: block; }
+  html:not(.js) .clip audio { display: block; width: 100%; max-width: 28rem; margin-top: 0.6rem; }
+  .cast { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 2rem; max-width: 62rem; }
+  .cast .voice .desc { font: 500 1.15rem/1.3 var(--display); min-height: 3.4em; margin: 0 0 0.5rem; }
+  .cast .clip { grid-template-columns: 2.25rem 1fr; }
+  .cast .clip .play { width: 2.25rem; height: 2.25rem; }
+  .caveats { margin: 0 0 1.5rem; padding: 0; list-style: none; border-left: 2px solid var(--brass); }
+  .caveats li { padding: 0.15rem 0 0.15rem 1rem; color: var(--steel); }
+
+  /* ---- Ma: four things ---- */
+  .four { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 3rem; max-width: 62rem; }
+  .four h3 { margin: 0 0 0.6rem; }
+  .rule { font-family: var(--mono); color: var(--brass); font-size: 1rem; }
+
+  /* ---- Pa: the flow, a string with beads ---- */
+  .flow { list-style: none; margin: 0 0 2.5rem; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; position: relative; max-width: 62rem; }
+  .flow::before { content: ''; position: absolute; left: 0; right: 0; top: 0.95rem; height: 1px; background: var(--steel); opacity: 0.6; }
+  .flow li { position: relative; padding-top: 2rem; font-size: 0.95rem; }
+  .flow li::before { content: ''; position: absolute; left: 0; top: 0.55rem; width: 9px; height: 14px; border-radius: 50%; background: var(--bone); }
+  .flow li.box::before { background: var(--brass); }
+  .flow li span { display: block; font-family: var(--display); font-weight: 600; font-size: 1.15rem; }
+  .flow li.box span { color: var(--brass); }
+  .flow li small { display: block; color: var(--steel); font-size: 0.85rem; font-variation-settings: 'wdth' 90; }
+  .ideas { max-width: 62rem; columns: 2; column-gap: 3rem; }
+  .ideas p { break-inside: avoid; }
+
+  /* ---- Dha: the dense list ---- */
+  .measured { margin: 0; max-width: 62rem; columns: 2; column-gap: 3rem; }
+  .measured > div { break-inside: avoid; margin: 0 0 1.5rem; }
+  .measured dt { font-size: 1.15rem; margin: 0 0 0.35rem; }
+  .measured dd { margin: 0; font-size: 0.98rem; }
+  .cav { display: block; margin-top: 0.4rem; color: var(--steel); }
+  .cav::before { content: 'Caveat. '; color: var(--brass); }
+  .hindi { display: block; margin-top: 0.6rem; }
+  .hindi [lang='hi'] { display: block; font-size: 1.35rem; line-height: 1.5; }
+  .hindi small { display: block; color: var(--steel); }
+  .pair { display: grid; gap: 0.5rem; margin-top: 0.6rem; }
+  .pair b { color: var(--brass); font-weight: 500; }
+  .laya { display: block; margin-top: 0.9rem; }
+  .laya label { display: block; font-size: 0.85rem; color: var(--steel); margin-bottom: 0.3rem; }
+  .scale { display: block; position: relative; height: 3.5rem; margin: 0 0.6rem; }
+  .tick.lo, .tick.hi { top: 2.2rem; }
+  .tick.lo { translate: 0 0; }
+  .tick.hi { translate: -100% 0; }
+  .band { position: absolute; top: 0.35rem; height: 0.55rem; border-radius: 2px; }
+  .band.outer { left: calc((0.67 - 0.5) / 1.1 * 100%); right: calc((1.6 - 1.43) / 1.1 * 100%); background: color-mix(in oklab, var(--steel) 35%, transparent); }
+  .band.inner { left: calc((0.8 - 0.5) / 1.1 * 100%); right: calc((1.6 - 1.25) / 1.1 * 100%); background: var(--brass); }
+  .tick { position: absolute; top: 1.05rem; left: calc((var(--x) - 0.5) / 1.1 * 100%); translate: -50% 0; font-family: var(--mono); font-size: 0.78rem; color: var(--steel); white-space: nowrap; }
+  .laya input { display: block; width: 100%; margin: 0; accent-color: var(--brass); -webkit-appearance: none; appearance: none; background: transparent; height: 1.25rem; cursor: pointer; }
+  .laya input::-webkit-slider-runnable-track { height: 1px; background: var(--steel); }
+  .laya input::-moz-range-track { height: 1px; background: var(--steel); }
+  .laya input::-webkit-slider-thumb { -webkit-appearance: none; width: 9px; height: 14px; border-radius: 50%; background: var(--brass); border: 0; margin-top: -6.5px; }
+  .laya input::-moz-range-thumb { width: 9px; height: 14px; border-radius: 50%; background: var(--brass); border: 0; }
+  .laya output { display: block; margin-top: 0.4rem; font-family: var(--mono); font-size: 0.92rem; }
+
+  /* ---- Ni: the white sheet ---- */
+  .chaandni { background: var(--chaandni); color: var(--night); }
+  .chaandni .swara { color: #5B5F70; }
+  .chaandni .swara b { color: #8C5F12; }
+  .missing { list-style: none; margin: 0; padding: 0; max-width: 62rem; columns: 2; column-gap: 3rem; }
+  .missing li { break-inside: avoid; margin: 0 0 1rem; padding-left: 1rem; border-left: 2px solid var(--night); }
+  .missing b { font-family: var(--display); font-weight: 600; font-size: 1.1rem; }
+  .chaandni :focus-visible { outline-color: var(--night); }
+
+  /* ---- Sa': the return ---- */
+  .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0 0 1.75rem; }
+
+  /* ---- reveal: each unit enters like a note, pace set by the section ---- */
+  html.js .swar { opacity: 0; translate: 0 0.6rem; transition: opacity var(--dur) ease, translate var(--dur) ease; transition-delay: calc(var(--i, 0) * var(--stagger)); }
+  html.js .swar.sung { opacity: 1; translate: 0 0; }
+
+  @media (max-width: 959px) {
+    :root { --rail: 0px; }
+    .tanpura { position: sticky; inset: auto; top: 0; width: auto; grid-template-columns: 1fr; grid-template-rows: auto 2rem; border-right: 0; border-bottom: 1px solid color-mix(in oklab, var(--steel) 22%, transparent); }
+    .strings { grid-row: 2; height: 2rem; }
+    .strings i { left: 0; right: 0; top: calc(0.45rem + var(--n) * 0.3rem); bottom: auto; width: auto; height: 1px; --dx: 0px; --dy: 0.9px; }
+    .strings i:nth-child(4) { width: auto; height: 2px; }
+    .bead { top: calc(0.45rem + 0.3rem - 6px); left: calc(var(--p, 0) * (100% - 14px)); width: 14px; height: 9px; }
+    .swaras { grid-row: 1; flex-direction: row; padding: 0.4rem 0.5rem 0.2rem; }
+    .swaras a { grid-template-columns: auto; justify-items: center; gap: 0; padding: 0.15rem 0.3rem; }
+    .swaras a b { font-size: 1.15rem; }
+    .swaras a small { font-size: 0.65rem; }
+    .drone { left: auto; right: 0.6rem; bottom: 0.2rem; display: inline-flex; gap: 0.3rem; border-radius: 999px; font-size: 0.75rem; padding: 0.2rem 0.6rem; }
+    .drone b { font-size: 0.9rem; margin: 0; }
+    #sa { padding-top: 3rem; min-height: 0; }
+    [data-laya='vilambit'] { --pad: 4.5rem; }
+    [data-laya='madhya'] { --pad: 3.5rem; }
+    [data-laya='drut'] { --pad: 2.75rem; }
+    .cast, .four, .flow { grid-template-columns: 1fr; }
+    .flow { gap: 0; padding-left: 1.5rem; }
+    .flow::before { left: 0.25rem; right: auto; top: 0; bottom: 0; width: 1px; height: auto; }
+    .flow li { padding: 0.5rem 0; }
+    .flow li::before { left: -1.5rem; top: 0.85rem; width: 14px; height: 9px; }
+    .ideas, .measured, .missing { columns: 1; }
+    .cast .voice .desc { min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    html.js .swar, html.js .desc.singing .w { opacity: 1; translate: 0 0; }
+  }
+</style>
+
+<script>
+  const html = document.documentElement;
+  html.classList.add('js');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s: string, r: ParentNode = document) => r.querySelector(s) as HTMLElement | null;
+  const $$ = (s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as HTMLElement[];
+
+  /* ---- reveal: units that enter together are staggered at the section's pace ---- */
+  const reveal = new IntersectionObserver((entries) => {
+    let i = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target as HTMLElement;
+      el.style.setProperty('--i', String(i++));
+      el.classList.add('sung');
+      reveal.unobserve(el);
+    }
+  }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
+  $$('.swar').forEach((el) => reveal.observe(el));
+
+  /* ---- the rail: which swara is being sung, and the bead on the string ---- */
+  const links = $$('.swaras a');
+  const sections = $$('.raga');
+  const which = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      links.forEach((a) => a.classList.toggle('on', a.dataset.for === e.target.id));
+    }
+  }, { rootMargin: '-38% 0px -55% 0px', threshold: 0 });
+  sections.forEach((s) => which.observe(s));
+  const rail = $('.tanpura')!;
+  const bead = () => {
+    const max = html.scrollHeight - innerHeight;
+    rail.style.setProperty('--p', String(max > 0 ? Math.min(1, scrollY / max) : 0));
+  };
+  addEventListener('scroll', bead, { passive: true });
+  addEventListener('resize', bead);
+  bead();
+
+  /* ---- players ---- */
+  type Player = { el: HTMLElement; audio: HTMLAudioElement; canvas: HTMLCanvasElement; id: string; who: string; text: string; peaks: Float32Array | null; raf: number };
+  const players: Player[] = [];
+  let seq: { list: Player[]; i: number; out: HTMLOutputElement; current: Player | null } | null = null;
+  const stopSeq = () => { if (seq) { seq.out.textContent = ''; seq = null; } };
+
+  const draw = (p: Player) => {
+    const c = p.canvas, dpr = devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+    if (!w) return;
+    if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
+    const g = c.getContext('2d')!;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const steel = getComputedStyle(html).getPropertyValue('--steel').trim();
+    const brass = getComputedStyle(html).getPropertyValue('--brass').trim();
+    const dur = p.audio.duration || Number(p.el.dataset.seconds) || 1;
+    const frac = Math.max(0, Math.min(1, p.audio.currentTime / dur));
+    const mid = h / 2;
+    if (!p.peaks) {
+      g.strokeStyle = steel; g.lineWidth = 1; g.globalAlpha = 0.6;
+      g.beginPath(); g.moveTo(0, mid); g.lineTo(w, mid); g.stroke(); g.globalAlpha = 1;
+      if (frac > 0) { g.strokeStyle = brass; g.beginPath(); g.moveTo(0, mid); g.lineTo(w * frac, mid); g.stroke(); }
+      return;
+    }
+    const n = p.peaks.length, step = w / n;
+    g.lineWidth = Math.max(1, step * 0.55);
+    for (let i = 0; i < n; i++) {
+      const a = p.peaks[i] * (mid - 2);
+      g.strokeStyle = i / n <= frac ? brass : steel;
+      g.globalAlpha = i / n <= frac ? 1 : 0.7;
+      g.beginPath(); g.moveTo(i * step + step / 2, mid - Math.max(0.5, a)); g.lineTo(i * step + step / 2, mid + Math.max(0.5, a)); g.stroke();
+    }
+    g.globalAlpha = 1;
+  };
+  const tick = (p: Player) => { draw(p); if (!p.audio.paused) p.raf = requestAnimationFrame(() => tick(p)); };
+
+  const decode = async (p: Player) => {
+    try {
+      const buf = await (await fetch(p.audio.currentSrc || p.el.dataset.src!)).arrayBuffer();
+      const ac = new OfflineAudioContext(1, 8, 22050);
+      const audio = await ac.decodeAudioData(buf);
+      const data = audio.getChannelData(0), n = Math.max(80, Math.min(260, Math.floor(p.canvas.clientWidth / 3)));
+      const peaks = new Float32Array(n), per = Math.floor(data.length / n);
+      let top = 0;
+      for (let i = 0; i < n; i++) { let m = 0; for (let j = i * per, e = j + per; j < e; j++) { const v = Math.abs(data[j]); if (v > m) m = v; } peaks[i] = m; if (m > top) top = m; }
+      if (top > 0) for (let i = 0; i < n; i++) peaks[i] = Math.pow(peaks[i] / top, 0.8);
+      p.peaks = peaks;
+      draw(p);
+    } catch { /* the string stays flat; the native audio still plays */ }
+  };
+  const lazy = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { lazy.unobserve(e.target); decode((e.target as any).__p); }
+  }, { rootMargin: '320px 0px' });
+
+  for (const el of $$('.clip')) {
+    const audio = $('audio', el) as HTMLAudioElement, canvas = $('canvas', el) as HTMLCanvasElement, btn = $('.play', el) as HTMLButtonElement;
+    const p: Player = { el, audio, canvas, id: el.dataset.clip!, who: el.dataset.who!, text: $('.words', el)!.textContent!.trim().replace(/^“|”$/g, ''), peaks: null, raf: 0 };
+    el.dataset.seconds = ($('.len', el)!.textContent || '').replace(/[^\d.]/g, '');
+    (el as any).__p = p;
+    players.push(p);
+    btn.hidden = false;
+    lazy.observe(el);
+    draw(p);
+    btn.addEventListener('click', () => { if (audio.paused) { audio.play(); } else { audio.pause(); } });
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { ev.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime + (ev.key === 'ArrowRight' ? 1 : -1)); draw(p); }
+    });
+    canvas.addEventListener('click', (ev) => { const r = canvas.getBoundingClientRect(); const f = (ev.clientX - r.left) / r.width; audio.currentTime = f * (audio.duration || Number(el.dataset.seconds)); draw(p); });
+    audio.addEventListener('play', () => {
+      players.forEach((o) => { if (o !== p && !o.audio.paused) o.audio.pause(); });
+      if (seq && seq.current !== p) stopSeq();
+      el.classList.add('playing'); btn.setAttribute('aria-label', `Pause: ${p.text}`);
+      duck(true); cancelAnimationFrame(p.raf); tick(p);
+    });
+    audio.addEventListener('pause', () => {
+      el.classList.remove('playing'); btn.setAttribute('aria-label', `Play: ${p.text}`);
+      cancelAnimationFrame(p.raf); draw(p);
+      if (!players.some((o) => !o.audio.paused)) duck(false);
+      if (seq && seq.current === p && !audio.ended) stopSeq();
+    });
+    audio.addEventListener('ended', () => { audio.currentTime = 0; draw(p); });
+  }
+  addEventListener('resize', () => players.forEach(draw));
+
+  const step = () => {
+    if (!seq) return;
+    if (seq.i >= seq.list.length) { stopSeq(); return; }
+    const p = seq.list[seq.i];
+    seq.current = p;
+    seq.out.textContent = `${p.who}: “${p.text}”`;
+    p.audio.currentTime = 0;
+    p.audio.addEventListener('ended', () => { const s = seq; if (s && s.current === p) setTimeout(() => { if (seq === s) { s.i++; step(); } }, 420); }, { once: true });
+    p.audio.play();
+  };
+  const first = (id: string) => players.find((p) => p.id === id && !p.el.closest('#sa'))!;
+  const lists: Record<string, () => Player[]> = {
+    seed: () => ['mentor_seed', 'scout_seed', 'innkeeper_seed'].map(first),
+    line: () => ['mentor_line0', 'scout_line1', 'innkeeper_line2', 'mentor_line3', 'scout_line4'].map(first),
+    mentor: () => ['mentor_seed', 'mentor_line0', 'mentor_line3'].map(first),
+  };
+  for (const b of $$('.run')) {
+    b.hidden = false;
+    b.addEventListener('click', () => {
+      const out = b.parentElement!.querySelector('output') as HTMLOutputElement;
+      stopSeq();
+      seq = { list: lists[b.dataset.seq!](), i: 0, out, current: null };
+      step();
+    });
+  }
+
+  /* ---- the example: the description is sung word by word, then the voice enters ---- */
+  const hear = $('.hear') as HTMLButtonElement, desc = $('#sa .desc')!;
+  hear.hidden = false;
+  const heroPlayer = players.find((p) => p.el.closest('#sa'))!;
+  const words = desc.textContent!.trim().split(/\s+/);
+  desc.replaceChildren(...words.flatMap((w, i) => { const s = document.createElement('span'); s.className = 'w'; s.textContent = w; return i ? [document.createTextNode(' '), s] : [s]; }));
+  hear.addEventListener('click', () => {
+    if (!heroPlayer.audio.paused) heroPlayer.audio.pause();
+    heroPlayer.audio.currentTime = 0;
+    const spans = $$('.w', desc);
+    if (reduced) { heroPlayer.audio.play(); return; }
+    desc.classList.add('singing');
+    spans.forEach((s) => s.classList.remove('in'));
+    void desc.offsetWidth;
+    const gap = 200;
+    spans.forEach((s, i) => setTimeout(() => s.classList.add('in'), 120 + i * gap));
+    setTimeout(() => { heroPlayer.audio.play(); hear.textContent = 'Hear it again'; }, 120 + spans.length * gap + 500);
+  });
+
+  /* ---- pacing: a bounded illustration, no re-timing ---- */
+  const pace = $('#pace') as HTMLInputElement | null, paceOut = $('#pace-out') as HTMLOutputElement | null;
+  if (pace && paceOut) {
+    const say = () => {
+      const v = Number(pace.value) / 100;
+      paceOut.textContent = v >= 0.995 && v <= 1.005 ? 'Normal speed. The same person saying the same words.'
+        : v >= 0.8 && v <= 1.25 ? (v < 1 ? 'Slower. ' : 'Faster. ') + 'Inside the range a listener called clean: the same person, the same words.'
+        : v >= 0.67 && v <= 1.43 ? (v < 1 ? 'Slow. Still the same person saying the same words by measurement; down here a listener said it starts to sound processed.' : 'Fast. Still the same person saying the same words by measurement, past the range a listener called clean.')
+        : (v < 1 ? 'Slower than measured. ' : 'Faster than measured. ') + 'Outside the range: the identity fades gradually rather than breaking.';
+    };
+    pace.addEventListener('input', say);
+    say();
+  }
+
+  /* ---- the tanpura: four strings synthesised, plucked Pa Sa Sa Sa, jawari on the bridge ---- */
+  type Drone = { master: GainNode; pluck: (i: number, t: number) => void; cycle: number[]; period: number };
+  const makeDrone = (ctx: BaseAudioContext, out: AudioNode): Drone => {
+    const wave = (n: number, f: (k: number) => number) => { const re = new Float32Array(n + 1), im = new Float32Array(n + 1); for (let k = 1; k <= n; k++) im[k] = f(k); return ctx.createPeriodicWave(re, im); };
+    const body = wave(7, (k) => 1 / k);
+    const jawari = wave(28, (k) => (k < 3 ? 0.3 : 1 / Math.sqrt(k)));
+    const irLen = Math.floor(ctx.sampleRate * 1.6), ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3.2); }
+    const verb = ctx.createConvolver(); verb.buffer = ir;
+    const wet = ctx.createGain(); wet.gain.value = 0.22;
+    const bus = ctx.createGain(), master = ctx.createGain(); master.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.3;
+    bus.connect(master); bus.connect(verb); verb.connect(wet); wet.connect(master); master.connect(comp); comp.connect(out);
+    const SA = 146.83;
+    const strings = [{ f: SA * 0.75, a: 0.3 }, { f: SA, a: 0.34 }, { f: SA * 1.0017, a: 0.34 }, { f: SA / 2, a: 0.32 }];
+    const pluck = (i: number, t: number) => {
+      const s = strings[i], f = s.f * (1 + (Math.random() - 0.5) * 0.002);
+      const o1 = ctx.createOscillator(), g1 = ctx.createGain(); o1.setPeriodicWave(body); o1.frequency.value = f;
+      g1.gain.setValueAtTime(0, t); g1.gain.linearRampToValueAtTime(s.a * 0.9, t + 0.006); g1.gain.setTargetAtTime(0, t + 0.006, 1.3);
+      o1.connect(g1); g1.connect(bus);
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter(); o2.setPeriodicWave(jawari); o2.frequency.value = f * 1.0005;
+      lp.type = 'lowpass'; lp.Q.value = 1.1;
+      lp.frequency.setValueAtTime(320, t); lp.frequency.exponentialRampToValueAtTime(3400, t + 0.55); lp.frequency.setTargetAtTime(750, t + 0.55, 1.7);
+      g2.gain.setValueAtTime(0, t); g2.gain.linearRampToValueAtTime(s.a * 0.12, t + 0.02); g2.gain.linearRampToValueAtTime(s.a * 0.55, t + 0.5); g2.gain.setTargetAtTime(0, t + 0.5, 2.4);
+      o2.connect(lp); lp.connect(g2); g2.connect(bus);
+      o1.start(t); o2.start(t); o1.stop(t + 8); o2.stop(t + 8);
+    };
+    return { master, pluck, cycle: [0, 1.05, 2.1, 3.15], period: 4.4 };
+  };
+
+  const droneBtn = $('.drone') as HTMLButtonElement;
+  const strings = $$('.strings i');
+  let ctx: AudioContext | null = null, drone: Drone | null = null, timer = 0, on = false, ducked = false;
+  const level = () => { if (drone && ctx) drone.master.gain.setTargetAtTime(on ? (ducked ? 0.14 : 0.5) : 0, ctx.currentTime, 0.25); };
+  const duck = (d: boolean) => { ducked = d; level(); };
+  const ring = (i: number) => { if (reduced) return; const s = strings[i]; s.classList.add('ring'); setTimeout(() => s.classList.remove('ring'), 900); };
+  const start = async () => {
+    if (!ctx) { ctx = new AudioContext(); drone = makeDrone(ctx, ctx.destination); }
+    if (ctx.state !== 'running') await ctx.resume();
+    on = true; level();
+    let next = ctx.currentTime + 0.15, idx = 0;
+    const gaps = [1.05, 1.05, 1.05, 1.25];
+    timer = setInterval(() => {
+      while (ctx && next < ctx.currentTime + 0.6) {
+        const i = idx % 4, at = next;
+        drone!.pluck(i, at);
+        setTimeout(() => ring(i), Math.max(0, (at - ctx.currentTime) * 1000));
+        next += gaps[i]; idx++;
+      }
+    }, 200);
+  };
+  const stop = () => { on = false; level(); clearInterval(timer); };
+  if ('AudioContext' in window) {
+    droneBtn.hidden = false;
+    droneBtn.addEventListener('click', () => {
+      const now = droneBtn.getAttribute('aria-pressed') !== 'true';
+      droneBtn.setAttribute('aria-pressed', String(now));
+      droneBtn.querySelector('em')!.textContent = now ? 'on' : 'off';
+      html.classList.toggle('drone-on', now);
+      if (now) start(); else stop();
+    });
+  }
+  /* Offline render of the same synth, so the drone can be checked numerically: level, harmonics, no clipping. */
+  (window as any).alaapDroneRender = async (secs = 6) => {
+    const oc = new OfflineAudioContext(1, Math.floor(44100 * secs), 44100);
+    const d = makeDrone(oc, oc.destination); d.master.gain.value = 0.5;
+    const gaps = [1.05, 1.05, 1.05, 1.25];
+    for (let t = 0.05, i = 0; t < secs; i++) { d.pluck(i % 4, t); t += gaps[i % 4]; }
+    const buf = await oc.startRendering();
+    return Array.from(buf.getChannelData(0));
+  };
+</script>

@@ -1,0 +1,730 @@
+---
+// Variant 16 — "parser". The page is an interactive-fiction transcript: rooms, a status line,
+// a real parser that can only replay the three pre-rendered characters and says so.
+import type { CharacterId, Clip } from '../../content/alaap';
+import { name, meaning, links, characters, scene, seeds, byCharacter, clipCaveats } from '../../content/alaap';
+
+const label: Record<CharacterId, string> = { mentor: 'Mentor', scout: 'Scout', innkeeper: 'Innkeeper' };
+const seed = (id: CharacterId): Clip => seeds.find((c) => c.character === id)!;
+const describe = (id: CharacterId): string => characters.find((c) => c.id === id)!.description;
+const mentorTrio: Clip[] = [seed('mentor'), ...byCharacter('mentor').filter((c) => c.kind === 'line')];
+const pair: Clip[] = [seed('mentor'), seed('scout')];
+const heroSeed = seed('mentor');
+const hindiLine = 'नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है';
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap — a transcript</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Rozha+One&family=Tiro+Devanagari+Hindi&display=swap" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+  </head>
+  <body>
+    <header class="status" aria-label="Status line">
+      <span id="room">The Anteroom</span>
+      <span class="status-r"><span class="voices">Voices: 3</span><span class="moves">Moves: <span id="moves">0</span></span></span>
+    </header>
+
+    <main class="tx">
+      <header class="banner">
+        <h1>{name.latin} <span lang="hi">{name.devanagari}</span></h1>
+        <p class="meaning">{meaning}.</p>
+        <p class="meta">Research pass 2026-09-02 · Implementation and measurement 2026-09-05 · Not a product</p>
+      </header>
+
+      <!-- ROOM 1 -->
+      <section class="room hero" id="anteroom" data-room="The Anteroom" aria-labelledby="h-anteroom">
+        <h2 class="room-name" id="h-anteroom">The Anteroom</h2>
+        <p>You describe a character in ordinary language. You get back a voice that has never existed. Then you use that voice for any line of dialogue you write, and it stays the same character every time.</p>
+        <p class="note">No microphone here. On the desk, a form with one field.</p>
+
+        <p class="cmd"><span class="pr">&gt;</span> describe a voice</p>
+        <p>Describe it in ordinary language.</p>
+
+        <p class="cmd"><span class="pr">&gt;</span> {describe('mentor')}</p>
+        <p>A voice nobody has recorded answers.</p>
+        <div data-group="hero">
+          <figure class="player" data-id={heroSeed.id} data-char={heroSeed.character} data-src={heroSeed.src} data-seconds={heroSeed.seconds} data-text={heroSeed.text}>
+            <figcaption><span class="who">{label[heroSeed.character]}</span> “{heroSeed.text}”</figcaption>
+            <div class="row">
+              <button class="play" type="button" aria-pressed="false" aria-label={`Play the mentor: ${heroSeed.text}`}><span class="tri"></span></button>
+              <canvas class="wave" width="320" height="28" aria-hidden="true"></canvas>
+              <span class="dur">{heroSeed.seconds} s</span>
+            </div>
+            <audio preload="none" controls src={heroSeed.src}></audio>
+          </figure>
+        </div>
+        <p class="note">The demo's mentor, minted from exactly those words on 2026-09-05 and replayed here. Nothing on this page is generated live. {clipCaveats.watermark}</p>
+
+        <div id="live" role="log" aria-live="polite"></div>
+        <form id="parser" class="prompt" autocomplete="off">
+          <label class="pr" for="cmd">&gt;</label>
+          <input id="cmd" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Command prompt" placeholder="type a command, or pick one below" />
+        </form>
+        <p class="chips"><span class="try">try</span>
+          <span class="c"><button class="chip" type="button" data-cmd="inventory">inventory</button><span class="sep" aria-hidden="true">·</span></span>
+          <span class="c"><button class="chip" type="button" data-cmd="play scene">play scene</button><span class="sep" aria-hidden="true">·</span></span>
+          <span class="c"><button class="chip" type="button" data-cmd="examine mentor">examine mentor</button><span class="sep" aria-hidden="true">·</span></span>
+          <span class="c"><button class="chip" type="button" data-cmd="describe a voice">describe a voice</button><span class="sep" aria-hidden="true">·</span></span>
+          <span class="c"><button class="chip" type="button" data-cmd="say the line apologetically">say the line apologetically</button><span class="sep" aria-hidden="true">·</span></span>
+          <span class="c"><button class="chip" type="button" data-cmd="help">help</button></span>
+        </p>
+        <p class="note notice">A notice by the door reads: for people making games, animation, audio drama, dubbing, interactive fiction — anyone who needs many distinct speaking characters and cannot hire a cast for each one.</p>
+      </section>
+
+      <!-- ROOM 2 -->
+      <section class="room" id="voices" data-room="The Voice Room" aria-labelledby="h-voices">
+        <h2 class="room-name" id="h-voices">The Voice Room</h2>
+        <p class="cmd"><span class="pr">&gt;</span> inventory</p>
+        <p>You are carrying three voices. Each was minted from nothing but the description beside it, and each is stored with a short seed clip and the engine version that made it.</p>
+        <div data-group="inventory">
+          {seeds.map((c) => (
+            <div class="item">
+              <p class="minted"><b>{label[c.character]}</b> — minted from “{describe(c.character)}”</p>
+              <figure class="player" data-id={c.id} data-char={c.character} data-src={c.src} data-seconds={c.seconds} data-text={c.text}>
+                <figcaption><span class="who">{label[c.character]}</span> “{c.text}”</figcaption>
+                <div class="row">
+                  <button class="play" type="button" aria-pressed="false" aria-label={`Play the ${c.character}: ${c.text}`}><span class="tri"></span></button>
+                  <canvas class="wave" width="320" height="28" aria-hidden="true"></canvas>
+                  <span class="dur">{c.seconds} s</span>
+                </div>
+                <audio preload="none" controls src={c.src}></audio>
+              </figure>
+            </div>
+          ))}
+        </div>
+        <h3>A voice is a thing you keep, not a setting you re-guess</h3>
+        <p>Most tools generate a voice each time you ask. Here the character's voice is stored as an identity and re-used. The same character sounds like the same person across every line, every scene, and every session. That consistency is measured, not hoped for.</p>
+
+        <button class="cmd run" type="button" data-cmd="examine mentor" id="examine"><span class="pr">&gt;</span> examine mentor</button>
+        <p>One character, three different sentences. The identity is who the character is; each line is a separate performance.</p>
+        <div data-group="examine">
+          {mentorTrio.map((c) => (
+            <figure class="player" data-id={c.id} data-char={c.character} data-src={c.src} data-seconds={c.seconds} data-text={c.text}>
+              <figcaption><span class="who">{label[c.character]}</span> “{c.text}”{c.experimentalEmotionSetting && <sup class="dag" title="experimental emotion setting, unvalidated">†</sup>}</figcaption>
+              <div class="row">
+                <button class="play" type="button" aria-pressed="false" aria-label={`Play the ${c.character}: ${c.text}`}><span class="tri"></span></button>
+                <canvas class="wave" width="320" height="28" aria-hidden="true"></canvas>
+                <span class="dur">{c.seconds} s</span>
+              </div>
+              <audio preload="none" controls src={c.src}></audio>
+            </figure>
+          ))}
+        </div>
+        <p>A character stays itself across different sentences more consistently than a real person does across different recordings, which is unsurprising once you think about it: a stored voice has no bad-throat day, no change of microphone, no mood.</p>
+        <p class="note">† rendered with an experimental emotion setting whose effect has not been validated on this engine. A voice sample, not a performance.</p>
+      </section>
+
+      <!-- ROOM 3 -->
+      <section class="room" id="scene" data-room="The Scene" aria-labelledby="h-scene">
+        <h2 class="room-name" id="h-scene">The Scene</h2>
+        <button class="cmd run" type="button" data-cmd="play scene"><span class="pr">&gt;</span> play scene</button>
+        <p>Five lines, three characters, rendered end to end in about four minutes on one laptop GPU. The demo mints the three characters from text, renders the scene, watermarks everything and writes a manifest a game engine can read. These clips are that run's output.</p>
+        <div data-group="scene" class="screenplay">
+          {scene.map((c) => (
+            <figure class="player" data-id={c.id} data-char={c.character} data-src={c.src} data-seconds={c.seconds} data-text={c.text}>
+              <figcaption><span class="who">{label[c.character]}</span> “{c.text}”{c.experimentalEmotionSetting && <sup class="dag" title="experimental emotion setting, unvalidated">†</sup>}</figcaption>
+              <div class="row">
+                <button class="play" type="button" aria-pressed="false" aria-label={`Play the ${c.character}: ${c.text}`}><span class="tri"></span></button>
+                <canvas class="wave" width="320" height="28" aria-hidden="true"></canvas>
+                <span class="dur">{c.seconds} s</span>
+              </div>
+              <audio preload="none" controls src={c.src}></audio>
+            </figure>
+          ))}
+        </div>
+        <div class="caveats">
+          <p>† {clipCaveats.emotionSetting}</p>
+          <p>{clipCaveats.englishOnly}</p>
+          <p>{clipCaveats.watermark}</p>
+        </div>
+
+        <button class="cmd run" type="button" data-cmd="compare mentor scout"><span class="pr">&gt;</span> compare mentor scout</button>
+        <p>Two invented voices from two descriptions. Verified by a separate speaker-recognition system that has never seen the generator: an independent check, not the system marking its own homework. Each invented voice also sits clearly apart from the nearest real voice the system learned from, so these are new voices, not real people wearing a label.</p>
+        <div data-group="compare">
+          {pair.map((c) => (
+            <figure class="player" data-id={c.id} data-char={c.character} data-src={c.src} data-seconds={c.seconds} data-text={c.text}>
+              <figcaption><span class="who">{label[c.character]}</span> “{c.text}”</figcaption>
+              <div class="row">
+                <button class="play" type="button" aria-pressed="false" aria-label={`Play the ${c.character}: ${c.text}`}><span class="tri"></span></button>
+                <canvas class="wave" width="320" height="28" aria-hidden="true"></canvas>
+                <span class="dur">{c.seconds} s</span>
+              </div>
+              <audio preload="none" controls src={c.src}></audio>
+            </figure>
+          ))}
+        </div>
+        <h3>Who is speaking and what is being said are genuinely separate</h3>
+        <p>The system holds a character's identity apart from the words. That is why one character can say anything without their voice drifting, and why changing the line never changes the person. This was verified rather than assumed: when the same audio content is played through two different identities, the words come out identically. The measured error between them was exactly zero on every line tested.</p>
+      </section>
+
+      <!-- ROOM 4 -->
+      <section class="room" id="workshop" data-room="The Workshop" aria-labelledby="h-workshop">
+        <h2 class="room-name" id="h-workshop">The Workshop</h2>
+        <p class="cmd"><span class="pr">&gt;</span> examine the machine</p>
+        <p>Only one small piece is trained. The speech engine is used as-is and never altered, so a better engine can be swapped in without rebuilding everything.</p>
+        <ol class="chain">
+          <li><b>your description</b></li>
+          <li><b>[ the mapper ]</b> <span class="note">the only part that learns</span></li>
+          <li><b>a voice identity</b> <span class="note">a small, storable thing: it can be saved, versioned and handed to someone else</span></li>
+          <li><b>[ the voice engine ]</b> <span class="note">never modified, swappable</span></li>
+          <li><b>audio</b> <span class="note">watermarked and logged from the first render, with a manifest a game engine can read</span></li>
+        </ol>
+        <p>The checker is a separate system that never sees the engine's internals. Two ways to answer a description are measured, invent or find; the numbers are in the Ledger.</p>
+
+        <p class="cmd"><span class="pr">&gt;</span> upload a recording</p>
+        <p class="cant">There is no slot for a recording.</p>
+        <h3>It does not need a recording of the character</h3>
+        <p>There is no voice cloning here, and no user uploads their own audio. Voices are created from a written description. That sidesteps the consent and impersonation problem entirely: you cannot accidentally clone a real person if the system never accepts a recording.</p>
+
+        <p class="cmd"><span class="pr">&gt;</span> examine the engine</p>
+        <p>The Indian-language engine covers 22 Indian languages; four are measured so far: English, Hindi, Bengali and Tamil. Indic is the stated reason the project exists.</p>
+        <p>The tools that do this well mostly do it in English. Indian-language creators either use a handful of stock voices that everyone else is also using, or they hire actors. This project treats Hindi, Bengali and Tamil as first-class, not as an afterthought port. The Indian-language tools that exist ship a fixed menu of voices, and every project draws from the same menu.</p>
+        <p class="note">In the project's own measurements the Hindi path scored higher than the English path on all of its identity checks. The Indian-language speech data the project builds on holds more distinct speakers than any English set it has, and its licence allows commercial use.</p>
+      </section>
+
+      <!-- ROOM 5 -->
+      <section class="room ledger-room" id="ledger" data-room="The Ledger" aria-labelledby="h-ledger">
+        <h2 class="room-name" id="h-ledger">The Ledger</h2>
+        <p class="cmd"><span class="pr">&gt;</span> read ledger</p>
+        <p>A bound book, open. Each entry is a measurement, and each measurement has its caveat written in the margin beside it.</p>
+
+        <article class="entry">
+          <h3>It knows what it does not know</h3>
+          <p>Every capability is measured against a control, and the honest limits are published alongside the results. Roughly twenty findings in this project were wrong on the first attempt and caught by a check, including one where an entire experiment produced fluent-sounding speech that was saying different words than requested, and nothing errored. That is written up publicly rather than quietly fixed.</p>
+          <p class="note">Written inside the cover: “A suspiciously good or suspiciously bad number is a bug report about your setup.”</p>
+        </article>
+        <article class="entry">
+          <h3>It works end to end today</h3>
+          <p>On one 6 GB laptop GPU, in English, Hindi, Bengali and Tamil. Describe a character, get a voice, render a scene of dialogue, and out comes watermarked audio plus a file a game engine can read. The demo mints three characters from text, renders a five-line scene, watermarks everything and writes the manifest in about four minutes.</p>
+          <p class="note">The clips in this transcript are that run's output.</p>
+        </article>
+        <article class="entry">
+          <h3>Minting a voice from a description costs nothing in clarity</h3>
+          <p>A described voice is just as intelligible as one taken from a real recording. The measured difference was tiny, leaned slightly in the invented voice's favour, and was smaller than the difference between two real speakers: the gap between two real speakers was six times larger than the gap between invented and real.</p>
+          <p class="note">Read that as no detectable difference, not as invented voices being better. The control that had to pass first: every version must come out the same length before any score is read, or the run aborts.</p>
+        </article>
+        <article class="entry">
+          <h3>Invented voices are recognisably distinct people</h3>
+          <p>Verified by a separate speaker-recognition system that has never seen the generator. Each invented voice sits clearly apart from the nearest real voice the system learned from.</p>
+          <p class="note">An independent check, not the system marking its own homework.</p>
+        </article>
+        <article class="entry">
+          <h3>A native speaker confirmed the Hindi says what it should</h3>
+          <p>A fluent Hindi speaker has confirmed one rendered line says the target sentence. They were told the sentence and asked “does it say this?”, not “does it sound right?”. That is the check the earlier faulty audio failed.</p>
+          <p class="hindi" lang="hi">{hindiLine}</p>
+          <p class="note">Our plain translation, not a project claim: “Hello, how are you? The weather is very nice today.” Still to be checked: the other three voices and the other two lines.</p>
+        </article>
+        <article class="entry">
+          <h3>A blind listening test found and fixed a real problem</h3>
+          <p>A blind listening test with built-in controls found a real problem in how the system judged whether two voices were the same person: pairs the system called different were heard as the same person about half the time. The threshold was raised. That removed 10 duplicate voices from a set of 50 and cost 3 percent of measured variety.</p>
+          <p class="note">The test was small, 8 pairs and one listener with every control answered correctly. It found the problem but does not settle the exact threshold, and the English threshold has not had its own listening test.</p>
+        </article>
+        <article class="entry">
+          <h3>Pacing is controllable within a measured range</h3>
+          <p>You can slow a character to about two-thirds of normal speed or push them to about 1.4 times, and they stay the same person saying the same words. Outside that range the identity fades gradually rather than breaking.</p>
+<pre class="ruler" aria-label="Pacing range, an illustration">⅔×        0.8×        1×        1.25×      1.4×
+|==========[==========|==========]==========|
+ measured  [   clean, per one listener   ]</pre>
+          <p class="note">A listener noted the slow extreme starts to sound processed; the range they called clean is narrower, about 0.8 to 1.25 times. The ruler is an illustration. No live re-timing exists on this page.</p>
+        </article>
+        <article class="entry">
+          <h3>Two ways to answer a description, and the numbers for the trade-off</h3>
+          <p>Invent a new voice, or find the closest match in an existing library of voices. Inventing gives you a character nobody else has; finding gives you higher accuracy and studio quality. Neither is strictly better.</p>
+          <ul class="ledger-list">
+            <li>Finding, on a library of 141 real Hindi voices: two thirds of descriptions get a voice that matches on every trait named, and 87 percent land within one step. When the description names only a couple of traits, the way people actually write, a bit over half match exactly. About one in five would by chance. The same method on a library of 2,500 English voices reaches 88.5%. It replicates in Bengali within a point or two.</li>
+            <li>Reach: finding reaches 87% of the variety the library actually holds; inventing reached 37% before two mis-set settings were fixed, and the fix raised the invented catalogue from 14 to 22 distinct Hindi voices and from 23 to 41 English.</li>
+            <li>What finding cannot do: produce a voice the library does not contain; guarantee a new character is unique, since two descriptions can return the same voice; and the library is someone else's, so every character in every project draws from the same shelf.</li>
+          </ul>
+          <p class="note">The library measured was real recorded speakers standing in for a studio library, and no commercial system has been measured.</p>
+        </article>
+        <article class="entry">
+          <h3>Watermarked and logged from the first render</h3>
+          <p>Every render is watermarked and logged, from the first output, not added later. The watermark is AudioSeal. Output includes a manifest a game engine can consume: this is built for a pipeline, not a demo button.</p>
+          <p class="note">The manifest's own line: “AI-generated synthetic speech. All audio carries an AudioSeal watermark.”</p>
+        </article>
+        <article class="entry">
+          <h3>Smaller entries</h3>
+          <p>114 automated checks guard the rules the project learned the hard way. The rules, one line each: never accept a user's audio; watermark from the first render; store timbre, not performance; do not start the next stage until this one is measured.</p>
+        </article>
+      </section>
+
+      <!-- ROOM 6 -->
+      <section class="room" id="locked" data-room="The Locked Door" aria-labelledby="h-locked">
+        <h2 class="room-name" id="h-locked">The Locked Door</h2>
+        <p>A door at the end of the corridor is locked. What is behind it is listed on the door, plainly, so nobody has to guess.</p>
+        <ul class="locked">
+          <li data-key="product">
+            <p class="cmd"><span class="pr">&gt;</span> open an account</p>
+            <p class="cant">That isn't here.</p>
+            <p class="why">This is a working research system, not a product. There is no signup, no hosted service, no API.</p>
+          </li>
+          <li data-key="emotion">
+            <p class="cmd"><span class="pr">&gt;</span> say the line apologetically</p>
+            <p class="cant">You can't do that yet.</p>
+            <p class="why">Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream: the engine's documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between four tagged versions of the same line.</p>
+          </li>
+          <li data-key="catalogue">
+            <p class="cmd"><span class="pr">&gt;</span> ask for a hundred voices</p>
+            <p class="cant">There aren't that many yet.</p>
+            <p class="why">Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project's own measure. The limit is understood and measured rather than mysterious: the real speakers the system learned from hold about 38 to 48 distinguishable voices, and the project measured exactly where its own method loses variety.</p>
+          </li>
+          <li data-key="licence">
+            <p class="cmd"><span class="pr">&gt;</span> take the machine</p>
+            <p class="cant">You can't take that.</p>
+            <p class="why">It cannot be shipped as a product in its current form for licensing reasons, which are documented. The Indian-language engine's training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</p>
+          </li>
+          <li data-key="listened">
+            <p class="cmd"><span class="pr">&gt;</span> ask the audience</p>
+            <p class="cant">The hall is nearly empty.</p>
+            <p class="why">Very little has been listened to. Most results are automatic measurements. One listener, a handful of pairs.</p>
+          </li>
+          <li data-key="commercial">
+            <p class="cmd"><span class="pr">&gt;</span> compare with a commercial system</p>
+            <p class="cant">There is nothing here to compare against.</p>
+            <p class="why">No comparison against a commercial system has been made.</p>
+          </li>
+          <li data-key="hindi">
+            <p class="cmd"><span class="pr">&gt;</span> play the hindi line</p>
+            <p class="cant">You can't do that here.</p>
+            <p class="why">{clipCaveats.englishOnly}</p>
+          </li>
+          <li data-key="setting">
+            <p class="cmd"><span class="pr">&gt;</span> examine the emotion setting</p>
+            <p class="cant">Unvalidated.</p>
+            <p class="why">{clipCaveats.emotionSetting}</p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ROOM 7 -->
+      <section class="room" id="exits" data-room="Exits" aria-labelledby="h-exits">
+        <h2 class="room-name" id="h-exits">Exits</h2>
+        <p class="cmd"><span class="pr">&gt;</span> exits</p>
+        <p>Two exits are visible.</p>
+        <ul class="exit-list">
+          <li><a href={links.repo}>Read the research</a> <span class="note">— the repository, with every measurement and every retraction left in place</span></li>
+          <li><a href={links.issues}>Corrections welcome</a> <span class="note">— “If a claim here is wrong, an issue with a primary source is more useful than almost anything else.”</span></li>
+        </ul>
+        <p class="note">Research and documentation CC-BY; code MIT. No model weights and no generated Indian-language audio ship. Getting in touch means the repository or its issues; there is no other door.</p>
+        <p class="note end">*** The transcript ends here. ***</p>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: dark;
+    --indigo: #171A45;
+    --indigo-2: #21245A;
+    --ivory: #EFE8D6;
+    --ash: #A6A4C4;
+    --marigold: #F4B942;
+    --mono: 'Courier Prime', 'Courier New', Courier, monospace;
+    --disp: 'Rozha One', 'Tiro Devanagari Hindi', Georgia, 'Times New Roman', serif;
+    --hindi: 'Tiro Devanagari Hindi', 'Rozha One', 'Noto Sans Devanagari', serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--indigo); }
+  body {
+    margin: 0; background: var(--indigo); color: var(--ivory);
+    font: 400 17px/1.65 var(--mono); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  :focus-visible { outline: 2px solid var(--marigold); outline-offset: 3px; }
+  a { color: var(--marigold); text-decoration: underline; text-underline-offset: .2em; text-decoration-thickness: 1px; }
+  a:hover { color: var(--ivory); }
+  p { margin: 0 0 1rem; }
+  b { font-weight: 700; }
+
+  /* status line: inverse video, like an interpreter */
+  .status {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; justify-content: space-between; gap: 1rem;
+    background: var(--ivory); color: var(--indigo);
+    padding: .3rem 1.25rem; font-size: 15px; line-height: 1.5; white-space: nowrap;
+  }
+  .status-r { display: flex; gap: 2rem; }
+
+  .tx { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 6rem; }
+
+  /* banner */
+  .banner { margin-bottom: 1.5rem; }
+  .banner h1 { font: 400 clamp(3.4rem, 11vw, 5.25rem)/1 var(--disp); margin: 0 0 .4rem; letter-spacing: -.01em; }
+  .banner h1 [lang="hi"] { color: var(--marigold); margin-left: .12em; }
+  .meaning { font-style: italic; color: var(--ash); max-width: 42rem; margin-bottom: .4rem; }
+  .meta { color: var(--ash); font-size: .75em; margin: 0; }
+
+  /* rooms */
+  .room { padding-top: 3.5rem; scroll-margin-top: 3rem; }
+  .room.hero { padding-top: 0; }
+  .notice { margin-top: 1.5rem; }
+  .room-name { font: 400 2.1rem/1.15 var(--disp); margin: 0 0 1rem; color: var(--ivory); }
+  h3 { font: 700 1em/1.4 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--marigold); margin: 2rem 0 .4rem; }
+  .note { color: var(--ash); }
+  .cant { font-weight: 700; margin-bottom: .35rem; }
+
+  .cmd {
+    display: block; font: inherit; font-weight: 700; color: var(--ivory); background: none; border: 0; padding: 0;
+    margin: 1.5rem 0 .5rem; text-align: left; cursor: default;
+  }
+  .cmd .pr { color: var(--marigold); margin-right: .25em; }
+  button.cmd { cursor: pointer; }
+  button.cmd:hover { color: var(--marigold); }
+
+  /* players */
+  .player { margin: 0 0 .9rem; padding: .7rem .9rem .8rem; background: var(--indigo-2); border-radius: 3px; }
+  .player figcaption { margin-bottom: .45rem; }
+  .who { color: var(--marigold); text-transform: uppercase; letter-spacing: .1em; font-size: .78em; font-weight: 700; margin-right: .5rem; }
+  .dag { color: var(--marigold); font-size: .8em; margin-left: .15rem; }
+  .row { display: flex; align-items: center; gap: .8rem; }
+  .play {
+    flex: none; width: 2.2rem; height: 2.2rem; border: 1.5px solid var(--marigold); border-radius: 2px;
+    background: transparent; color: var(--marigold); cursor: pointer; display: grid; place-items: center; padding: 0;
+  }
+  .play:hover { background: var(--marigold); color: var(--indigo); }
+  .play .tri { width: 0; height: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; margin-left: 3px; }
+  .play[aria-pressed="true"] .tri { width: 11px; height: 13px; border: 0; border-left: 4px solid currentColor; border-right: 4px solid currentColor; margin-left: 0; }
+  .wave { flex: 1 1 auto; min-width: 0; height: 28px; display: block; }
+  .dur { color: var(--ash); font-size: .85em; white-space: nowrap; min-width: 3.2em; text-align: right; }
+  .player.playing { box-shadow: inset 2px 0 0 var(--marigold); }
+  html.js .player audio { display: none; }
+  html:not(.js) .player .row { display: none; }
+  .player audio { width: 100%; margin-top: .4rem; }
+  .item { margin-top: 1.2rem; }
+  .minted { margin-bottom: .4rem; }
+  .screenplay .player figcaption { padding-left: 0; }
+  .screenplay .player .who { display: block; margin: 0 0 .1rem 8ch; }
+  .caveats { margin: 1.5rem 0 0; padding-left: 1rem; border-left: 1px solid var(--ash); color: var(--ash); }
+  .caveats p { margin-bottom: .6rem; }
+
+  /* live log and prompt */
+  #live { margin-top: 1.5rem; }
+  #live:empty { display: none; }
+  #live .cmd { margin-top: 1.25rem; }
+  #live .out { margin-bottom: .5rem; }
+  #live .out p { margin-bottom: .5rem; }
+  #live .np { margin: .25rem 0; }
+  #live .np::before { content: '▶'; color: var(--marigold); font-size: .7em; margin-right: .6rem; vertical-align: .1em; }
+  #live .np.done::before { content: '■'; color: var(--ash); }
+  .help { list-style: none; padding: 0; margin: 0 0 .5rem; }
+  .help li { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .help .chip { min-width: 16ch; text-align: left; }
+  .help .note { flex: 1 1 18ch; }
+  .prompt { display: flex; align-items: baseline; gap: .5rem; margin-top: 1.25rem; }
+  .prompt .pr { color: var(--marigold); font-weight: 700; }
+  .prompt input {
+    flex: 1; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--ash);
+    color: var(--ivory); font: inherit; padding: .2rem 0; caret-color: var(--marigold); border-radius: 0;
+  }
+  .prompt input::placeholder { color: var(--ash); opacity: .8; font-style: italic; }
+  .prompt input:focus { outline: none; border-bottom-color: var(--marigold); }
+  .chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .5rem; color: var(--ash); font-size: .9em; margin-top: .6rem; }
+  .chips .try { margin-right: .25rem; }
+  .chips .c { white-space: nowrap; }
+  .chips .sep { margin-left: .5rem; }
+  .chip {
+    background: none; border: 0; padding: 0; color: var(--ivory); font: inherit; cursor: pointer;
+    text-decoration: underline dotted; text-underline-offset: .2em;
+  }
+  .chip:hover { color: var(--marigold); }
+  html:not(.js) .prompt, html:not(.js) .chips, html:not(.js) .moves { display: none; }
+
+  /* how it works */
+  .chain { list-style: none; padding: 0 0 0 1.5rem; margin: 1rem 0 1.25rem; border-left: 1px solid var(--ash); }
+  .chain li { position: relative; padding-bottom: .8rem; }
+  .chain li::before { content: '→'; position: absolute; left: -1.5rem; top: 0; width: 1.5rem; text-align: center; color: var(--marigold); background: var(--indigo); }
+  .chain li:last-child { padding-bottom: 0; }
+
+  /* ledger: the caveat is written in the margin. On a screen wide enough to have a margin,
+     it hangs out there, beside the entry, and the text column stays where it is. */
+  .entry { margin-top: 2rem; }
+  .entry h3 { margin-top: 0; }
+  .entry .note { border-left: 1px solid var(--ash); padding-left: .9rem; }
+  @media (min-width: 1360px) {
+    .entry { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; column-gap: 2rem; align-items: start; margin-right: -18rem; }
+    .entry > * { grid-column: 1; }
+    .entry > .note { grid-column: 2; grid-row: 2 / span 12; margin-top: 0; font-size: .92em; }
+  }
+  .hindi { font: 400 1.35em/1.6 var(--hindi); margin: .25rem 0 .75rem; }
+  .ruler { font: inherit; font-size: .85em; line-height: 1.35; color: var(--ash); margin: .5rem 0 .75rem; overflow-x: auto; max-width: 100%; }
+  .ruler::first-line { color: var(--ivory); }
+  .ledger-list { padding-left: 1.25rem; margin: 0 0 1rem; }
+  .ledger-list li { margin-bottom: .6rem; }
+
+  /* locked door */
+  .locked { list-style: none; padding: 0; margin: 0; }
+  .locked li { margin-bottom: .5rem; }
+  .locked .why { color: var(--ash); }
+  .exit-list { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+  .exit-list li { margin-bottom: .5rem; }
+  .end { margin-top: 3rem; letter-spacing: .1em; }
+
+  @media (max-width: 600px) {
+    body { font-size: 15px; }
+    .tx { padding: 2rem 1rem 4rem; }
+    .status { padding: .25rem 1rem; font-size: 13px; }
+    .status-r { gap: 1rem; }
+    .room-name { font-size: 1.8rem; }
+    .screenplay .player .who { margin-left: 0; }
+    .row { gap: .6rem; }
+    .help li { flex-direction: column; gap: 0; margin-bottom: .4rem; }
+    .help .note { flex: 0 0 auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script>
+  const $ = (s: string, r: ParentNode = document) => r.querySelector(s) as HTMLElement | null;
+  const $$ = (s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as HTMLElement[];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const css = getComputedStyle(document.documentElement);
+  const C = { marigold: css.getPropertyValue('--marigold').trim(), ash: css.getPropertyValue('--ash').trim(), dim: '#4a4c7a' };
+  const NAMES: Record<string, string> = { mentor: 'Mentor', scout: 'Scout', innkeeper: 'Innkeeper' };
+  const DESC: Record<string, string> = {};
+  $$('[data-group="inventory"] .player').forEach((p) => { DESC[p.dataset.char!] = ($('.minted', p.parentElement!)?.textContent || '').replace(/^.*?— minted from /, ''); });
+
+  // ---------- players ----------
+  type Fig = { el: HTMLElement; audio: HTMLAudioElement; btn: HTMLButtonElement; canvas: HTMLCanvasElement; peaks: Float32Array | null; loading: boolean; np: HTMLElement | null };
+  const figs: Fig[] = [];
+  const peaksCache = new Map<string, Promise<Float32Array>>();
+  let queue: Fig[] = []; let current: Fig | null = null; let announce = false;
+
+  function draw(f: Fig) {
+    const cv = f.canvas; const ctx = cv.getContext('2d'); if (!ctx) return;
+    const dpr = devicePixelRatio || 1; const w = cv.clientWidth; const h = 28; if (!w) return;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    const n = Math.max(20, Math.floor(w / 5)); const bw = 3; const gap = (w - n * bw) / (n - 1);
+    const d = f.audio.duration; const prog = d && isFinite(d) ? f.audio.currentTime / d : 0;
+    for (let i = 0; i < n; i++) {
+      let v = 0.06;
+      if (f.peaks) { const a = Math.floor((i / n) * f.peaks.length); const b = Math.max(a + 1, Math.floor(((i + 1) / n) * f.peaks.length)); for (let j = a; j < b; j++) v = Math.max(v, f.peaks[j]); }
+      const bh = Math.max(2, v * h); const x = i * (bw + gap);
+      ctx.fillStyle = i / n < prog ? C.marigold : f.peaks ? C.ash : C.dim;
+      ctx.fillRect(x, (h - bh) / 2, bw, bh);
+    }
+  }
+  async function loadPeaks(f: Fig) {
+    if (f.peaks || f.loading) return; f.loading = true;
+    const src = f.el.dataset.src!;
+    try {
+      let p = peaksCache.get(src);
+      if (!p) {
+        p = fetch(src).then((r) => r.arrayBuffer()).then((buf) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(buf)).then((ab) => {
+          const d = ab.getChannelData(0); const N = 400; const out = new Float32Array(N); const step = Math.floor(d.length / N) || 1;
+          for (let i = 0; i < N; i++) { let m = 0; const s = i * step; const e = Math.min(d.length, s + step); for (let j = s; j < e; j += 3) { const v = Math.abs(d[j]); if (v > m) m = v; } out[i] = m; }
+          let mx = 0; for (let i = 0; i < N; i++) if (out[i] > mx) mx = out[i];
+          if (mx > 0) for (let i = 0; i < N; i++) out[i] = out[i] / mx;
+          return out;
+        });
+        peaksCache.set(src, p);
+      }
+      f.peaks = await p; draw(f);
+    } catch { f.loading = false; }
+  }
+  function stopAll() { queue = []; current = null; for (const f of figs) if (!f.audio.paused) f.audio.pause(); }
+  function setPressed(f: Fig, on: boolean) { f.btn.setAttribute('aria-pressed', String(on)); f.el.classList.toggle('playing', on); }
+  function playFig(f: Fig, fromStart = true) {
+    for (const o of figs) if (o !== f && !o.audio.paused) o.audio.pause();
+    current = f; loadPeaks(f);
+    if (fromStart) f.audio.currentTime = 0;
+    if (announce) nowPlaying(f);
+    f.audio.play().catch(() => {});
+  }
+  function playFigs(list: Fig[], say: boolean) { stopAll(); announce = say; queue = list.slice(); next(); }
+  function next() { const f = queue.shift(); if (f) playFig(f); else { announce = false; current = null; } }
+  for (const el of $$('.player')) {
+    const f: Fig = { el, audio: $('audio', el) as HTMLAudioElement, btn: $('.play', el) as HTMLButtonElement, canvas: $('canvas', el) as HTMLCanvasElement, peaks: null, loading: false, np: null };
+    figs.push(f); draw(f);
+    f.btn.addEventListener('click', () => { if (!f.audio.paused) { f.audio.pause(); queue = []; } else { queue = []; announce = false; playFig(f, f.audio.ended || f.audio.currentTime === 0); } });
+    f.audio.addEventListener('play', () => setPressed(f, true));
+    f.audio.addEventListener('pause', () => { setPressed(f, false); draw(f); f.np?.classList.add('done'); });
+    f.audio.addEventListener('timeupdate', () => draw(f));
+    f.audio.addEventListener('ended', () => { setPressed(f, false); f.audio.currentTime = 0; draw(f); if (current === f) next(); });
+  }
+  const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { const f = figs.find((x) => x.el === e.target); if (f) { loadPeaks(f); io.unobserve(e.target); } } }, { rootMargin: '200px 0px' });
+  for (const f of figs) io.observe(f.el);
+  let rt = 0; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => figs.forEach(draw), 120); });
+  const inGroup = (g: string) => figs.filter((f) => f.el.closest(`[data-group="${g}"]`));
+  const seedIn = (g: string, ch: string) => inGroup(g).find((f) => f.el.dataset.char === ch);
+
+  // ---------- status line ----------
+  const roomEl = $('#room')!; const movesEl = $('#moves')!;
+  const rooms = $$('.room');
+  let rTick = false;
+  function updateRoom() {
+    rTick = false; const mark = scrollY + innerHeight * 0.4; let name = rooms[0].dataset.room || '';
+    for (const s of rooms) if (s.offsetTop <= mark) name = s.dataset.room || '';
+    // at the very bottom the last room may be too short to reach the mark; you are in it anyway
+    if (scrollY + innerHeight >= document.documentElement.scrollHeight - 2) name = rooms[rooms.length - 1].dataset.room || name;
+    if (roomEl.textContent !== name) roomEl.textContent = name;
+  }
+  addEventListener('scroll', () => { if (!rTick) { rTick = true; requestAnimationFrame(updateRoom); } }, { passive: true });
+  updateRoom();
+
+  // ---------- the parser ----------
+  const live = $('#live')!; const input = $('#cmd') as HTMLInputElement; const form = $('#parser') as HTMLFormElement;
+  let moves = 0; const history: string[] = []; let hIdx = -1; let mode: 'describe' | null = null;
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+  const chip = (c: string) => `<button class="chip" type="button" data-cmd="${esc(c)}">${esc(c)}</button>`;
+  const link = (id: string, t: string) => `<a href="#${id}">${t}</a>`;
+  function echo(cmd: string) { const p = document.createElement('p'); p.className = 'cmd'; p.innerHTML = `<span class="pr">&gt;</span> ${esc(cmd)}`; live.appendChild(p); }
+  function say(html: string) { const d = document.createElement('div'); d.className = 'out'; d.innerHTML = html; live.appendChild(d); settle(); return d; }
+  function settle() { if (!(document.activeElement === input)) return; input.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }); }
+  function nowPlaying(f: Fig) {
+    const p = document.createElement('p'); p.className = 'np';
+    p.innerHTML = `<span class="who">${NAMES[f.el.dataset.char!]}</span> “${esc(f.el.dataset.text!)}” <span class="note">${f.el.dataset.seconds} s${f.el.querySelector('.dag') ? ' · experimental emotion setting, unvalidated' : ''}</span>`;
+    f.np = p; live.appendChild(p);
+  }
+  function go(id: string, opts: { fromStatic?: boolean }) { if (opts.fromStatic) return; const el = document.getElementById(id); el?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); }
+  function refuse(key: string) {
+    const li = $(`.locked li[data-key="${key}"]`); if (!li) return unknown(key);
+    say(`<p class="cant">${$('.cant', li)!.textContent}</p><p class="note">${$('.why', li)!.innerHTML} ${link('locked', 'The Locked Door')} lists everything else that is not there yet.</p>`);
+  }
+  const NOT_LIVE = 'Nothing on this page is generated live. Every clip was rendered in the demo run of 2026-09-05 and is replayed.';
+
+  function help() {
+    say(`<p>This transcript understands a small set of commands.</p><ul class="help">
+      <li>${chip('inventory')}<span class="note">the three voices you are carrying</span></li>
+      <li>${chip('play mentor')}<span class="note">one seed clip; also scout, innkeeper</span></li>
+      <li>${chip('play scene')}<span class="note">the five-line scene, in order; or play line 3</span></li>
+      <li>${chip('examine mentor')}<span class="note">one character across three sentences</span></li>
+      <li>${chip('compare mentor scout')}<span class="note">two invented voices, back to back</span></li>
+      <li>${chip('describe a voice')}<span class="note">then type a description; the nearest of the three is replayed</span></li>
+      <li>${chip('read ledger')}<span class="note">also: examine the machine, look, exits, stop, clear</span></li>
+    </ul><p class="note">${NOT_LIVE}</p>`);
+  }
+  function look() {
+    say(`<p>${link('anteroom', 'The Anteroom')}. There is no microphone here and no slot for a recording. A form on the desk has a single field. From here you can read your way to ${link('voices', 'the Voice Room')}, ${link('scene', 'the Scene')}, ${link('workshop', 'the Workshop')}, ${link('ledger', 'the Ledger')}, ${link('locked', 'the Locked Door')} and ${link('exits', 'the Exits')}.</p>`);
+  }
+  function inventory(o: { fromStatic?: boolean }) {
+    say(`<p>You are carrying three voices, each minted from a written description and nothing else:</p>${['mentor', 'scout', 'innkeeper'].map((c) => `<p><span class="who">${NAMES[c]}</span> ${esc(DESC[c] || '')} ${chip('play ' + c)}</p>`).join('')}<p class="note">You open ${link('voices', 'the Voice Room')}.</p>`);
+    go('voices', o);
+  }
+  function playChar(ch: string, o: { fromStatic?: boolean }) {
+    const f = seedIn('inventory', ch); if (!f) return unknown(ch);
+    say(`<p>The ${ch}'s seed clip, the short reference recording stored with the identity when it was minted. Replayed, not generated.</p>`);
+    playFigs([f], true); go('voices', o);
+  }
+  function playScene(o: { fromStatic?: boolean }) {
+    say(`<p>The five-line scene as rendered. Three of the lines carry the experimental emotion setting (†): hear them as voice samples, not performances.</p>`);
+    playFigs(inGroup('scene'), true); go('scene', o);
+  }
+  function playLine(n: number, o: { fromStatic?: boolean }) {
+    const f = inGroup('scene')[n - 1]; if (!f) return say(`<p>There are five lines. Try PLAY LINE 1 to PLAY LINE 5.</p>`);
+    say(`<p>Line ${n} of five, replayed.</p>`); playFigs([f], true); go('scene', o);
+  }
+  function examine(ch: string, o: { fromStatic?: boolean }) {
+    const list = ch === 'mentor' ? inGroup('examine') : [seedIn('inventory', ch)!, ...inGroup('scene').filter((f) => f.el.dataset.char === ch)];
+    const n = list.length === 3 ? 'three' : 'two';
+    say(`<p>The ${ch}: one character, ${n} different sentences, back to back. The identity is who the character is; each line is a separate performance. Replayed, not generated.</p>`);
+    playFigs(list, true); go(ch === 'mentor' ? 'examine' : 'scene', o);
+  }
+  function compare(a: string, b: string, o: { fromStatic?: boolean }) {
+    if (a === b) return say(`<p>That is one voice compared with itself. Pick two: ${chip('compare mentor scout')}</p>`);
+    say(`<p>Two invented voices from two descriptions, back to back. Verified apart by a separate speaker-recognition system that has never seen the generator.</p>`);
+    playFigs([seedIn('inventory', a)!, seedIn('inventory', b)!], true); go('voices', o);
+  }
+  function describeStart() {
+    mode = 'describe';
+    say(`<p>Describe it in ordinary language, then press Enter.</p><p class="note">This page cannot mint a voice. It holds three characters rendered on 2026-09-05 and will replay whichever one is nearest to your words, and say which. The system itself mints a new voice from a description like this one.</p>`);
+  }
+  const KEYS: Record<string, string[]> = {
+    mentor: ['deep', 'low', 'rough', 'gravel', 'gravelly', 'slow', 'slowly', 'old', 'bass', 'husky', 'rasp', 'raspy', 'growl', 'gruff', 'dark', 'heavy', 'tired', 'weathered'],
+    scout: ['high', 'crisp', 'quick', 'quickly', 'fast', 'animated', 'bright', 'young', 'light', 'sharp', 'energetic', 'excited', 'lively', 'thin', 'nervous', 'eager', 'chirpy'],
+    innkeeper: ['mid', 'mid-range', 'middle', 'medium', 'warm', 'steady', 'calm', 'even', 'friendly', 'gentle', 'soft', 'kind', 'relaxed', 'plain', 'easy', 'welcoming', 'motherly', 'fatherly'],
+  };
+  function matchDescription(text: string, o: { fromStatic?: boolean }) {
+    const words = text.toLowerCase().split(/[^a-z-]+/); const score: Record<string, number> = { mentor: 0, scout: 0, innkeeper: 0 };
+    for (const w of words) for (const k in KEYS) if (KEYS[k].includes(w)) score[k]++;
+    const best = Object.keys(score).sort((a, b) => score[b] - score[a])[0];
+    if (!score[best]) { say(`<p>No pre-rendered voice here matches those words, and this page cannot mint one. The three that exist were minted from:</p>${['mentor', 'scout', 'innkeeper'].map((c) => `<p><span class="who">${NAMES[c]}</span> ${esc(DESC[c] || '')} ${chip('play ' + c)}</p>`).join('')}`); return; }
+    say(`<p>Nearest of the three pre-rendered voices: <span class="who">${NAMES[best]}</span> minted from ${esc(DESC[best] || '')}.</p><p class="note">Replayed, not generated. This page cannot mint. ${link('anteroom', 'Above')}, the same mentor answered the example description.</p>`);
+    playFigs([seedIn('inventory', best)!], true);
+  }
+  function cannotMint() {
+    say(`<p>Not on this page. The system mints a voice from a written description; this transcript can only replay the three it holds, minted on 2026-09-05. ${chip('describe a voice')} to hear the nearest one, or ${chip('inventory')} to see all three.</p>`);
+  }
+  function exits(o: { fromStatic?: boolean }) {
+    const repo = $('.exit-list a') as HTMLAnchorElement; const issues = $$('.exit-list a')[1] as HTMLAnchorElement;
+    say(`<p>Two exits are visible: <a href="${repo.href}">Read the research</a> and <a href="${issues.href}">Corrections welcome</a>. There is no other door.</p>`); go('exits', o);
+  }
+  function unknown(cmd: string) {
+    const w = cmd.split(' ')[0];
+    say(`<p>I don't know the word “${esc(w)}”. ${chip('help')} lists what this transcript understands.</p>`);
+  }
+  type Rule = [RegExp, (m: RegExpMatchArray, o: { fromStatic?: boolean }) => void];
+  const rules: Rule[] = [
+    [/^(help|\?|commands|h)$/, () => help()],
+    [/^(look|l|look around|where am i)$/, () => look()],
+    [/^(inventory|inv|i|voices|list voices)$/, (_m, o) => inventory(o)],
+    [/^(describe|describe a voice|describe a character|describe voice|new voice|mint a voice)$/, () => describeStart()],
+    [/^(play|listen to|listen|hear|hear the|play the) ?(the )?(mentor|scout|innkeeper)$/, (m, o) => playChar(m[3], o)],
+    [/^(play|hear|listen to|run|watch)( the)? scene$/, (_m, o) => playScene(o)],
+    [/^(play|hear|say)( the)? line ?([1-5])$/, (m, o) => playLine(Number(m[3]), o)],
+    [/^(examine|x|inspect|look at)( the)? (mentor|scout|innkeeper)$/, (m, o) => examine(m[3], o)],
+    [/^compare( the)? (mentor|scout|innkeeper)(( (and|with|to|against|vs))?( the)?) (mentor|scout|innkeeper)$/, (m, o) => compare(m[2], m[7], o)],
+    [/^(examine|x|read|open|look at|inspect)( the)? (machine|workshop|engine|curtain|mapper)$/, (_m, o) => { say(`<p>You open ${link('workshop', 'the Workshop')}.</p>`); go('workshop', o); }],
+    [/^(read|open|examine|x|look at)( the)? (ledger|book|numbers|results)$/, (_m, o) => { say(`<p>You open ${link('ledger', 'the Ledger')}.</p>`); go('ledger', o); }],
+    [/^(open|examine|x|unlock|look at)( the)? (locked )?door$/, (_m, o) => { say(`<p>It is locked. What is behind it is listed on ${link('locked', 'the door')}.</p>`); go('locked', o); }],
+    [/^(exits|exit|leave|quit|q|bye)$/, (_m, o) => exits(o)],
+    [/^(stop|quiet|silence|pause|shh|hush)$/, () => { stopAll(); say(`<p>Quiet.</p>`); }],
+    [/^(clear|cls)$/, () => { live.innerHTML = ''; }],
+    [/^(hello|hi|hey|namaste|namaskar)$/, () => say(`<p>Hello. ${chip('help')} lists what this transcript understands.</p>`)],
+    [/^xyzzy$/, () => say(`<p>Nothing happens. This is not that kind of cave.</p>`)],
+    [/^(n|s|e|w|north|south|east|west|up|down|in|out|go .*|walk .*|enter .*)$/, () => say(`<p>The rooms here are reached by reading, not walking. Scroll, or ${chip('inventory')}, ${chip('play scene')}, ${chip('read ledger')}, ${chip('exits')}.</p>`)],
+    [/\b(apolog|angr|angry|sad|sadly|happ|whisper|shout|scream|fear|afraid|joy|sarcas|emotion|softly|gently|tearful|cry|laugh|excited|calmly|nervous|menacing|tender)\w*/, () => refuse('emotion')],
+    [/\b(hindi|bengali|bangla|tamil|devanagari|indic|indian)\b/, () => refuse('hindi')],
+    [/\b(upload|record|recording|clone|cloning|microphone|mic|my voice|sample of)\b/, () => say(`<p class="cant">There is no slot for a recording.</p><p class="note">${$('#workshop .cant + h3 + p')!.textContent}</p>`)],
+    [/\b(mint|generate|create|make|invent|build|synthesi[sz]e)\b/, () => cannotMint()],
+    [/\b(sign ?up|account|api|host|hosted|log ?in|login|register|subscribe|buy|price|pricing|download|install|demo)\b/, () => refuse('product')],
+    [/\b(hundred|hundreds|thousand|more voices|catalogue|catalog|how many)\b/, () => refuse('catalogue')],
+    [/\b(commercial|competitor|compare with|benchmark against)\b/, () => refuse('commercial')],
+    [/\b(take|steal|ship|sell|licen[cs]e|weights)\b/, () => refuse('licence')],
+    [/\b(audience|listener|listeners|listened|people)\b/, () => refuse('listened')],
+    [/\b(setting|unvalidated|validated)\b/, () => refuse('setting')],
+    [/^(say|speak|perform|deliver|read aloud|voice) .+/, () => say(`<p>You can't do that here. ${NOT_LIVE} ${chip('play scene')} plays the five lines that exist.</p>`)],
+    [/^(play|hear|listen)( to)?$/, () => say(`<p>Play what? ${chip('play mentor')}, ${chip('play scene')} or ${chip('play line 3')}.</p>`)],
+    [/^(examine|x|inspect)$/, () => say(`<p>Examine what? ${chip('examine mentor')}, ${chip('examine the machine')}.</p>`)],
+    [/^(compare)$/, () => say(`<p>Compare which two? ${chip('compare mentor scout')}.</p>`)],
+  ];
+  function run(raw: string, o: { fromStatic?: boolean } = {}) {
+    const cmd = raw.trim().replace(/^>\s*/, '').replace(/\s+/g, ' '); if (!cmd) return;
+    moves++; movesEl.textContent = String(moves); history.unshift(cmd); hIdx = -1; echo(cmd);
+    const c = cmd.toLowerCase().replace(/[.!?]+$/, '');
+    if (mode === 'describe' && !/^(help|\?|stop|cancel|never mind|nevermind|clear)$/.test(c)) { mode = null; matchDescription(cmd, o); return; }
+    mode = null;
+    for (const [re, fn] of rules) { const m = c.match(re); if (m) { fn(m, o); return; } }
+    unknown(cmd);
+  }
+  form.addEventListener('submit', (e) => { e.preventDefault(); const v = input.value; input.value = ''; run(v); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp') { if (hIdx < history.length - 1) { hIdx++; input.value = history[hIdx]; } e.preventDefault(); }
+    else if (e.key === 'ArrowDown') { if (hIdx > 0) { hIdx--; input.value = history[hIdx]; } else { hIdx = -1; input.value = ''; } e.preventDefault(); }
+  });
+  let typing = false;
+  function typeAndRun(cmd: string) {
+    if (typing) return;
+    if (reduced) { input.value = ''; run(cmd); return; }
+    typing = true; input.value = ''; input.focus({ preventScroll: true }); let i = 0;
+    const tick = () => { i++; input.value = cmd.slice(0, i); if (i < cmd.length) setTimeout(tick, 22); else setTimeout(() => { typing = false; input.value = ''; run(cmd); }, 120); };
+    tick();
+  }
+  document.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest('a[href^="#"]') as HTMLAnchorElement | null;
+    if (a) { const el = document.getElementById(a.getAttribute('href')!.slice(1)); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); } return; }
+    const t = (e.target as HTMLElement).closest('.chip, .run') as HTMLElement | null; if (!t) return;
+    const cmd = t.dataset.cmd!;
+    if (t.classList.contains('run')) { run(cmd, { fromStatic: true }); return; }
+    typeAndRun(cmd);
+  });
+  addEventListener('keydown', (e) => { if (e.key === '/' && document.activeElement !== input && !(e.target as HTMLElement).matches('input, textarea')) { e.preventDefault(); input.focus(); input.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' }); } });
+</script>

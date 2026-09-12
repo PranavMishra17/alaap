@@ -1,0 +1,887 @@
+---
+// Variant 05 — dialogue-box. The page is a game dialogue backlog: nameplate, empty portrait
+// slot, the line, the advance prompt, branching choices. Every fact is from ../../../CONTENT.md.
+import { name, meaning, links, characters, clips, scene, clipCaveats } from '../../content/alaap';
+
+const clip = (id: string) => clips.find((c) => c.id === id)!;
+const describe = (id: string) => characters.find((c) => c.id === id)!.description;
+const plate: Record<string, string> = { mentor: 'Mentor', scout: 'Scout', innkeeper: 'Innkeeper' };
+
+const mentorSeed = clip('mentor_seed');
+const scoutSeed = clip('scout_seed');
+const innkeeperSeed = clip('innkeeper_seed');
+const mentorDesc = describe('mentor');
+
+// Boxes in reading order. Each ▼ advance link points at the next id.
+const lineIds = scene.map((_, i) => `line-${i}`);
+const after = (i: number) => (i + 1 < lineIds.length ? lineIds[i + 1] : 'clips-note');
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alaap — describe a character, get a voice nobody has recorded</title>
+    <meta name="description" content="Describe a character. Get a voice nobody has recorded. Keep it." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Khand:wght@500;600;700&family=Martel:wght@400;700&display=swap" rel="stylesheet" />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('rm');
+    </script>
+  </head>
+  <body>
+    <header class="hud col">
+      <h1 class="hud-name"><span lang="hi">{name.devanagari}</span><span class="latin">{name.latin}</span></h1>
+      <nav class="hud-links" aria-label="Repository">
+        <a href={links.repo}>Read the research</a>
+        <a href={links.issues}>Corrections welcome</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- ───── Beat 0: the hero. A description on the stage; the character in the box. ───── -->
+      <section class="hero col" aria-label="The example">
+        <div class="stage">
+          <p class="thesis">Describe a character.<br />Get a voice nobody has recorded.<br /><span class="keep">Keep it.</span></p>
+          <p class="typed-wrap"><span class="typed" data-text={mentorDesc}>{mentorDesc}</span><span class="caret" aria-hidden="true"></span></p>
+          <p class="stage-note">
+            That is the whole input. No recording, no actor, no upload. The portrait slot below stays
+            empty on purpose: there is no recording of this character, only a description and the voice
+            it made.
+          </p>
+        </div>
+
+        <article class="box voiced hero-box" id="seed-mentor" data-seconds={mentorSeed.seconds} tabindex="-1">
+          <span class="plate">{plate.mentor}</span>
+          <div class="portrait" aria-hidden="true"><canvas></canvas><span class="empty">no portrait</span></div>
+          <p class="words"><span class="txt">“{mentorSeed.text}”</span></p>
+          <p class="meta">seed clip · {mentorSeed.seconds} s · English · watermarked · the short clip stored with every identity when it is minted</p>
+          <div class="player">
+            <audio preload="none" controls src={mentorSeed.src}></audio>
+            <button type="button" class="play" hidden aria-pressed="false"><span class="glyph" aria-hidden="true">▶</span><span class="lbl">Play</span></button>
+          </div>
+          <a class="advance" href="#b-intro"><span class="hint">continue</span>▼</a>
+        </article>
+      </section>
+
+      <!-- ───── Beat 1: Alaap speaks. ───── -->
+      <div class="col">
+        <article class="box" id="b-intro" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            The voice above did not exist before that description. Alaap is {meaning}: a voice mapping
+            out its own possibility space. That is exactly what description-to-voice design does.
+          </p>
+          <p>
+            You describe a character in ordinary language. You get back a voice that has never existed.
+            Then you use that voice for any line of dialogue you write, and it stays the same character
+            every time.
+          </p>
+          <a class="advance" href="#b-for" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="b-for" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            It is for people making games, animation, audio drama, dubbing, interactive fiction: anyone
+            who needs many distinct speaking characters and cannot hire a cast for each one.
+          </p>
+          <p>
+            It works end to end today, on one laptop GPU, in English, Hindi, Bengali and Tamil. Describe a
+            character, get a voice, render a scene of dialogue, and out comes watermarked audio plus a
+            file a game engine can read. It is a working research system, not a product.
+          </p>
+          <a class="advance" href="#b-why" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="b-why" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            The tools that do this well mostly do it in English. Indian-language creators either use a
+            handful of stock voices that everyone else is also using, or they hire actors. This project
+            treats Hindi, Bengali and Tamil as first-class, not as an afterthought port. The
+            Indian-language engine covers 22 Indian languages; four are measured so far.
+          </p>
+          <a class="advance" href="#pick" aria-label="Next">▼</a>
+        </article>
+
+        <!-- ───── Beat 2: pick a description. Replays the stored seed clips; nothing is generated live. ───── -->
+        <nav class="box choices" id="pick" aria-label="Pick a description" tabindex="-1">
+          <p class="ask">Pick a description. Each one minted one of this page's three characters.</p>
+          <ul>
+            <li><a href="#seed-mentor" data-play>{describe('mentor')}</a></li>
+            <li><a href="#seed-scout" data-play>{describe('scout')}</a></li>
+            <li><a href="#seed-innkeeper" data-play>{describe('innkeeper')}</a></li>
+          </ul>
+          <p class="meta">Choosing replays that character's stored seed clip from the demo run of 2026-09-05. Nothing on this page generates a voice live.</p>
+        </nav>
+
+        {[scoutSeed, innkeeperSeed].map((c, i) => (
+          <article class="box voiced" id={`seed-${c.character}`} data-seconds={c.seconds} tabindex="-1">
+            <span class="plate">{plate[c.character]}</span>
+            <div class="portrait" aria-hidden="true"><canvas></canvas><span class="empty">no portrait</span></div>
+            <p class="words"><span class="txt">“{c.text}”</span></p>
+            <p class="meta">seed clip · {c.seconds} s · English · watermarked · minted from “{describe(c.character)}”</p>
+            <div class="player">
+              <audio preload="none" controls src={c.src}></audio>
+              <button type="button" class="play" hidden aria-pressed="false"><span class="glyph" aria-hidden="true">▶</span><span class="lbl">Play</span></button>
+            </div>
+            <a class="advance" href={i === 0 ? '#seed-innkeeper' : '#menu'} aria-label="Next">▼</a>
+          </article>
+        ))}
+
+        <!-- ───── Beat 3: the branching menu. ───── -->
+        <nav class="box choices" id="menu" aria-label="What do you want to know" tabindex="-1">
+          <p class="ask">What do you want to know?</p>
+          <ul>
+            <li><a href="#scene">Hear the scene</a></li>
+            <li><a href="#different">What makes it different</a></li>
+            <li><a href="#measured">What has been measured</a></li>
+            <li><a href="#limits">What is not there yet</a></li>
+            <li><a href="#how">How it works</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <!-- ───── Branch: the scene ───── -->
+      <section class="col branch" id="scene" aria-labelledby="scene-h">
+        <h2 class="chapter" id="scene-h">The scene</h2>
+
+        <article class="box" id="s-intro" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            Three characters, minted from those three descriptions, then a five-line scene rendered end
+            to end in about four minutes on one laptop GPU. Every render is watermarked and logged from
+            the first output. This is that output, line by line.
+          </p>
+          <p class="player">
+            <button type="button" class="play" id="play-scene" hidden><span class="glyph" aria-hidden="true">▶</span><span class="lbl">Play the scene</span></button>
+            <span class="meta inline scene-hint">plays the five lines back to back, in order</span>
+          </p>
+          <a class="advance" href="#line-0" aria-label="Next">▼</a>
+        </article>
+
+        {scene.map((c, i) => (
+          <article class="box voiced" id={lineIds[i]} data-seconds={c.seconds} data-line={i} tabindex="-1">
+            <span class="plate">{plate[c.character]}</span>
+            <div class="portrait" aria-hidden="true"><canvas></canvas><span class="empty">no portrait</span></div>
+            <p class="words"><span class="txt">“{c.text}”</span></p>
+            <p class="meta">line · {c.seconds} s · {c.experimentalEmotionSetting ? 'experimental emotion setting, unvalidated' : 'no direction'}</p>
+            <div class="player">
+              <audio preload="none" controls src={c.src}></audio>
+              <button type="button" class="play" hidden aria-pressed="false"><span class="glyph" aria-hidden="true">▶</span><span class="lbl">Play</span></button>
+            </div>
+            <a class="advance" href={`#${after(i)}`} aria-label="Next">▼</a>
+          </article>
+        ))}
+
+        <article class="box" id="clips-note" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>About these clips</h3>
+          <p>{clipCaveats.watermark} The manifest's own disclosure line reads: “AI-generated synthetic speech. All audio carries an AudioSeal watermark.”</p>
+          <p>{clipCaveats.englishOnly}</p>
+          <p>{clipCaveats.emotionSetting}</p>
+          <a class="advance" href="#different" aria-label="Next">▼</a>
+        </article>
+        <p class="back"><a href="#menu">▲ Ask something else</a></p>
+      </section>
+
+      <!-- ───── Branch: what makes it different ───── -->
+      <section class="col branch" id="different" aria-labelledby="different-h">
+        <h2 class="chapter" id="different-h">What makes it different</h2>
+
+        <article class="box" id="d-1" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>A voice is a thing you keep, not a setting you re-guess</h3>
+          <p>
+            Most tools generate a voice each time you ask. Here the character's voice is stored as an
+            identity and re-used. The same character sounds like the same person across every line,
+            every scene, and every session. That consistency is measured, not hoped for.
+          </p>
+          <a class="advance" href="#d-2" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="d-2" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>Who is speaking and what is being said are genuinely separate</h3>
+          <p>
+            The system holds a character's identity apart from the words. That is why one character can
+            say anything without their voice changing, and why changing the line never changes the
+            person. This was verified rather than assumed: when the same audio content is played through
+            two different identities, the words come out identically. The measured error between them
+            was exactly zero on every line tested.
+          </p>
+          <a class="advance" href="#d-3" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="d-3" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>It does not need a recording of the character</h3>
+          <p>
+            There is no voice cloning here, and no user uploads their own audio. Voices are created from
+            a written description. That sidesteps the consent and impersonation problem entirely: you
+            cannot accidentally clone a real person if the system never accepts a recording.
+          </p>
+          <a class="advance" href="#d-4" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="d-4" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>It knows what it does not know</h3>
+          <p>
+            Every capability is measured against a control, and the honest limits are published
+            alongside the results. Roughly twenty findings in this project were wrong on the first
+            attempt and caught by a check, including one where an entire experiment produced
+            fluent-sounding speech that was saying different words than requested, and nothing errored.
+            That is written up publicly rather than quietly fixed. 114 automated checks guard the rules
+            the project learned the hard way.
+          </p>
+          <p class="rule">“A suspiciously good or suspiciously bad number is a bug report about your setup.”</p>
+          <a class="advance" href="#measured" aria-label="Next">▼</a>
+        </article>
+        <p class="back"><a href="#menu">▲ Ask something else</a></p>
+      </section>
+
+      <!-- ───── Branch: what has been measured ───── -->
+      <section class="col branch" id="measured" aria-labelledby="measured-h">
+        <h2 class="chapter" id="measured-h">What has been measured</h2>
+
+        <article class="box" id="m-1" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>Minting a voice from a description costs nothing in clarity</h3>
+          <p>
+            A described voice is just as intelligible as one taken from a real recording. The measured
+            difference was tiny, leaned slightly in the invented voice's favour, and was smaller than the
+            difference between two real speakers: that gap was six times larger. The project reads this
+            as no detectable difference, not as invented voices being better. The control that had to
+            pass first: every version must come out the same length before any score is read, or the
+            run aborts.
+          </p>
+          <a class="advance" href="#m-2" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="m-2" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>Invented voices are distinct people, and they stay themselves</h3>
+          <p>
+            Verified by a separate speaker-recognition system that has never seen the generator: an
+            independent check, not the system marking its own homework. Each invented voice also sits
+            clearly apart from the nearest real voice the system learned from, so these are new voices,
+            not real people wearing a label.
+          </p>
+          <p>
+            A character stays itself across different sentences more consistently than a real person does
+            across different recordings, which is unsurprising once you think about it: a stored voice
+            has no bad-throat day, no change of microphone, no mood.
+          </p>
+          <a class="advance" href="#m-3" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="m-3" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>A native speaker confirmed the Hindi says what it should</h3>
+          <p class="hindi" lang="hi">नमस्ते आप कैसे हैं आज मौसम बहुत अच्छा है</p>
+          <p class="meta">the target sentence · our plain translation, not a project claim: “Hello, how are you? The weather is very nice today.”</p>
+          <p>
+            A fluent Hindi speaker has confirmed one rendered line says that sentence. They were told the
+            sentence and asked “does it say this?”, not “does it sound right?”. That is the check an
+            earlier, broken render had failed. The other voices and the other lines are still to be
+            checked.
+          </p>
+          <a class="advance" href="#m-4" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="m-4" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>Pacing is controllable within a measured range</h3>
+          <p>
+            You can slow a character to about two-thirds of normal speed or push them to about 1.4 times,
+            and they stay the same person saying the same words. Outside that range the identity fades
+            gradually rather than breaking. A listener noted the slow extreme starts to sound processed;
+            the range they called clean is narrower, about 0.8 to 1.25 times.
+          </p>
+          <div class="pace" role="img" aria-label="Measured pacing range from about two-thirds to about 1.4 times normal speed; a listener called about 0.8 to 1.25 times clean.">
+            <div class="pace-row"><span>Speech pace</span><span class="pace-legend"><i class="sw measured"></i>measured <i class="sw clean"></i>heard clean</span></div>
+            <div class="pace-track">
+              <div class="pace-measured"></div>
+              <div class="pace-clean"></div>
+              <div class="pace-one"></div>
+            </div>
+            <div class="pace-labels">
+              <span style="left:15.5%">0.67×</span>
+              <span style="left:27.3%">0.8×</span>
+              <span style="left:45.5%" class="one">1×</span>
+              <span style="left:68.2%">1.25×</span>
+              <span style="left:84.5%">1.43×</span>
+            </div>
+          </div>
+          <p class="meta">an illustration of the measured range, not a control: nothing on this page re-times audio</p>
+          <a class="advance" href="#m-5" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="m-5" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>Two ways to answer a description, and the numbers for the trade-off</h3>
+          <p>
+            Invent a new voice, or find the closest match in an existing library of voices. Inventing
+            gives you a character nobody else has; finding gives you higher accuracy and studio quality.
+            Neither is strictly better.
+          </p>
+          <div class="twoway">
+            <div class="way">
+              <p class="way-name">▶ Invent</p>
+              <p>
+                A voice nobody else has. Inventing reached 37% of the variety available before mis-set
+                settings were fixed; the fix raised the invented catalogue from 14 to 22 distinct Hindi
+                voices and from 23 to 41 English.
+              </p>
+            </div>
+            <div class="way">
+              <p class="way-name">▶ Find</p>
+              <p>
+                On a library of 141 real Hindi voices, two thirds of descriptions (65.6%) get a voice that
+                matches on every trait named, and 87 percent land within one step. When the description
+                names only a couple of traits, the way people actually write, a bit over half (53.8%) match
+                exactly. Random chance is about one in five. On a library of 2,500 English voices the same
+                method reaches 88.5%. Finding reaches 87% of the variety the library actually holds.
+              </p>
+            </div>
+          </div>
+          <p class="cannot">
+            What finding cannot do: produce a voice the library does not contain; guarantee a new
+            character is unique, since two descriptions can return the same voice; and the library is
+            someone else's, so every character in every project draws from the same shelf.
+          </p>
+          <p class="meta">the library measured was real recorded speakers standing in for a studio library; no commercial system has been measured</p>
+          <a class="advance" href="#m-6" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="m-6" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <h3>A blind listening test found and fixed a real problem</h3>
+          <p>
+            A blind listening test with built-in controls found a real problem in how the system judged
+            whether two voices were the same person: pairs the system called different were heard as the
+            same person about half the time. The threshold was raised. That removed 10 duplicate voices
+            from a set of 50 and cost 3 percent of measured variety.
+          </p>
+          <p>
+            The test was small: 8 pairs, one listener, every control answered correctly. It found the
+            problem but does not settle the exact threshold, and the English threshold has not had its
+            own listening test.
+          </p>
+          <a class="advance" href="#limits" aria-label="Next">▼</a>
+        </article>
+        <p class="back"><a href="#menu">▲ Ask something else</a></p>
+      </section>
+
+      <!-- ───── Branch: what is not there yet. Every item, plainly. ───── -->
+      <section class="col branch" id="limits" aria-labelledby="limits-h">
+        <h2 class="chapter" id="limits-h">What is not there yet</h2>
+
+        <article class="box limits" id="l-1" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p><b>Not a product.</b> This is a working research system, not a product. There is no signup, no hosted service, no API.</p>
+          <p><b>Emotion is not solved.</b> Emotional performance direction is not solved. You can control pacing within a measured range. You cannot yet say “say this line apologetically” and have it work. That was tested thoroughly and does not work on the current engine, for reasons the project documented and reported upstream. The engine's documented emotion tags turn out not to be recognised by the engine at all, and a listener heard no difference between tagged versions of the same line.</p>
+          <p><b>The catalogue is small.</b> Tens of distinct voices per language so far, not hundreds: about 22 in Hindi and 41 in English by the project's own measure. The limit is understood and measured rather than mysterious: the real speakers the system learned from hold about 38 to 48 distinguishable voices, and the project measured exactly where its own method loses variety.</p>
+          <p><b>Cannot ship as a product, for licensing reasons.</b> It cannot be shipped as a product in its current form for licensing reasons, which are documented. The Indian-language engine's training chain includes data licensed for non-commercial use, so no model weights and no Indian-language audio leave the repository. It is research-only today, deliberately.</p>
+          <p><b>Very little has been listened to.</b> Most results are automatic measurements. One listener, a handful of pairs.</p>
+          <p><b>No comparison against a commercial system.</b></p>
+          <p><b>The clips on this page are English.</b> Hindi renders exist and a native speaker has checked one, but the Indian-language engine's licence is research-only, so those clips do not ship, not even here.</p>
+          <p><b>Three of the five demo lines</b> were rendered with an experimental emotion setting whose effect has not been validated on this engine. Listen to them as voice samples, not performances.</p>
+          <a class="advance" href="#how" aria-label="Next">▼</a>
+        </article>
+        <p class="back"><a href="#menu">▲ Ask something else</a></p>
+      </section>
+
+      <!-- ───── Branch: how it works ───── -->
+      <section class="col branch" id="how" aria-labelledby="how-h">
+        <h2 class="chapter" id="how-h">How it works</h2>
+
+        <article class="box" id="h-1" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <div class="flow" role="img" aria-label="Your description goes into the mapper, the only part that learns, which produces a voice identity; the voice identity goes into the voice engine, never modified and swappable, which produces audio.">
+            <span class="node">your description</span>
+            <span class="arrow">↓</span>
+            <span class="node trained">the mapper</span><span class="why trained">the only part that learns</span>
+            <span class="arrow">↓</span>
+            <span class="node">a voice identity</span>
+            <span class="arrow">↓</span>
+            <span class="node">the voice engine</span><span class="why">never modified, swappable</span>
+            <span class="arrow">↓</span>
+            <span class="node">audio</span>
+          </div>
+          <p>
+            <b>Only one small piece is trained.</b> The speech engine is used as-is and never altered, so
+            a better engine can be swapped in without rebuilding everything.
+          </p>
+          <a class="advance" href="#h-2" aria-label="Next">▼</a>
+        </article>
+
+        <article class="box cont" id="h-2" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            <b>The voice identity is a small, storable thing.</b> That is what makes a character
+            persistent: it can be saved, versioned and handed to someone else. Each one is stored with a
+            short seed clip and the engine version that made it. The identity is who the character is;
+            each line is a separate performance.
+          </p>
+          <p>
+            <b>Two ways to answer a description, both measured.</b> Invent or find, with the numbers
+            above.
+          </p>
+          <p>
+            The checker is a separate system that never sees the engine's internals. Every render is
+            watermarked and logged from the first output. The output manifest is for a game engine, not
+            a demo button.
+          </p>
+          <a class="advance" href="#end" aria-label="Next">▼</a>
+        </article>
+        <p class="back"><a href="#menu">▲ Ask something else</a></p>
+      </section>
+
+      <!-- ───── End ───── -->
+      <section class="col branch" id="end" aria-label="Where to go next">
+        <article class="box" id="e-1" tabindex="-1">
+          <span class="plate"><span lang="hi">{name.devanagari}</span>{name.latin}</span>
+          <p>
+            That is what was built, what was measured and what is missing. If a claim here is wrong, an
+            issue with a primary source is more useful than almost anything else.
+          </p>
+        </article>
+        <nav class="box choices" aria-label="Calls to action">
+          <ul>
+            <li><a href={links.repo}>Read the research <span class="ext">github.com/PranavMishra17/alaap</span></a></li>
+            <li><a href={links.issues}>Corrections welcome <span class="ext">open an issue with a primary source</span></a></li>
+          </ul>
+        </nav>
+        <p class="endline"><span>end of dialogue</span><span class="dates"><span>research pass 2026-09-02</span><span>implementation and measurement 2026-09-05</span></span></p>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --night: #0E1533;
+    --box: #182563;
+    --bone: #EDE6D2;
+    --marigold: #F2B134;
+    --jade: #6FCFBF;
+    --dim: #9EA6CC;
+    --line: rgba(237, 230, 210, 0.32);
+    --display: 'Khand', 'Arial Narrow', 'Roboto Condensed', sans-serif;
+    --body: 'Martel', Georgia, 'Noto Serif', 'Noto Serif Devanagari', serif;
+    --mono: 'DM Mono', ui-monospace, Consolas, 'Courier New', monospace;
+    --col: 46rem;
+    color-scheme: dark;
+  }
+  html { background: var(--night); scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--night);
+    color: var(--bone);
+    font: 400 17px/1.7 var(--body);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  * { box-sizing: border-box; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--marigold); outline-offset: 3px; border-radius: 2px; }
+  .col { width: min(var(--col), 100% - 2rem); margin-inline: auto; }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ───── HUD ───── */
+  .hud { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem 2rem; flex-wrap: wrap; padding: 1.1rem 0 0; }
+  .hud-name { margin: 0; font: 600 1.55rem/1 var(--display); letter-spacing: 0.04em; display: flex; gap: 0.6rem; align-items: baseline; }
+  .hud-name .latin { text-transform: uppercase; letter-spacing: 0.18em; font-size: 1.15rem; color: var(--dim); }
+  .hud-links { display: flex; gap: 1.5rem; font: 600 0.8rem/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; }
+  .hud-links a { text-decoration: none; color: var(--dim); border-bottom: 1px solid transparent; padding-bottom: 0.15rem; }
+  .hud-links a:hover { color: var(--bone); border-bottom-color: var(--marigold); }
+
+  /* ───── Hero: the stage above, the box at the bottom of the screen ───── */
+  .hero { min-height: calc(100svh - 3.4rem); display: grid; grid-template-rows: 1fr auto; }
+  .stage { align-self: center; padding: 2.5rem 0 2rem; }
+  .thesis { font: 600 clamp(2.1rem, 4.6vw, 3.6rem)/1.02 var(--display); letter-spacing: 0.01em; text-transform: uppercase; color: var(--bone); margin: 0 0 2rem; }
+  .thesis .keep { color: var(--marigold); }
+  .typed-wrap { font: 500 clamp(1.2rem, 2.2vw, 1.75rem)/1.4 var(--mono); margin: 0 0 1rem; color: #fff; overflow-wrap: anywhere; }
+  .typed-wrap::before { content: '> '; color: var(--marigold); }
+  .caret { display: inline-block; width: 0.6ch; height: 1.05em; background: var(--marigold); vertical-align: -0.15em; margin-left: 0.2ch; animation: blink 1.05s steps(2, start) infinite; }
+  .stage-note { max-width: 36rem; color: var(--dim); margin: 0; }
+  .hero-box { margin: 0 0 2.6rem; }
+  .js:not(.rm) .hero-box .words, .js:not(.rm) .hero-box .meta, .js:not(.rm) .hero-box .player { animation: arrive 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 2.2s both; }
+
+  /* ───── The dialogue box ───── */
+  .box {
+    position: relative;
+    background: var(--box);
+    border: 2px solid var(--bone);
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 3px var(--box), inset 0 0 0 4px var(--bone);
+    padding: 1.8rem 2rem 2rem;
+    margin: 2.1rem 0;
+    scroll-margin-top: 3rem;
+  }
+  .cont { margin-top: -0.6rem; }
+  .cont .plate { display: none; }
+  .js .box { border-color: var(--line); box-shadow: inset 0 0 0 3px var(--box), inset 0 0 0 4px var(--line); transition: border-color 0.35s, box-shadow 0.35s; }
+  .js .box.is-active { border-color: var(--bone); box-shadow: inset 0 0 0 3px var(--box), inset 0 0 0 4px var(--bone); }
+  .box:focus { outline: none; }
+  .box h3 { font: 600 1.45rem/1.15 var(--display); letter-spacing: 0.01em; margin: 0 0 0.6rem; color: #fff; }
+  .box b { font-weight: 700; color: #fff; }
+  .plate {
+    position: absolute; top: -1.05rem; left: 1.25rem;
+    display: inline-flex; align-items: baseline; gap: 0.5rem;
+    font: 600 0.98rem/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--night); background: var(--marigold);
+    padding: 0.42rem 0.75rem 0.3rem; border: 2px solid var(--bone); border-radius: 4px;
+  }
+  .plate [lang='hi'] { letter-spacing: 0; text-transform: none; font-size: 1.1rem; }
+  .advance {
+    position: absolute; right: 1rem; bottom: 0.45rem;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    color: var(--marigold); text-decoration: none;
+    font: 700 1rem/1 var(--display); padding: 0.35rem 0.45rem;
+  }
+  .advance .hint { font-weight: 600; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+  .js .box:not(.is-active) .advance { opacity: 0.3; }
+  .js:not(.rm) .box.is-active .advance { animation: bob 1s ease-in-out infinite; }
+  .rule { font-style: italic; color: var(--dim); }
+
+  /* voiced boxes: portrait slot left, the line right */
+  .voiced { display: grid; grid-template-columns: 6.25rem 1fr; gap: 0 1.6rem; grid-template-areas: 'portrait words' 'portrait meta' 'portrait player'; align-items: start; }
+  .portrait {
+    grid-area: portrait; position: relative; aspect-ratio: 1; width: 100%;
+    border: 2px solid var(--bone); border-radius: 4px;
+    box-shadow: inset 0 0 0 2px var(--box), inset 0 0 0 3px var(--bone);
+    overflow: hidden; transition: border-color 0.3s;
+  }
+  .portrait canvas { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); display: block; }
+  .portrait .empty { position: absolute; inset: auto 0 0.45rem; text-align: center; font: 600 0.62rem/1 var(--display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); transition: opacity 0.2s; }
+  .is-speaking .portrait { border-color: var(--jade); }
+  .is-speaking .portrait .empty { opacity: 0; }
+  .words { grid-area: words; margin: 0; font-size: 1.32rem; line-height: 1.5; color: #fff; }
+  .revealing .ch { visibility: hidden; }
+  .revealing .ch.on { visibility: visible; }
+  .meta { font: 400 0.78rem/1.55 var(--mono); color: var(--dim); margin: 0.5rem 0 0; }
+  .box:not(.voiced) .meta:not(:last-child) { margin-bottom: 1rem; }
+  .voiced .meta { grid-area: meta; }
+  .meta.inline { margin: 0 0 0 1rem; }
+  .player { grid-area: player; margin: 1rem 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+  .player audio { display: block; width: 100%; max-width: 22rem; }
+  .play {
+    display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer;
+    font: 600 0.92rem/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--marigold); background: transparent; border: 2px solid var(--marigold); border-radius: 4px;
+    padding: 0.55rem 0.95rem 0.45rem; transition: background 0.15s, color 0.15s;
+  }
+  .play:hover, .play[aria-pressed='true'] { background: var(--marigold); color: var(--night); }
+  .play[hidden] { display: none; }
+  .play .glyph { font-size: 0.8em; }
+  html:not(.js) .scene-hint { display: none; }
+
+  /* choices */
+  .choices ul { list-style: none; margin: 0; padding: 0; }
+  .choices .ask { font: 600 0.88rem/1.4 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); margin: 0 0 0.75rem; }
+  .choices li + li { margin-top: 0.15rem; }
+  .choices li a {
+    display: block; position: relative; padding: 0.4rem 0.6rem 0.4rem 2rem; border-radius: 4px;
+    color: var(--bone); text-decoration: none; font-size: 1.08rem;
+  }
+  .choices li a::before { content: '▶'; position: absolute; left: 0.55rem; top: 0.55rem; color: var(--marigold); font: 700 0.85rem/1.5 var(--display); opacity: 0.35; transition: opacity 0.12s; }
+  .choices li a:hover, .choices li a:focus-visible { color: #fff; }
+  .choices li a:hover::before, .choices li a:focus-visible::before { opacity: 1; }
+  .choices .meta { margin-top: 0.9rem; }
+  .choices .ext { display: block; font: 400 0.78rem/1.5 var(--mono); color: var(--dim); }
+  .back { margin: -0.9rem 0 0; }
+  .back a { display: inline-block; font: 600 0.8rem/1 var(--display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); text-decoration: none; padding: 0.4rem 0; }
+  .back a:hover { color: var(--marigold); }
+
+  /* chapters */
+  .branch { padding-top: 1.5rem; }
+  .chapter { display: flex; align-items: center; gap: 1.2rem; margin: 2.2rem 0 2.6rem; font: 600 0.95rem/1 var(--display); letter-spacing: 0.26em; text-transform: uppercase; color: var(--bone); }
+  .chapter::before, .chapter::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+  /* the Hindi line */
+  .hindi { font-size: 1.5rem; line-height: 1.7; color: #fff; margin: 0.2rem 0 0; }
+
+  /* pacing illustration, styled like an options-menu row */
+  .pace { margin: 1.3rem 0 0.4rem; }
+  .pace-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font: 600 0.82rem/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 0.7rem; }
+  .pace-legend { color: var(--dim); display: inline-flex; gap: 0.5rem; align-items: center; letter-spacing: 0.1em; }
+  .sw { display: inline-block; width: 0.8rem; height: 0.55rem; border-radius: 2px; margin-left: 0.6rem; }
+  .sw.measured { background: rgba(111, 207, 191, 0.32); }
+  .sw.clean { background: var(--jade); }
+  .pace-track { position: relative; height: 16px; border: 1px solid var(--line); border-radius: 3px; }
+  .pace-measured { position: absolute; top: 3px; bottom: 3px; left: 15.5%; width: 69%; background: rgba(111, 207, 191, 0.32); border-radius: 2px; }
+  .pace-clean { position: absolute; top: 3px; bottom: 3px; left: 27.3%; width: 40.9%; background: var(--jade); border-radius: 2px; }
+  .pace-one { position: absolute; top: -5px; bottom: -5px; left: 45.5%; width: 2px; background: var(--marigold); }
+  .pace-labels { position: relative; height: 1.5em; margin-top: 0.4rem; font: 400 0.76rem/1.5 var(--mono); color: var(--dim); }
+  .pace-labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .pace-labels .one { color: var(--marigold); }
+
+  /* invent / find */
+  .twoway { display: grid; grid-template-columns: 1fr 1.4fr; gap: 1.4rem; margin: 0.4rem 0 0.9rem; }
+  .way { border-left: 2px solid var(--line); padding-left: 1rem; }
+  .way-name { font: 600 1.05rem/1 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--marigold); margin: 0 0 0.6rem; }
+
+  /* the flow: one column of nodes, the two annotations beside the nodes they belong to */
+  .flow { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; align-items: center; font: 400 0.86rem/1.35 var(--mono); margin: 0.3rem 0 1.3rem; }
+  .node { grid-column: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--bone); border-radius: 4px; color: #fff; }
+  .node.trained { border-color: var(--jade); border-style: dashed; color: var(--jade); }
+  .flow .arrow { grid-column: 1; text-align: center; color: var(--marigold); line-height: 1; }
+  .flow .why { grid-column: 2; font-size: 0.74rem; color: var(--dim); }
+  .flow .why.trained { color: var(--jade); }
+
+  .cannot { margin-top: 0.2rem; }
+  .endline { text-align: center; font: 600 0.78rem/1.7 var(--display); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); margin: 2.5rem 0 4rem; }
+  .endline > span { display: block; }
+  .endline .dates span { white-space: nowrap; }
+  .endline .dates span + span::before { content: '\00a0·  '; white-space: normal; }
+
+  @keyframes blink { to { visibility: hidden; } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+  @keyframes arrive { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .hud { padding-top: 0.9rem; }
+    .hud-links { gap: 1rem; font-size: 0.72rem; }
+    .hero { min-height: calc(100svh - 4.6rem); }
+    .stage { padding: 1.5rem 0 1.3rem; }
+    .stage-note { font-size: 0.95rem; }
+    .box { padding: 1.6rem 1.15rem 1.9rem; margin: 1.9rem 0; }
+    .thesis { margin-bottom: 1.3rem; }
+    .plate { left: 0.9rem; font-size: 0.9rem; }
+    /* portrait beside the line, the meta and the player full width below */
+    .voiced { grid-template-columns: 4.6rem 1fr; grid-template-areas: 'portrait words' 'meta meta' 'player player'; gap: 0.5rem 0.9rem; }
+    .voiced .meta { margin-top: 0.4rem; }
+    .voiced .player { margin-top: 0.6rem; }
+    .words { font-size: 1.18rem; }
+    .box h3 { font-size: 1.3rem; }
+    .twoway { grid-template-columns: 1fr; gap: 1rem; }
+    .pace-row { flex-wrap: wrap; }
+    .pace-labels { height: 2.8em; }
+    .pace-labels span:nth-child(2), .pace-labels span:nth-child(4) { top: 1.3em; }
+    .flow { gap: 0.2rem 0.7rem; }
+    .endline { font-size: 0.72rem; letter-spacing: 0.18em; }
+    .advance .hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script>
+  const root = document.documentElement;
+  const rm = root.classList.contains('rm');
+  const $ = (s: string, r: ParentNode = document) => r.querySelector(s) as HTMLElement | null;
+  const $$ = (s: string, r: ParentNode = document) => Array.from(r.querySelectorAll(s)) as HTMLElement[];
+  let repick = () => {}; // set in section 5; called when a box starts or stops speaking
+
+  // ── 1. The stage types the description that minted the mentor. The box arrives on a CSS timer.
+  const typed = $('.typed');
+  if (typed && !rm) {
+    const full = typed.dataset.text || typed.textContent || '';
+    typed.textContent = '';
+    let i = 0;
+    const step = () => {
+      i += 1;
+      typed.textContent = full.slice(0, i);
+      if (i < full.length) setTimeout(step, full[i - 1] === ',' ? 150 : 22);
+    };
+    setTimeout(step, 300);
+  }
+
+  // ── 2. Audio. One context, one analyser; the portrait slot shows the voice while it plays.
+  let ctx: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  const sources = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
+  const bins = new Uint8Array(64);
+  const audioOk = (audio: HTMLMediaElement) => {
+    try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return false;
+      if (!ctx) {
+        ctx = new AC();
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = 0.72;
+        analyser.connect(ctx.destination);
+      }
+      if (!sources.has(audio)) {
+        const src = ctx.createMediaElementSource(audio);
+        src.connect(analyser!);
+        sources.set(audio, src);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      return true;
+    } catch { return false; }
+  };
+
+  type Voice = { audio: HTMLAudioElement; play: () => void };
+  const voices = new Map<HTMLElement, Voice>();
+  const allAudio = $$('audio') as HTMLAudioElement[];
+
+  for (const box of $$('.voiced')) {
+    const audio = $('audio', box) as HTMLAudioElement | null;
+    const btn = $('.play', box) as HTMLButtonElement | null;
+    const txt = $('.txt', box);
+    const canvas = $('canvas', box) as HTMLCanvasElement | null;
+    if (!audio || !btn || !txt || !canvas) continue;
+    audio.removeAttribute('controls');
+    btn.hidden = false;
+
+    const chars = Array.from(txt.textContent || '').map((ch) => {
+      const s = document.createElement('span');
+      s.className = 'ch';
+      s.textContent = ch;
+      return s;
+    });
+    txt.textContent = '';
+    for (const s of chars) txt.append(s);
+
+    const seconds = Number(box.dataset.seconds) || 3;
+    const g = canvas.getContext('2d');
+    let raf = 0;
+    const lbl = $('.lbl', btn)!;
+    const glyph = $('.glyph', btn)!;
+    const setState = (playing: boolean) => {
+      lbl.textContent = playing ? 'Pause' : 'Play';
+      glyph.textContent = playing ? '❚❚' : '▶';
+      btn.setAttribute('aria-pressed', String(playing));
+    };
+    const clear = () => { if (g) g.clearRect(0, 0, canvas.width, canvas.height); };
+    const fit = () => {
+      const r = canvas.getBoundingClientRect();
+      const d = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(r.width * d));
+      canvas.height = Math.max(1, Math.round(r.height * d));
+    };
+    const draw = () => {
+      const p = Math.min(1, audio.currentTime / (audio.duration || seconds));
+      const n = Math.round(p * chars.length);
+      chars.forEach((c, k) => c.classList.toggle('on', k < n));
+      if (g && analyser) {
+        analyser.getByteFrequencyData(bins);
+        const W = canvas.width, H = canvas.height, count = 14, w = W / count;
+        g.clearRect(0, 0, W, H);
+        g.fillStyle = '#6FCFBF';
+        for (let k = 0; k < count; k++) {
+          const v = bins[k + 1] / 255;
+          const h = Math.max(2, v * H * 0.92);
+          g.fillRect(k * w + w * 0.22, H - h, w * 0.56, h);
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    };
+
+    audio.addEventListener('play', () => {
+      for (const other of allAudio) if (other !== audio && !other.paused) other.pause();
+      box.classList.add('is-speaking');
+      setState(true);
+      cancelAnimationFrame(raf);
+      if (!rm) { box.classList.add('revealing'); fit(); raf = requestAnimationFrame(draw); }
+      repick();
+    });
+    audio.addEventListener('pause', () => {
+      cancelAnimationFrame(raf);
+      box.classList.remove('is-speaking');
+      setState(false);
+      clear();
+      repick();
+    });
+    audio.addEventListener('ended', () => {
+      box.classList.remove('revealing');
+      for (const c of chars) c.classList.add('on');
+    });
+    btn.addEventListener('click', () => {
+      if (audio.paused) { audioOk(audio); audio.play().catch(() => {}); } else audio.pause();
+    });
+    voices.set(box, {
+      audio,
+      play: () => { audioOk(audio); audio.currentTime = 0; audio.play().catch(() => {}); },
+    });
+  }
+
+  // ── 3. Choices that name a description replay that character's stored seed clip.
+  for (const a of $$('a[data-play]')) {
+    a.addEventListener('click', () => {
+      const target = $(a.getAttribute('href') || '');
+      const v = target && voices.get(target);
+      if (v) v.play();
+    });
+  }
+
+  // ── 4. Play the scene: the five lines back to back, scrolling along.
+  const sceneBtn = $('#play-scene') as HTMLButtonElement | null;
+  const lines = $$('.voiced[data-line]');
+  if (sceneBtn && lines.length) {
+    sceneBtn.hidden = false;
+    const sceneLbl = $('.lbl', sceneBtn)!;
+    const sceneGlyph = $('.glyph', sceneBtn)!;
+    let running = false;
+    let at = -1;
+    const idle = () => { sceneLbl.textContent = 'Play the scene'; sceneGlyph.textContent = '▶'; sceneBtn.setAttribute('aria-pressed', 'false'); };
+    const stop = () => {
+      running = false;
+      idle();
+      const v = at >= 0 && voices.get(lines[at]);
+      if (v) v.audio.pause();
+      at = -1;
+    };
+    const next = () => {
+      at += 1;
+      if (at >= lines.length) return stop();
+      const box = lines[at];
+      box.scrollIntoView({ block: 'center', behavior: rm ? 'auto' : 'smooth' });
+      voices.get(box)?.play();
+    };
+    lines.forEach((box, k) => {
+      const v = voices.get(box);
+      if (!v) return;
+      v.audio.addEventListener('ended', () => { if (running && at === k) setTimeout(next, 500); });
+      v.audio.addEventListener('play', () => { if (running && at !== k) { running = false; idle(); } });
+    });
+    sceneBtn.addEventListener('click', () => {
+      if (running) stop();
+      else { running = true; sceneLbl.textContent = 'Stop'; sceneGlyph.textContent = '■'; sceneBtn.setAttribute('aria-pressed', 'true'); next(); }
+    });
+  }
+
+  // ── 5. The current line carries the advance prompt. A box that is speaking is current; otherwise
+  //       the first box, in reading order, that has not yet scrolled past the reading line near the
+  //       top of the screen. A ▼ jump lands its target just under that line, so the target is current.
+  const boxes = $$('.box');
+  let queued = false;
+  let current: HTMLElement | null = null;
+  const pick = () => {
+    queued = false;
+    const H = window.innerHeight;
+    const line = H * 0.2;
+    let best: HTMLElement | null = null;
+    const speaking = boxes.find((b) => b.classList.contains('is-speaking'));
+    if (speaking) {
+      const r = speaking.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < H) best = speaking;
+    }
+    if (!best) {
+      for (const b of boxes) {
+        const r = b.getBoundingClientRect();
+        if (r.bottom <= line) continue;
+        if (r.top >= H) break;
+        best = b;
+        break;
+      }
+    }
+    current = best || current;
+    for (const b of boxes) b.classList.toggle('is-active', b === current);
+  };
+  repick = pick;
+  window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(pick); } }, { passive: true });
+  window.addEventListener('resize', pick);
+  pick();
+</script>
